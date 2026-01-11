@@ -16,108 +16,117 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) 
     let id = event.id.as_ref();
 
     match id {
-        // --- 1. 最前面表示 (メインメニュー) ---
+        // --- 1. 最前面表示 ---
         "always_on_top" => {
+            // Config（現在のメモリ上の正解）を読み取って、その反対を「次の値」とする
+            let next_val = {
+                let cfg = state.config.lock().unwrap();
+                !cfg.always_on_top
+            };
+
+            // ウィンドウ・メニューアイテム・Config のすべてを next_val で同期する
             if let Some(window) = app.get_webview_window("main") {
-                let new_value = !window.is_always_on_top().unwrap_or(false);
-                let _ = window.set_always_on_top(new_value);
-                {
-                    let mut cfg = state.config.lock().unwrap();
-                    cfg.always_on_top = new_value;
-                }
-                let _ = state.save();
-                // チェック状態の同期
-                if let Some(item) = app
-                    .menu()
-                    .and_then(|m| m.get("always_on_top"))
-                    .and_then(|i| i.as_check_menuitem().cloned())
-                {
-                    let _ = item.set_checked(new_value);
-                }
+                let _ = window.set_always_on_top(next_val);
             }
-        }
-
-        // --- 2. 状態復元 (メインメニュー) ---
-        "restore_state" => {
-            if let Some(item) = app
-                .menu()
-                .and_then(|m| m.get("restore_state"))
-                .and_then(|i| i.as_check_menuitem().cloned())
+            if let Some(item) = app.menu().and_then(|m| m.get(id)).and_then(|i| i.as_check_menuitem().cloned()) {
+                let _ = item.set_checked(next_val);
+            }
             {
-                let new_value = !item.is_checked().unwrap_or(false);
-                let _ = item.set_checked(new_value);
-                {
-                    let mut cfg = state.config.lock().unwrap();
-                    cfg.restore_previous_state = new_value;
-                }
-                let _ = state.save();
+                let mut cfg = state.config.lock().unwrap();
+                cfg.always_on_top = next_val;
             }
+            let _ = state.save();
         }
 
-        // --- 3. コンパクトモード (メインメニュー) ---
+        // --- 2. 状態復元 ---
+        "restore_state" => {
+            let next_val = {
+                let cfg = state.config.lock().unwrap();
+                !cfg.restore_previous_state
+            };
+
+            if let Some(item) = app.menu().and_then(|m| m.get(id)).and_then(|i| i.as_check_menuitem().cloned()) {
+                let _ = item.set_checked(next_val);
+            }
+            {
+                let mut cfg = state.config.lock().unwrap();
+                cfg.restore_previous_state = next_val;
+            }
+            let _ = state.save();
+        }
+
+        // --- 3. トレイモード切替 ---
+        "tray_mode" => {
+            let next_val = {
+                let cfg = state.config.lock().unwrap();
+                !cfg.tray_mode
+            };
+
+            if let Some(item) = app.menu().and_then(|m| m.get(id)).and_then(|i| i.as_check_menuitem().cloned()) {
+                let _ = item.set_checked(next_val);
+            }
+            {
+                let mut cfg = state.config.lock().unwrap();
+                cfg.tray_mode = next_val;
+            }
+            let _ = state.save();
+
+            let app_clone = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                // tray_mode=true なら ウィンドウを隠す(show=false)
+                let _ = utils::apply_window_visibility(app_clone, !next_val);
+            });
+        }
+
+        // --- 4. コンパクトモード ---
         "compact_mode" => {
             if let Some(window) = app.get_webview_window("main") {
                 let current_title = window.title().unwrap_or_default();
-                let new_flag = !current_title.contains("Compact mode");
+                let next_val = !current_title.contains("Compact mode");
 
-                if let Some(item) = app
-                    .menu()
-                    .and_then(|m| m.get("compact_mode"))
-                    .and_then(|i| i.as_check_menuitem().cloned())
-                {
-                    let _ = item.set_checked(new_flag);
+                if let Some(item) = app.menu().and_then(|m| m.get(id)).and_then(|i| i.as_check_menuitem().cloned()) {
+                    let _ = item.set_checked(next_val);
                 }
-
+                
                 let window_clone = window.clone();
                 let _ = window.run_on_main_thread(move || {
-                    let _ = utils::apply_compact_mode(&window_clone, new_flag);
+                    let _ = utils::apply_compact_mode(&window_clone, next_val);
                 });
-                let _ = app.emit("compact-mode-event", new_flag);
+                let _ = app.emit("compact-mode-event", next_val);
             }
         }
-        // --- 1. トレイモード切替 ---
-        "tray_mode" => {
+
+        // --- アクション系 ---
+    
+        "show_window" => {
+            // 1. まずウィンドウを表示する
+            let app_clone = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                let _ = utils::apply_window_visibility(app_clone, true);
+            });
+
+            // 2. tray_mode の設定を false に戻す
+            {
+                let mut cfg = state.config.lock().unwrap();
+                cfg.tray_mode = false;
+            }
+            let _ = state.save();
+
+            // 3. メニューの「tray_mode」のチェックをオフにする
             if let Some(item) = app.menu()
                 .and_then(|m| m.get("tray_mode"))
                 .and_then(|i| i.as_check_menuitem().cloned()) 
             {
-                let new_value = !item.is_checked().unwrap_or(false);
-                let _ = item.set_checked(new_value);
-                
-                {
-                    let mut cfg = state.config.lock().unwrap();
-                    cfg.tray_mode = new_value;
-                }
-                let _ = state.save();
-
-                // 自作関数 apply_window_visibility を使用して隠す
-                // !new_value つまり tray_mode が true なら show=false で呼び出し
-                let app_clone = app.clone();
-                let _ = app.run_on_main_thread(move || {
-                    let _ = utils::apply_window_visibility(app_clone, !new_value);
-                });
+                let _ = item.set_checked(false);
             }
         }
-     
-        // --- 5. アクション系 (トレイ・メイン共通) ---
-        "show_window" => {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.unminimize();
-                let _ = window.set_focus();
-            }
-        }
-        "execute" => {
-            let _ = app.emit("tray-execute-clicked", ());
-        }
-        "change_work" => {
-            let _ = app.emit("tray-change-work-clicked", ());
-        }
-        "change_backup" => {
-            let _ = app.emit("tray-change-backup-clicked", ());
-        }
 
-        // --- 6. 言語・About・Quit ---
+
+        "execute" => { let _ = app.emit("tray-execute-clicked", ()); }
+        "change_work" => { let _ = app.emit("tray-change-work-clicked", ()); }
+        "change_backup" => { let _ = app.emit("tray-change-backup-clicked", ()); }
+
+        // --- 言語・About・Quit ---
         "lang_en" | "lang_ja" => {
             let lang = if id == "lang_en" { "en" } else { "ja" };
             {
@@ -125,29 +134,13 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) 
                 cfg.language = lang.to_string();
             }
             let _ = state.save();
-            let _ = app
-                .dialog()
-                .message("Restart required / 再起動が必要です")
-                .kind(tauri_plugin_dialog::MessageDialogKind::Info)
-                .title("Language")
-                .show(|_| {});
+            let _ = app.dialog().message("Restart required").title("Language").show(|_| {});
         }
         "about" => {
-            let t = |key: &str| {
-                get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string())
-            };
-            let _ = app
-                .dialog()
-                .message(t("aboutText"))
-                .title(t("about"))
-                .kind(tauri_plugin_dialog::MessageDialogKind::Info)
-                .show(|_| {});
+            let t = |key: &str| get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string());
+            let _ = app.dialog().message(t("aboutText")).title(t("about")).show(|_| {});
         }
-        "quit" => {
-            app.exit(0);
-        }
-
-        // --- 7. その他 (トレイ専用IDなどが来てもエラーを出さない) ---
+        "quit" => { app.exit(0); }
         _ => {}
     }
 }
