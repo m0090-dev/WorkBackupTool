@@ -96,8 +96,8 @@ export async function ArchiveBackupFile(src, backupDir, format, password) {
   return await invoke('archive_backup_file', { src, backupDir, format, password });
 }
 
-export async function BackupOrDiff(workFile, customDir,algo) {
-  return await invoke('backup_or_diff', { workFile, customDir,algo });
+export async function BackupOrDiff(workFile, customDir,algo,compress) {
+  return await invoke('backup_or_diff', { workFile, customDir,algo,compress});
 }
 
 export async function GetBackupList(workFile,backupDir) {

@@ -1,20 +1,47 @@
+use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
-/// hdiffz を呼び出して差分を作成する
+/// hdiffz を呼び出して差分を作成する (圧縮設定対応)
 pub async fn create_hdiff(
     app: tauri::AppHandle,
     old_file: &str,
     new_file: &str,
     diff_file: &str,
+    compress_algo: &str, // "zstd", "lzma2", "none" 等
 ) -> Result<(), String> {
-    // Sidecar "hdiffz" を呼び出し。引数はGo版と同一。
+    // 1. 基本となる引数をベクトルで作成
+    // -f: 強制上書き, -s: ストリーミング/高速化
+    let mut args = vec!["-f", "-s"];
+
+    // 2. 圧縮アルゴリズムに応じたフラグを追加
+    // compress_algo が "none" の場合はフラグを vec に追加しないことで
+    // hdiffz のデフォルト動作（uncompress）を呼び出す
+    match compress_algo {
+        "zstd" => args.push("-c-zstd"),
+        "lzma2" => args.push("-c-lzma2"),
+        "zlib" => args.push("-c-zlib"),
+        "none" => {
+            // 何も追加しない（uncompress）
+        }
+        _ => {
+            // 未知の指定があればデフォルトとして zstd を追加
+            args.push("-c-zstd");
+        }
+    };
+
+    // 3. 最後にパス情報を追加
+    args.push(old_file);
+    args.push(new_file);
+    args.push(diff_file);
+
+    // 4. Sidecar "hdiffz" を呼び出し
     let sidecar_command = app
         .shell()
         .sidecar("hdiffz")
         .map_err(|e| e.to_string())?
-        .args(["-f", "-s", "-c-zstd", old_file, new_file, diff_file]);
+        .args(&args); // 動的に構築した args リストを渡す
 
-    // Windowsでのウィンドウ非表示はTauriのSidecar/Commandが内部で処理してくれます。
+    // Windowsでのウィンドウ非表示等は Tauri が内部で処理
     let output = sidecar_command.output().await.map_err(|e| e.to_string())?;
 
     if output.status.success() {

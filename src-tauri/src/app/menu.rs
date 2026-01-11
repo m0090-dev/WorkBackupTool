@@ -5,7 +5,7 @@ use tauri::State;
 use tauri::{
     menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
     AppHandle, Manager, Runtime,
-}; 
+};
 
 pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::Result<Menu<R>> {
     // get_language_text コマンドが必要とする State を取得します
@@ -32,6 +32,10 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .checked(false) // Go版と同様に初期値は false
         .build(app)?;
 
+    let tray_mode = CheckMenuItemBuilder::with_id("tray_mode", t("trayMode"))
+        .checked(false) // Go版と同様に初期値は false
+        .build(app)?;
+
     let lang_en = MenuItemBuilder::with_id("lang_en", t("english")).build(app)?;
     let lang_ja = MenuItemBuilder::with_id("lang_ja", t("japanese")).build(app)?;
 
@@ -49,6 +53,7 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .item(&always_on_top)
         .item(&restore_state)
         .item(&compact_mode)
+        .item(&tray_mode)
         .item(&lang_en)
         .item(&lang_ja)
         .item(&quit)
