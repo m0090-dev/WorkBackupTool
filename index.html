@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CG File Backup Pro</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body ondragover="event.preventDefault();" ondrop="event.preventDefault();">
+<div class="container">
+  <div class="tabs-bar">
+    <div id="tabs-list" class="tabs-list"></div>
+    <button id="add-tab-btn" class="add-tab-btn" title="Add New Tab">+</button>
+  </div>
+
+  <div id="active-tab-content">
+    
+    <div class="status-panel">
+      <div class="info-row">
+        <strong id="label-target">Work file:</strong> 
+        <span id="selected-workfile">Not Selected</span>
+        
+        <button id="workfile-btn" class="mini-btn">Change</button>
+
+        <div class="recent-files-section">
+          <div class="recent-title">
+            <span id="label-recent"> Recent Files</span>
+          </div>
+          <div id="recent-list" class="recent-list">
+            <span class="recent-empty">No recent files</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-row" style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+        <strong id="label-location">Location:</strong> 
+        <span id="selected-backupdir">Default Folder</span>
+        <button id="backupdir-btn" class="mini-btn">Change</button>
+      </div>
+    </div>
+
+    <div id="message-area" class="hidden"></div>
+
+    <div class="main-grid">
+      <div class="action-section">
+        <h3 id="title-create-backup">Create New Backup</h3>
+        
+        <div class="backup-mode-selector">
+          <label class="mode-card">
+            <input type="radio" name="backupMode" value="copy" checked>
+            <div class="mode-info">
+              <span class="mode-title">Full Copy</span>
+              <span class="mode-desc">Standard backup</span>
+            </div>
+          </label>
+
+          <label class="mode-card">
+            <input type="radio" name="backupMode" value="archive">
+            <div class="mode-info" style="width: 100%;">
+              <span class="mode-title">Archive</span>
+              <span class="mode-desc">Compressed (ZIP/TAR)</span>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 5px;">
+                <select id="archive-format" class="mini-select">
+                  <option value="zip">ZIP (Normal)</option>
+                  <option value="zip-pass">ZIP (Password)</option>
+                  <option value="tar">TAR.GZ</option>
+                </select>
+              </div>
+              <div id="password-area" class="password-wrapper">
+                <input type="password" id="archive-password" class="mini-input" placeholder="Enter password...">
+              </div>
+            </div>
+          </label>
+
+          <label class="mode-card">
+            <input type="radio" name="backupMode" value="diff">
+            <div class="mode-info">
+              <span class="mode-title">Diff (Smart)</span>
+              <span class="mode-desc">Save only changes</span>
+              <select id="diff-algo" class="mini-select">
+                <option value="hdiff">Hdiff (Fast)</option>
+                <option value="bsdiff">Bsdiff (Lib)</option>
+              </select>
+            </div>
+          </label>
+        </div>
+        
+        <div class="execute-area">
+          <div id="progress-container" style="display: none;">
+            <div id="progress-bar"></div>
+          </div>
+          <div id="progress-status" style="display: none;">Processing...</div>
+          <button id="execute-backup-btn" class="execute-btn">Execute Backup</button>
+        </div>
+      </div>
+
+      <div id="history-section" class="history-section">
+        <h3 id="title-history">Backup History / Restore</h3>
+        <div id="diff-history-list" class="history-container">
+          </div>
+        
+        <div class="history-controls">
+          <button id="select-all-btn">Select All</button>
+          <button id="refresh-diff-btn">Refresh List</button>
+          <button id="apply-selected-btn" class="primary-btn">Apply Selected</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="drop-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h4 id="drop-modal-title">File/Folder Dropped</h4>
+        <p id="drop-modal-path" class="path-display"></p>
+        <p id="drop-modal-instruction">Please select the target type:</p>
+        <div class="modal-buttons">
+            <button id="drop-set-workfile" class="modal-btn primary">Set as Work File</button>
+            <button id="drop-set-backupdir" class="modal-btn secondary">Set as Backup Folder</button>
+            <button id="drop-cancel" class="modal-btn cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+
+<div id="compact-view" class="hidden">
+  <div class="compact-container">
+    <div class="compact-header">
+      <span class="compact-title-text">CG-BACKUP (Compact)</span>
+    </div>
+
+    <div class="compact-content">
+      <div id="compact-progress-area" class="compact-progress-wrapper" style="margin-bottom: 10px;">
+        <div id="compact-status-label" style="font-size: 10px; margin-bottom: 2px; text-align: left;">Ready</div>
+        <div class="compact-progress-bg" style="height: 6px; background: #333; border-radius: 3px;">
+          <div id="compact-progress-bar" class="compact-progress-fill" style="height: 100%; width: 0%; background: #4caf50; transition: width 0.2s;"></div>
+        </div>
+      </div>
+
+      <div class="compact-row target-display" style="margin-bottom: 8px;">
+        <div id="compact-selected-file" class="compact-filename-text" style="font-size: 11px; color: #fff; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No File Selected</div>
+        <button id="compact-workfile-btn" class="mini-btn" style="width: 100%; margin-top: 4px; padding: 4px 0; font-size: 11px;">Change Work file</button>
+      </div>
+
+      <div class="compact-row" style="margin-bottom: 8px;">
+        <select id="compact-mode-select" class="mini-select" style="width: 100%; padding: 4px;">
+          <option value="copy">Full Copy</option>
+          <option value="archive">Archive</option>
+          <option value="diff">Diff (Smart)</option>
+        </select>
+      </div>
+
+      <button id="compact-execute-btn" class="execute-btn" style="width: 100%; padding: 8px 0; font-weight: bold;">EXECUTE</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
+
+

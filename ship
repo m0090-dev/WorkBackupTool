@@ -1,0 +1,5 @@
+#!/usr/bin/env sh 
+go-licenses save .  --save_path=licenses
+wails build 
+wails build -nsis -platform windows 
+python3 dist.py  --zip --clean

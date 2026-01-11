@@ -1,0 +1,140 @@
+/**
+ * layout.css
+ * 通常モード（フルサイズ）の画面レイアウト設定
+ */
+
+/* --- 上部ステータスパネルの配置 --- */
+.status-panel {
+    padding: 6px 12px;
+    background-color: var(--primary-dark);
+    color: #ffffff;
+    font-size: 11px;
+    border-bottom: 2px solid var(--primary-blue);
+    flex-shrink: 0;
+    position: relative;
+    z-index: 100;
+}
+
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+    overflow: visible; 
+    margin-bottom: 3px;
+    position: relative;
+}
+
+.info-row strong { 
+    color: #8db5ff; 
+    min-width: 55px; 
+    font-size: 10px;
+}
+
+#selected-workfile, #selected-backupdir {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- メインコンテンツ：2カラムグリッド --- */
+.main-grid {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr); 
+    gap: 12px;
+    padding: 12px;
+    flex: 1; 
+    background-color: #fff;
+    min-height: 0; 
+    overflow: hidden;
+}
+
+.action-section, .history-section {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+h3 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    border-left: 4px solid var(--primary-blue);
+    padding-left: 8px;
+    color: #1a1a1a;
+    flex-shrink: 0;
+}
+
+/* --- 左カラム：バックアップモード選択 --- */
+.backup-mode-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.mode-card {
+    display: flex !important;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    background-color: #fff;
+    flex-shrink: 0;
+}
+.mode-card:has(input:checked) {
+    border: 2px solid var(--primary-blue);
+    background-color: #f0f7ff;
+}
+
+.mode-title { font-size: 11px; font-weight: 800; color: #111; }
+.mode-desc { display: block; font-size: 9px; color: #555; padding-left: 24px; }
+
+/* --- 右カラム：履歴表示・差分エリア --- */
+.history-container {
+    flex: 1;
+    /* max-height: calc(94vh - 180px);  */
+    height: auto;
+    min-height: 0;
+    min-width: 0 ;
+    overflow: auto; 
+    width: 100%;
+    box-sizing: border-box; 
+    border: 1px solid #bbb;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+
+/* --- 下部：実行・コントロールエリア --- */
+.execute-area { width: 100%; margin-top: 8px; flex-shrink: 0; }
+
+.history-controls { display: flex; gap: 6px; padding-top: 8px; flex-shrink: 0; }
+.history-controls button {
+    flex: 1; padding: 6px; font-size: 10px; background-color: #2C3E50; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;
+}
+.primary-btn { background-color: #db741f !important; }
+
+.diff-item { 
+    padding: 6px 8px; 
+    border-bottom: 1px solid #eee; 
+    font-size: 11px; 
+    white-space: nowrap;
+    /* 修正ポイント */
+    display: flex;
+    align-items: center;
+    width: max-content; /* 重要：中身の幅に合わせる（100%にしない） */
+    min-width: 100%;    /* 重要：中身が少ない時は親の幅いっぱいに背景色を塗る */
+    box-sizing: border-box;
+}
+.diff-item:hover { background-color: #f0f7ff; }
+.diff-name { 
+    color: #111;
+    display: flex;
+    align-items: center;
+    gap: 5px; /* バッジとの間隔 */ 
+}
+
+
