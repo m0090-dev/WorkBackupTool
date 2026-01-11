@@ -1,0 +1,64 @@
+use crate::app::commands::get_language_text; // 既存のコマンドをインポート
+use crate::app::state::AppState;
+use crate::app::types::AppConfig;
+use tauri::State;
+use tauri::{
+    menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuItemBuilder, SubmenuBuilder},
+    AppHandle, Manager, Runtime,
+}; 
+
+pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::Result<Menu<R>> {
+    // get_language_text コマンドが必要とする State を取得します
+    let state: State<'_, AppState> = app.state();
+
+    // 既存のコマンド get_language_text を直接呼び出すヘルパー
+    // エラー時はキー名をそのまま返す Go 版 GetLanguageText と同じ挙動にします
+    let t = |key: &str| -> String {
+        get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string())
+    };
+
+    // --- メニューアイテムの構築 ---
+
+    // チェック状態は config から取得
+    let always_on_top = CheckMenuItemBuilder::with_id("always_on_top", t("alwaysOnTop"))
+        .checked(config.always_on_top)
+        .build(app)?;
+
+    let restore_state = CheckMenuItemBuilder::with_id("restore_state", t("restoreState"))
+        .checked(config.restore_previous_state)
+        .build(app)?;
+
+    let compact_mode = CheckMenuItemBuilder::with_id("compact_mode", t("compactMode"))
+        .checked(false) // Go版と同様に初期値は false
+        .build(app)?;
+
+    let lang_en = MenuItemBuilder::with_id("lang_en", t("english")).build(app)?;
+    let lang_ja = MenuItemBuilder::with_id("lang_ja", t("japanese")).build(app)?;
+
+    let quit = MenuItemBuilder::with_id("quit", t("quit"))
+        .accelerator("CmdOrCtrl+Q")
+        .build(app)?;
+
+    let about = MenuItemBuilder::with_id("about", t("about"))
+        .accelerator("CmdOrCtrl+A")
+        .build(app)?;
+
+    // --- サブメニューの組み立て ---
+
+    let settings_menu = SubmenuBuilder::new(app, t("settings"))
+        .item(&always_on_top)
+        .item(&restore_state)
+        .item(&compact_mode)
+        .item(&lang_en)
+        .item(&lang_ja)
+        .item(&quit)
+        .build()?;
+
+    let about_menu = SubmenuBuilder::new(app, t("about")).item(&about).build()?;
+
+    // --- ルートメニューの生成 ---
+
+    MenuBuilder::new(app)
+        .items(&[&settings_menu, &about_menu])
+        .build()
+}

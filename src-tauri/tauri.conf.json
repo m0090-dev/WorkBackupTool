@@ -1,0 +1,48 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "cg-file-backup",
+  "version": "0.1.0",
+  "identifier": "com.m0090.dev.cfb",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "cg-file-backup",
+        "width": 640,
+        "height": 450,
+	"minWidth": 640,
+	"minHeight": 450,
+	"maxWidth": 640,
+	"maxHeight": 450,
+	"maximizable": false,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": true
+        }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": [
+      "../hdiff-bin/hdiffz",
+      "../hdiff-bin/hpatchz"
+    ]
+  }
+}
