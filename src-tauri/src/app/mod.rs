@@ -1,11 +1,10 @@
 pub mod auto_generation;
-pub mod bsdiff;
 pub mod commands;
 pub mod config;
 pub mod hdiff;
 pub mod hdiff_common;
 pub mod menu;
 pub mod state;
+pub mod tray;
 pub mod types;
 pub mod utils;
-pub mod tray;

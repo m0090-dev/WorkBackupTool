@@ -74,13 +74,20 @@
 
           <label class="mode-card">
             <input type="radio" name="backupMode" value="diff">
-            <div class="mode-info">
+            <div class="mode-info" style="width: 100%;">
               <span class="mode-title">Diff (Smart)</span>
               <span class="mode-desc">Save only changes</span>
-              <select id="diff-algo" class="mini-select">
-                <option value="hdiff">Hdiff (Fast)</option>
-                <option value="bsdiff">Bsdiff (Lib)</option>
-              </select>
+              <div class="diff-options-row" style="display: flex; gap: 5px; margin-top: 5px;">
+                <select id="diff-algo" class="mini-select" style="flex: 1.2;">
+                  <option value="hdiff">Hdiff (Fast)</option>
+                  <option value="bsdiff">Bsdiff (Lib)</option>
+                </select>
+                <select id="hdiff-compress" class="mini-select" style="flex: 1;">
+                  <option value="zstd">zstd</option>
+                  <option value="lzma2">lzma2</option>
+                  <option value="none">none</option>
+                </select>
+              </div>
             </div>
           </label>
         </div>
@@ -97,7 +104,7 @@
       <div id="history-section" class="history-section">
         <h3 id="title-history">Backup History / Restore</h3>
         <div id="diff-history-list" class="history-container">
-          </div>
+        </div>
         
         <div class="history-controls">
           <button id="select-all-btn">Select All</button>
@@ -122,7 +129,6 @@
     </div>
 </div>
 
-
 <div id="compact-view" class="hidden">
   <div class="compact-container">
     <div class="compact-header">
@@ -143,11 +149,18 @@
       </div>
 
       <div class="compact-row" style="margin-bottom: 8px;">
-        <select id="compact-mode-select" class="mini-select" style="width: 100%; padding: 4px;">
-          <option value="copy">Full Copy</option>
-          <option value="archive">Archive</option>
-          <option value="diff">Diff (Smart)</option>
-        </select>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <select id="compact-mode-select" class="mini-select" style="width: 100%; padding: 4px;">
+            <option value="copy">Full Copy</option>
+            <option value="archive">Archive</option>
+            <option value="diff">Diff (Smart)</option>
+          </select>
+          <select id="compact-hdiff-compress" class="mini-select" style="width: 100%; padding: 4px; display: none; font-size: 10px;">
+            <option value="zstd">zstd</option>
+            <option value="lzma2">lzma2</option>
+            <option value="none">none</option>
+          </select>
+        </div>
       </div>
 
       <button id="compact-execute-btn" class="execute-btn" style="width: 100%; padding: 8px 0; font-weight: bold;">EXECUTE</button>
@@ -158,5 +171,3 @@
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>
-
-

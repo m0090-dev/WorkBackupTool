@@ -11,7 +11,6 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_shell::ShellExt;
 
 // 内部モジュール (自作)
-use crate::app::bsdiff::*;
 use crate::app::hdiff_common::*;
 use crate::app::state::AppState;
 use crate::app::types::BackupItem;
@@ -115,6 +114,7 @@ pub async fn backup_or_diff(
     work_file: String,
     custom_dir: String,
     algo: String,
+    compress: String,
 ) -> Result<(), String> {
     // --- 1. ディレクトリの決定 ---
     let mut root = if custom_dir.is_empty() {
@@ -162,7 +162,7 @@ pub async fn backup_or_diff(
 
     // 差分生成
     if algo == "bsdiff" {
-        crate::app::bsdiff::create_bsdiff(app.clone(), &base_full.to_string_lossy(), &work_file, &temp_diff.to_string_lossy()).await?;
+        return Err(String::from("`bsdiff` is not supported."));
     } else {
         // hdiff生成実行 (前回作ったSidecar呼び出し関数)
         crate::app::hdiff::create_hdiff(
@@ -170,6 +170,7 @@ pub async fn backup_or_diff(
             &base_full.to_string_lossy(),
             &work_file,
             &temp_diff.to_string_lossy(),
+            &compress,
         )
         .await?;
     }
@@ -207,13 +208,14 @@ pub async fn backup_or_diff(
         let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
 
         if algo == "bsdiff" {
-             crate::app::bsdiff::create_bsdiff(app.clone(), &new_base_full.to_string_lossy(), &work_file, &final_path.to_string_lossy()).await
+            Err(String::from("`bsdiff` is not supported."))
         } else {
             crate::app::hdiff::create_hdiff(
                 app.clone(),
                 &new_base_full.to_string_lossy(),
                 &work_file,
                 &final_path.to_string_lossy(),
+                &compress,
             )
             .await
         }
@@ -235,7 +237,7 @@ pub async fn apply_multi_diff(
         let diff_name = Path::new(&dp).file_name().unwrap().to_string_lossy();
 
         let result = if diff_name.contains(".bsdiff.") {
-            apply_bsdiff(app.clone(),work_file.as_str(),dp.as_str()).await
+            return Err(String::from("`bsdiff` is not supported."));
         } else if diff_name.contains(".hdiff.") {
             apply_hdiff_wrapper(app.clone(), work_file.as_str(), dp.as_str()).await
         } else {
@@ -294,11 +296,12 @@ pub fn get_file_size(path: String) -> Result<i64, String> {
     Ok(metadata.len() as i64)
 }
 
-
 #[tauri::command]
 pub async fn select_any_file(app: AppHandle, title: String) -> Result<Option<String>, String> {
     // メインウィンドウを取得して親にする
-    let window = app.get_webview_window("main").ok_or("Main window not found")?;
+    let window = app
+        .get_webview_window("main")
+        .ok_or("Main window not found")?;
 
     // window.dialog() を使うことで親子関係を持たせ、最前面問題を解決
     let file_path = window
@@ -317,7 +320,9 @@ pub async fn select_any_file(app: AppHandle, title: String) -> Result<Option<Str
 #[tauri::command]
 pub async fn select_backup_folder(app: AppHandle) -> Result<Option<String>, String> {
     // メインウィンドウを取得して親にする
-    let window = app.get_webview_window("main").ok_or("Main window not found")?;
+    let window = app
+        .get_webview_window("main")
+        .ok_or("Main window not found")?;
 
     let folder_path = window
         .dialog()
@@ -347,11 +352,15 @@ pub fn open_directory(app: tauri::AppHandle, path: String) -> Result<(), String>
     Ok(())
 }
 
-
 // コマンド用ラッパー
 #[tauri::command]
 pub async fn toggle_compact_mode(window: WebviewWindow, is_compact: bool) -> Result<(), String> {
     utils::apply_compact_mode(&window, is_compact).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn toggle_window_visibility(app: AppHandle, show: bool) -> Result<(), String> {
+    utils::apply_window_visibility(app, show)
 }
 
 #[tauri::command]
@@ -509,9 +518,6 @@ fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32) ->
         generation: gen,
     }
 }
-
-
-
 
 /// ファイルをそのままコピーしてバックアップする (Go版の CopyBackupFile 相当)
 #[tauri::command]

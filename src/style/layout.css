@@ -95,7 +95,7 @@ h3 {
 /* --- 右カラム：履歴表示・差分エリア --- */
 .history-container {
     flex: 1;
-    /* max-height: calc(94vh - 180px);  */
+    max-height: calc(94vh - 180px); 
     height: auto;
     min-height: 0;
     min-width: 0 ;

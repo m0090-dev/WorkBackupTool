@@ -45,6 +45,7 @@ pub async fn backup_or_hdiff(
     app: tauri::AppHandle,
     work_file: &str,
     custom_dir: Option<String>,
+    compress: String,
 ) -> Result<(), String> {
     let target_dir = match custom_dir {
         Some(dir) if !dir.is_empty() => PathBuf::from(dir),
@@ -72,6 +73,7 @@ pub async fn backup_or_hdiff(
         &base_full.to_string_lossy(),
         work_file,
         &diff_path.to_string_lossy(),
+        &compress,
     )
     .await
 }

@@ -9,6 +9,7 @@
     "core:default",
     "shell:default",
     "dialog:default",
-    "core:window:allow-set-size"
+    "notification:default",
+    "core:window:default"
   ]
 }

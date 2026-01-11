@@ -263,3 +263,18 @@ pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Re
 
     Ok(())
 }
+
+pub fn apply_window_visibility(app: AppHandle, show: bool) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        if show {
+            window.show().map_err(|e| e.to_string())?;
+            window.unminimize().map_err(|e| e.to_string())?; // 最小化されていても戻す
+            window.set_focus().map_err(|e| e.to_string())?;
+        } else {
+            window.hide().map_err(|e| e.to_string())?;
+        }
+    } else {
+        return Err("Main window not found".into());
+    }
+    Ok(())
+}
