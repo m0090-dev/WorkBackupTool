@@ -6,6 +6,7 @@
   "autoBaseGenerationThreshold": 0.6,
   "trayMode": false,
   "compactMode": false,
+  "trayBackupMode": "diff",
   "i18n": {
     "en": {
       "settings": "Settings",

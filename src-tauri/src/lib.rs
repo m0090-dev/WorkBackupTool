@@ -2,59 +2,82 @@ mod app;
 use crate::app::commands::*;
 use crate::app::config::*;
 use crate::app::state::AppState;
+use crate::app::types::AppConfig;
 use crate::app::utils;
 use app::menu::*;
 use app::tray::*;
 use std::fs;
 use std::sync::Mutex;
 use tauri::AppHandle;
-use tauri::{menu::MenuEvent, Emitter, Manager};
+use tauri::{menu::{MenuEvent}, Emitter, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
 use tauri_plugin_notification::NotificationExt;
-
 
 pub fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) {
     let state = app.state::<AppState>();
     let id = event.id.as_ref();
 
     match id {
-        // --- トレイモード切替 ---
+        // --- 1. バックアップモード切替 (フル / アーカイブ / 差分) ---
+        "mode_full" | "mode_arc" | "mode_diff" => {
+            let mode_str = match id {
+                "mode_full" => "copy",
+                "mode_arc" => "archive",
+                _ => "diff",
+            };
+
+            // Configを更新して保存
+            let config = {
+                let mut cfg = state.config.lock().unwrap();
+                cfg.tray_backup_mode = mode_str.to_string();
+                cfg.clone()
+            };
+            let _ = state.save();
+
+            // JS側に同期を依頼
+            let _ = app.emit("tray-mode-change", mode_str);
+
+            // 【重要】トレイを再生成せず、トレイの「メニュー」だけを更新する
+            if let Some(tray) = app.tray_by_id("main-tray") {
+                // setup_menu ではなく、トレイ用のメニュー生成ロジックを呼ぶ
+                // ※setup_tray 内部で作っている Menu を取得する関数があればベスト
+                // ここでは再度メニューオブジェクトを構築してセットします
+                if let Ok(new_menu) = create_tray_menu(app, &config) {
+                    let _ = tray.set_menu(Some(new_menu));
+                }
+            }
+        }
+
+        // --- 2. トレイモード切替 ---
         "tray_mode" => {
-            // 1. Configを読み取って「反転」させる (ここを絶対の正解とする)
             let next_is_tray_enabled = {
                 let mut cfg = state.config.lock().unwrap();
                 cfg.tray_mode = !cfg.tray_mode;
-                cfg.tray_mode // 反転後の値を保持
+                cfg.tray_mode
             };
 
-            // 2. ウィンドウ表示状態を反映 (trueならhide、falseならshow)
             let _ = utils::apply_window_visibility(app.clone(), !next_is_tray_enabled);
 
-            // 3. メニューアイテムのチェック状態を強制同期
-            if let Some(item) = app.menu().and_then(|m| m.get(id)).and_then(|i| i.as_check_menuitem().cloned()) {
+            // メインメニューのチェック状態を同期
+            if let Some(item) = app
+                .menu()
+                .and_then(|m| m.get(id))
+                .and_then(|i| i.as_check_menuitem().cloned())
+            {
                 let _ = item.set_checked(next_is_tray_enabled);
             }
-            let _ = app.menu().and_then(|m| m.get("tray_mode")).map(|i| {
-                if let Some(check) = i.as_check_menuitem() {
-                    let _ = check.set_checked(next_is_tray_enabled);
-                }
-            });
-
-            // 4. 保存
             let _ = state.save();
         }
-     
-        // --- ウィンドウ表示アクション (トレイから復帰時) ---
+
+        // --- 3. ウィンドウ表示 (トレイから復帰時) ---
         "show_window" => {
-            // 1. Configを「トレイモードOFF」に固定して保存
             let config = {
                 let mut cfg = state.config.lock().unwrap();
                 cfg.tray_mode = false;
-                cfg.clone() // 新しいメニュー作成用にクローン
+                cfg.clone()
             };
             let _ = state.save();
 
-            // 2. ウィンドウを出す
             let _ = utils::apply_window_visibility(app.clone(), true);
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -62,104 +85,137 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) 
                 let _ = window.set_focus();
             }
 
-            // 3. 【最重要】メニューを「現在のConfig（tray_mode=false）」で作り直して再適用
-            // これにより、OS側の古いチェック状態を強制的に上書き（リフレッシュ）します
+            // メインメニュー全体をリフレッシュ
             if let Ok(new_menu) = setup_menu(app, &config) {
                 let _ = app.set_menu(new_menu);
             }
         }
 
-        // --- 1. 最前面表示 (ここもConfig基準に修正) ---
-        "always_on_top" => {
-            let next_val = {
+        // --- 4. 最前面表示 / コンパクトモード / 状態復元 ---
+        "always_on_top" | "compact_mode" | "restore_state" => {
+            // スコープ（波括弧）を使って、ロックの寿命を短くします
+            let (next_val, id_clone) = {
                 let mut cfg = state.config.lock().unwrap();
-                cfg.always_on_top = !cfg.always_on_top;
-                cfg.always_on_top
-            };
+                let val = match id {
+                    "always_on_top" => {
+                        cfg.always_on_top = !cfg.always_on_top;
+                        cfg.always_on_top
+                    }
+                    "compact_mode" => {
+                        cfg.compact_mode = !cfg.compact_mode;
+                        cfg.compact_mode
+                    }
+                    "restore_state" => {
+                        cfg.restore_previous_state = !cfg.restore_previous_state;
+                        cfg.restore_previous_state
+                    }
+                    _ => false,
+                };
+                (val, id.to_string())
+            }; // ここで cfg がスコープ外になり、ロックが解除（Unlock）されます！
 
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_always_on_top(next_val);
+            // ロックが解除された後なので、save() を呼んでもデッドロックしません
+            let _ = state.save();
+
+            // 以降の処理
+            if id_clone == "always_on_top" {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_always_on_top(next_val);
+                }
+            } else if id_clone == "compact_mode" {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = utils::apply_compact_mode(&window, next_val);
+                    let _ = app.emit("compact-mode-event", next_val);
+                }
             }
-            if let Some(item) = app.menu().and_then(|m| m.get(id)).and_then(|i| i.as_check_menuitem().cloned()) {
+
+            if let Some(item) = app
+                .menu()
+                .and_then(|m| m.get(&id_clone))
+                .and_then(|i| i.as_check_menuitem().cloned())
+            {
                 let _ = item.set_checked(next_val);
             }
-            let _ = state.save();
         }
 
-      
-        // --- コンパクトモード ---
-        "compact_mode" => {
-            let next_val = {
-                let mut cfg = state.config.lock().unwrap();
-                cfg.compact_mode = !cfg.compact_mode; // ここで状態を反転
-                cfg.compact_mode
-            };
-
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = utils::apply_compact_mode(&window, next_val);
-                let _ = app.emit("compact-mode-event", next_val);
-            }
-            
-            // メニューのチェックも更新
-            if let Some(item) = app.menu().and_then(|m| m.get(id)).and_then(|i| i.as_check_menuitem().cloned()) {
-                let _ = item.set_checked(next_val);
-            }
-            let _ = state.save();
+        // --- 5. アクション系 ---
+        "execute" => {
+            let _ = app.emit("tray-execute-clicked", ());
+        }
+        "change_work" => {
+            let _ = app.emit("tray-change-work-clicked", ());
+        }
+        "change_backup" => {
+            let _ = app.emit("tray-change-backup-clicked", ());
         }
 
-        // --- 5. 状態復元 ---
-        "restore_state" => {
-            let next_val = {
-                let mut cfg = state.config.lock().unwrap();
-                cfg.restore_previous_state = !cfg.restore_previous_state;
-                cfg.restore_previous_state
-            };
-            if let Some(item) = app.menu().and_then(|m| m.get(id)).and_then(|i| i.as_check_menuitem().cloned()) {
-                let _ = item.set_checked(next_val);
-            }
-            let _ = state.save();
+        "quit" => {
+            app.exit(0);
         }
-
-        "execute" => { 
-            let _ = app.emit("tray-execute-clicked", ()); 
-            app.notification()
-            .builder()
-            .title("Tauri")
-            .body("Tauri is awesome")
-            .show()
-            .unwrap();
-        }
-        "change_work" => { 
-            let _ = app.emit("tray-change-work-clicked", ()); 
-            app.notification()
-            .builder()
-            .title("Tauri")
-            .body("Tauri is awesome")
-            .show()
-            .unwrap();
-        }
-        "change_backup" => { 
-            let _ = app.emit("tray-change-backup-clicked", ()); 
-            app.notification()
-            .builder()
-            .title("Tauri")
-            .body("Tauri is awesome")
-            .show()
-            .unwrap();
-        }
+        
         "lang_en" | "lang_ja" => {
-            let lang = if id == "lang_en" { "en" } else { "ja" };
-            state.config.lock().unwrap().language = lang.to_string();
-            let _ = state.save();
-            let _ = app.dialog().message("Restart required").show(|_| {});
-        }
-        "about" => {
-            let t = |key: &str| get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string());
-            let _ = app.dialog().message(t("aboutText")).title(t("about")).show(|_| {});
-        }
-        "quit" => { app.exit(0); }
+    let lang_code = if id == "lang_en" { "en" } else { "ja" };
+
+    // 1. まずConfigを更新・保存（重要：setup_menuがこの値を見るため）
+    let config = {
+        let mut cfg = state.config.lock().unwrap();
+        cfg.language = lang_code.to_string();
+        cfg.clone()
+    };
+    let _ = state.save();
+
+    // 2. メニュー全体を再生成してセットし直す（これで確実に見た目が直る）
+    if let Ok(new_menu) = setup_menu(app, &config) {
+        let _ = app.set_menu(new_menu);
+    }
+
+    // 3. 通知
+    let t = |key: &str| -> String {
+        get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string())
+    };
+    let _ = app.dialog().message(&t("restartRequired")).show(|_| {});
+}
+   
         _ => {}
     }
+}
+
+// 共通化：トレイメニューだけを生成するヘルパー関数
+fn create_tray_menu<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    config: &AppConfig,
+) -> tauri::Result<tauri::menu::Menu<R>> {
+    let state = app.state::<AppState>();
+    let t = |key: &str| get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string());
+
+    let mode_full = tauri::menu::CheckMenuItemBuilder::with_id("mode_full", t("modeFull"))
+        .checked(config.tray_backup_mode == "full")
+        .build(app)?;
+    let mode_arc = tauri::menu::CheckMenuItemBuilder::with_id("mode_arc", t("modeArc"))
+        .checked(config.tray_backup_mode == "arc")
+        .build(app)?;
+    let mode_diff = tauri::menu::CheckMenuItemBuilder::with_id("mode_diff", t("modeDiff"))
+        .checked(config.tray_backup_mode == "diff")
+        .build(app)?;
+    let backup_mode_menu = tauri::menu::SubmenuBuilder::new(app, t("backupMode"))
+        .item(&mode_full)
+        .item(&mode_arc)
+        .item(&mode_diff)
+        .build()?;
+
+    tauri::menu::MenuBuilder::new(app)
+        .item(&tauri::menu::MenuItemBuilder::with_id("show_window", t("showWindow")).build(app)?)
+        .separator()
+        .item(&backup_mode_menu)
+        .item(&tauri::menu::MenuItemBuilder::with_id("execute", t("executeBtn")).build(app)?)
+        .item(&tauri::menu::MenuItemBuilder::with_id("change_work", t("workFileBtn")).build(app)?)
+        .item(
+            &tauri::menu::MenuItemBuilder::with_id("change_backup", t("backupDirBtn"))
+                .build(app)?,
+        )
+        .separator()
+        .item(&tauri::menu::MenuItemBuilder::with_id("quit", t("quit")).build(app)?)
+        .build()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -174,7 +230,7 @@ pub fn run() {
 
             let _ = window.set_min_size(Some(initial_size));
             let _ = window.set_max_size(Some(initial_size));
-            
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -204,15 +260,18 @@ pub fn run() {
 
             // --- 起動時の完全同期ロジック ---
             let tray_enabled = config.tray_mode;
-            
+
             // 1. ウィンドウの可視性設定
             let _ = utils::apply_window_visibility(app.handle().clone(), !tray_enabled);
 
             // 2. メニューアイテムのチェック状態を同期
-            if let Some(item) = menu.get("tray_mode").and_then(|i| i.as_check_menuitem().cloned()) {
+            if let Some(item) = menu
+                .get("tray_mode")
+                .and_then(|i| i.as_check_menuitem().cloned())
+            {
                 let _ = item.set_checked(tray_enabled);
             }
-            
+
             // 3. トレイモードでない場合は確実に表示（tauri.confのvisible:falseを考慮）
             if !tray_enabled {
                 let _ = window.show();
@@ -225,12 +284,29 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            get_config, set_always_on_top, get_restore_previous_state, get_bsdiff_max_file_size,
-            get_auto_base_generation_threshold, get_language_text, get_i18n, set_language,
-            get_config_dir, backup_or_diff, apply_multi_diff, copy_backup_file,
-            archive_backup_file, dir_exists, restore_backup, get_file_size,
-            select_any_file, select_backup_folder, open_directory, toggle_compact_mode,
-            write_text_file, read_text_file, get_backup_list,
+            get_config,
+            set_always_on_top,
+            get_restore_previous_state,
+            get_bsdiff_max_file_size,
+            get_auto_base_generation_threshold,
+            get_language_text,
+            get_i18n,
+            set_language,
+            get_config_dir,
+            backup_or_diff,
+            apply_multi_diff,
+            copy_backup_file,
+            archive_backup_file,
+            dir_exists,
+            restore_backup,
+            get_file_size,
+            select_any_file,
+            select_backup_folder,
+            open_directory,
+            toggle_compact_mode,
+            write_text_file,
+            read_text_file,
+            get_backup_list,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

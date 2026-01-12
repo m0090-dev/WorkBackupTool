@@ -36,8 +36,8 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .checked(false) // Go版と同様に初期値は false
         .build(app)?;
 
-    let lang_en = MenuItemBuilder::with_id("lang_en", t("english")).build(app)?;
-    let lang_ja = MenuItemBuilder::with_id("lang_ja", t("japanese")).build(app)?;
+    let lang_en = CheckMenuItemBuilder::with_id("lang_en", t("english")).checked(config.language == "en").build(app)?;
+    let lang_ja = CheckMenuItemBuilder::with_id("lang_ja", t("japanese")).checked(config.language == "ja").build(app)?;
 
     let quit = MenuItemBuilder::with_id("quit", t("quit"))
         .accelerator("CmdOrCtrl+Q")
