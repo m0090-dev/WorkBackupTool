@@ -39,6 +39,12 @@ import {
   updateExecute,
 } from './actions';
 import { ask } from '@tauri-apps/plugin-dialog';
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification';
+
 
 
 
@@ -183,6 +189,18 @@ export function setupGlobalEvents() {
 
   EventsOn("tray-execute-clicked", () => {
     OnExecute();
+    // 通知を送信するためのアクセス権限はありますか？
+    let permissionGranted = isPermissionGranted();
+
+    // アクセス権限が設定されていない場合はアクセス権限を要求する必要があります
+    if (!permissionGranted) {
+       const permission = requestPermission();
+       permissionGranted = permission === 'granted';
+    }
+    // アクセス権限が付与され次第、通知が送信されます
+    if (permissionGranted) {
+      sendNotification({ title: 'cg-file-backup', body: i18n.copyBackupSuccess});
+    }
   });
 
   EventsOn("tray-change-work-clicked", () => {
