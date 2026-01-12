@@ -29,7 +29,7 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .build(app)?;
 
     let compact_mode = CheckMenuItemBuilder::with_id("compact_mode", t("compactMode"))
-        .checked(false) // Go版と同様に初期値は false
+        .checked(config.compact_mode) // Go版と同様に初期値は false
         .build(app)?;
 
     let tray_mode = CheckMenuItemBuilder::with_id("tray_mode", t("trayMode"))

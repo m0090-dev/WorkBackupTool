@@ -14,6 +14,7 @@ pub struct AppConfig {
     pub bsdiff_max_file_size: i64,
     pub auto_base_generation_threshold: f64,
     pub i18n: HashMap<String, HashMap<String, String>>,
+    pub compact_mode: bool,
 }
 
 // JS側で確実に受け取るための構造体
