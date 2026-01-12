@@ -5,6 +5,7 @@
   "bsdiffMaxFileSize": 100000000,
   "autoBaseGenerationThreshold": 0.6,
   "trayMode": false,
+  "compactMode": false,
   "i18n": {
     "en": {
       "settings": "Settings",
