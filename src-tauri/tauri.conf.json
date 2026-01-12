@@ -25,7 +25,7 @@
         "fullscreen": false,
         "decorations": true,
 	"visible": false
-        }
+     }
     ],
     "security": {
       "csp": null
@@ -44,6 +44,12 @@
     "externalBin": [
       "../hdiff-bin/hdiffz",
       "../hdiff-bin/hpatchz"
-    ]
+    ],
+   "windows": {
+      "nsis": {
+        "languages": ["Japanese","English"],
+        "installMode": "both"
+      }
+    }
   }
 }

@@ -52,9 +52,36 @@ export function setupGlobalEvents() {
   // Only this
   window.addEventListener('dragenter', preventDefault, true);
 
+  // --- ヘルパー関数: 共通ロジックの定義 ---
+  
+  // 作業ファイル選択ロジック
+  const handleSelectWorkFile = async () => {
+    const tab = getActiveTab();
+    const res = await SelectAnyFile(i18n.workFileBtn, [{ DisplayName: "Work file", Pattern: "*.*" }]);
+    if (res) {
+      tab.workFile = res;
+      tab.workFileSize = await GetFileSize(res);
+      addToRecentFiles(res);
+      renderTabs(); UpdateDisplay(); UpdateHistory();
+      saveCurrentSession();
+      showFloatingMessage(i18n.updatedWorkFile);
+    }
+  };
+
+  // バックアップ先フォルダ選択ロジック
+  const handleSelectBackupDir = async () => {
+    const tab = getActiveTab();
+    const res = await SelectBackupFolder();
+    if (res) {
+      tab.backupDir = res;
+      UpdateDisplay(); UpdateHistory();
+      saveCurrentSession();
+      showFloatingMessage(i18n.updatedBackupDir);
+    }
+  };
+
   // --- クリックイベントリスナー ---
   window.addEventListener('click', async (e) => {
-    // 修正ポイント：ターゲットがボタン内部のアイコン等の場合でも正しくIDを拾う
     const target = e.target.closest('button') || e.target;
     const id = target.id;
     const tab = getActiveTab();
@@ -77,24 +104,10 @@ export function setupGlobalEvents() {
     }
 
     if (id === 'workfile-btn' || id === 'compact-workfile-btn') {
-      const res = await SelectAnyFile(i18n.workFileBtn, [{ DisplayName: "Work file", Pattern: "*.*" }]);
-      if (res) {
-        tab.workFile = res;
-        tab.workFileSize = await GetFileSize(res);
-        addToRecentFiles(res);
-        renderTabs(); UpdateDisplay(); UpdateHistory();
-        saveCurrentSession();
-        showFloatingMessage(i18n.updatedWorkFile);
-      }
-      return; // return追加で後続判定を防止
+      await handleSelectWorkFile();
+      return;
     } else if (id === 'backupdir-btn') {
-      const res = await SelectBackupFolder();
-      if (res) {
-        tab.backupDir = res;
-        UpdateDisplay(); UpdateHistory();
-        saveCurrentSession();
-        showFloatingMessage(i18n.updatedBackupDir);
-      }
+      await handleSelectBackupDir();
       return;
     } else if (id === 'execute-backup-btn' || id === 'compact-execute-btn') {
       OnExecute();
@@ -108,17 +121,11 @@ export function setupGlobalEvents() {
       cbs.forEach(cb => cb.checked = !all);
       return;
     } else if (id === 'apply-selected-btn') {
-      // --- 物理ガード開始 ---
       e.preventDefault();
       e.stopPropagation();
-
       const targets = Array.from(document.querySelectorAll('.diff-checkbox:checked')).map(el => el.value);
-      
-      // ターゲットがない場合は即終了
       if (targets.length === 0) return;
 
-      // 【重要修正】confirm を await ask に変更
-      // これによりユーザーが「はい」を押すまで、JSもRustもここで完全に一時停止します
       const isConfirmed = await ask(i18n.restoreConfirm, { 
         title: 'CG File Backup',
         type: 'warning' 
@@ -127,12 +134,10 @@ export function setupGlobalEvents() {
       if (isConfirmed) {
         toggleProgress(true, "Restoring...");
         try { 
-          // 復元処理。awaitにより一つずつ順番に完了を待ちます
           for (const p of targets) { 
             await RestoreBackup(p, tab.workFile); 
           } 
           toggleProgress(false); 
-          // 処理がすべて終わってからメッセージを表示
           showFloatingMessage(i18n.diffApplySuccess); 
           UpdateHistory(); 
         }
@@ -141,7 +146,6 @@ export function setupGlobalEvents() {
           alert(err); 
         }
       }
-      // 他のID判定（OnExecute等）に流れないよう、ここで完全に終了させる
       return; 
     }
   });
@@ -151,20 +155,66 @@ export function setupGlobalEvents() {
     const id = e.target.id;
     const name = e.target.name;
     const value = e.target.value;
-    if (['backupMode', 'archive-format'].includes(e.target.name) || id === 'archive-format') {
-      UpdateDisplay();
+    
+    if (name === 'backupMode') {
+      const tab = getActiveTab();
+      if (tab) tab.backupMode = value; // データ側を確実に更新
     }
+    
     if (['backupMode', 'archive-format'].includes(name) || id === 'archive-format' || id === 'diff-algo') {
       UpdateDisplay();
       updateExecute();
+      saveCurrentSession();
     }
+    
     if (id === 'compact-mode-select') {
       const radio = document.querySelector(`input[name="backupMode"][value="${value}"]`);
       if (radio) { 
-        radio.checked = true; 
-        UpdateDisplay(); 
-        updateExecute();
+        radio.checked = true;
+        const tab = getActiveTab();
+        if (tab) tab.backupMode = value;
+        // イベントを手動で発行して同期
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
       }
+    }
+  });
+
+  // --- Rust / Tray からのイベントリスナー ---
+
+  EventsOn("tray-execute-clicked", () => {
+    OnExecute();
+  });
+
+  EventsOn("tray-change-work-clicked", () => {
+    handleSelectWorkFile();
+  });
+
+  EventsOn("tray-change-backup-clicked", () => {
+    handleSelectBackupDir();
+  });
+
+  // 【物理同期版】トレイ：バックアップモードの同期
+  EventsOn("tray-mode-change", (newMode) => {
+    const radio = document.querySelector(`input[name="backupMode"][value="${newMode}"]`);
+    
+    if (radio) {
+      // 1. ラジオボタンを物理的にチェック
+      radio.checked = true;
+
+      // 2. 【重要】changeイベントを強制発火させる
+      // これにより、上の document.addEventListener('change', ...) 内の
+      // tab.backupMode = value や UpdateDisplay() が自動的に走り、完全に同期されます。
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
+
+      // 3.念のため確実に内部データも更新
+      const tab = getActiveTab();
+      if (tab) tab.backupMode = newMode;
+      
+      // 4. UI更新と通知
+      UpdateDisplay();
+      updateExecute();
+      saveCurrentSession();
+      showFloatingMessage(`${i18n.updatedBackupMode || 'Mode'}: ${newMode}`);
     }
   });
 
@@ -173,9 +223,7 @@ export function setupGlobalEvents() {
     if (isCompact) {
       document.body.classList.add("compact-mode");
       if (view) view.classList.remove("hidden");
-      if (typeof UpdateDisplay === 'function') {
-        UpdateDisplay();
-      }
+      if (typeof UpdateDisplay === 'function') UpdateDisplay();
     } else {
       document.body.classList.remove("compact-mode");
       if (view) view.classList.add("hidden");

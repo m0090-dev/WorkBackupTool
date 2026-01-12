@@ -15,6 +15,7 @@ pub struct AppConfig {
     pub auto_base_generation_threshold: f64,
     pub i18n: HashMap<String, HashMap<String, String>>,
     pub compact_mode: bool,
+    pub tray_backup_mode: String,
 }
 
 // JS側で確実に受け取るための構造体
