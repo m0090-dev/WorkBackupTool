@@ -32,10 +32,10 @@ This application is built using [Tauri]().
 ### Commands
 ```bash
 # Run in development mode
-npm run dev
+npm run tauri:dev
 
 # Build the application
-npm run build
+npm run tauri:build
 ``` 
 
 
