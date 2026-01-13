@@ -9,7 +9,6 @@ github.com/rivo/uniseg,https://github.com/rivo/uniseg/blob/v0.4.7/LICENSE.txt,MI
 github.com/wailsapp/wails/v2,https://github.com/wailsapp/wails/blob/v2.11.0/v2/LICENSE,MIT
 golang.org/x/crypto/pbkdf2,https://cs.opensource.google/go/x/crypto/+/v0.33.0:LICENSE,BSD-3-Clause
 
-
 binarydist (Modified)
 
 Font: x12y12pxMaruMinyaM.ttf

@@ -5,304 +5,335 @@
 
 /* --- ボタン共通 --- */
 .mini-btn {
-    padding: 2px 8px;
-    font-size: 10px;
-    height: 20px;
-    background: #4a5a71;
-    border: none;
-    color: white;
-    border-radius: 3px;
-    cursor: pointer;
+  padding: 2px 8px;
+  font-size: 10px;
+  height: 20px;
+  background: #4a5a71;
+  border: none;
+  color: white;
+  border-radius: 3px;
+  cursor: pointer;
 }
-.mini-btn:hover { background: var(--primary-blue); }
+.mini-btn:hover {
+  background: var(--primary-blue);
+}
 
 .execute-btn {
-    width: 100%;
-    height: 38px;
-    background-color: var(--success-green);
-    color: white;
-    border: none;
-    font-weight: 900;
-    font-size: 12px;
-    border-radius: 6px;
-    box-shadow: 0 2px 0 #1e5c3a;
-    cursor: pointer;
-    transition: all 0.2s;
+  width: 100%;
+  height: 38px;
+  background-color: var(--success-green);
+  color: white;
+  border: none;
+  font-weight: 900;
+  font-size: 12px;
+  border-radius: 6px;
+  box-shadow: 0 2px 0 #1e5c3a;
+  cursor: pointer;
+  transition: all 0.2s;
 }
-.execute-btn:active { transform: translateY(2px); box-shadow: none; }
-.execute-btn:disabled { background-color: #ccc; cursor: not-allowed; box-shadow: none; transform: none; }
+.execute-btn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
+.execute-btn:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
 
 /* --- タブ機能 --- */
 .tabs-bar {
-    display: flex;
-    align-items: center;
-    background: #e4e6e9;
-    border-bottom: 1px solid #ccc;
-    padding: 4px 10px 0 10px;
-    gap: 5px;
+  display: flex;
+  align-items: center;
+  background: #e4e6e9;
+  border-bottom: 1px solid #ccc;
+  padding: 4px 10px 0 10px;
+  gap: 5px;
 }
 .tabs-list {
-    display: flex;
-    gap: 2px;
-    overflow-x: auto;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
 }
-.tabs-list::-webkit-scrollbar { display: none; }
+.tabs-list::-webkit-scrollbar {
+  display: none;
+}
 
 .tab-item {
-    padding: 4px 12px;
-    background: #d1d4d9;
-    border: 1px solid #bbb;
-    border-bottom: none;
-    border-radius: 5px 5px 0 0;
-    cursor: pointer;
-    font-size: 11px;
-    max-width: 120px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: #555;
-    transition: background 0.2s;
+  padding: 4px 12px;
+  background: #d1d4d9;
+  border: 1px solid #bbb;
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  cursor: pointer;
+  font-size: 11px;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #555;
+  transition: background 0.2s;
 }
 .tab-item.active {
-    background: #ffffff;
-    color: #000;
-    font-weight: bold;
-    border-bottom: 1px solid #ffffff;
-    margin-bottom: -1px;
-    z-index: 10;
+  background: #ffffff;
+  color: #000;
+  font-weight: bold;
+  border-bottom: 1px solid #ffffff;
+  margin-bottom: -1px;
+  z-index: 10;
 }
 .add-tab-btn {
-    background: var(--primary-blue);
-    color: white;
-    border: none;
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    margin-bottom: 4px;
-    display: flex; align-items: center; justify-content: center;
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ドラッグ中の要素 */
 .tab-item.dragging {
-    opacity: 0.5;
-    background: #e0e0e0;
+  opacity: 0.5;
+  background: #e0e0e0;
 }
 
 /* 重なった時のインジケータ（左側に青い線を出す例） */
 .tab-item.drag-over {
-    border-left: 3px solid #3B5998;
-    background: #f0f4ff;
+  border-left: 3px solid #3b5998;
+  background: #f0f4ff;
 }
-
 
 /* --- 最近使ったファイル (ポップアップ) --- */
 .recent-files-section {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    z-index: 1000;
-    width: 240px;
-    margin-top: 4px; /* わずかに隙間をあけて視認性アップ */
-    padding: 10px;
-    background: var(--modal-bg); /* #1e1e1e */
-    border: 1px solid var(--modal-border);
-    border-radius: 6px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    display: none; 
-    pointer-events: none;
-    animation: tabTooltipFadeIn 0.15s ease-out; /* 他のポップアップと共通の動き */
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 1000;
+  width: 240px;
+  margin-top: 4px; /* わずかに隙間をあけて視認性アップ */
+  padding: 10px;
+  background: var(--modal-bg); /* #1e1e1e */
+  border: 1px solid var(--modal-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  display: none;
+  pointer-events: none;
+  animation: tabTooltipFadeIn 0.15s ease-out; /* 他のポップアップと共通の動き */
 }
 
 /* ホバー時の表示制御 */
 #workfile-btn:hover + .recent-files-section,
 .recent-files-section:hover {
-    display: block;
-    pointer-events: auto;
+  display: block;
+  pointer-events: auto;
 }
 
 /* タイトル部分 */
 .recent-title {
-    font-size: 10px;
-    font-weight: bold;
-    color: var(--modal-text-dim); /* #999999 */
-    margin-bottom: 8px;
-    border-bottom: 1px solid var(--modal-border);
-    padding-bottom: 4px;
-    letter-spacing: 0.05em;
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--modal-text-dim); /* #999999 */
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--modal-border);
+  padding-bottom: 4px;
+  letter-spacing: 0.05em;
 }
 
 /* リストコンテナ */
 .recent-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 /* 各ファイル項目 */
 .recent-item {
-    padding: 6px 8px;
-    font-size: 11px;
-    cursor: pointer;
-    border-radius: 4px;
-    color: var(--modal-text-main); /* #eeeeee */
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    transition: all 0.2s ease;
+  padding: 6px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--modal-text-main); /* #eeeeee */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.2s ease;
 }
 
 /* ホバー時：メモのタグやボタンと同じ馴染むデザイン */
 .recent-item:hover {
-    background: var(--modal-hover-bg);
-    color: var(--modal-accent); /* 馴染む水色 #3498db */
+  background: var(--modal-hover-bg);
+  color: var(--modal-accent); /* 馴染む水色 #3498db */
 }
 
 /* 空の状態などのメッセージ用 */
 .recent-empty {
-    font-size: 10px;
-    color: var(--modal-text-dim);
-    text-align: center;
-    padding: 10px 0;
+  font-size: 10px;
+  color: var(--modal-text-dim);
+  text-align: center;
+  padding: 10px 0;
 }
-
-
 
 /* --- プログレス・メッセージエリア --- */
 #progress-container {
-    height: 12px;
-    background-color: #e0e0e0 !important;
-    border-radius: 6px;
-    overflow: hidden;
-    margin: 6px 0;
-    display: none;
-    border: 1px solid #aaa;
+  height: 12px;
+  background-color: #e0e0e0 !important;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 6px 0;
+  display: none;
+  border: 1px solid #aaa;
 }
-#progress-bar { height: 100%; width: 0%; background-color: #28a745 !important; transition: width 0.2s; }
-#progress-status { font-size: 10px; color: #1e5c3a; text-align: center; font-weight: 800; display: none; }
-
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background-color: #28a745 !important;
+  transition: width 0.2s;
+}
+#progress-status {
+  font-size: 10px;
+  color: #1e5c3a;
+  text-align: center;
+  font-weight: 800;
+  display: none;
+}
 
 #message-area {
-    position: fixed; /* absoluteよりfixedの方が画面全体に対して浮くので確実 */
-    top: 20px;       /* 少し上に詰めるとコンパクトモードでも見やすい */
-    left: 50%;
-    transform: translateX(-50%);
-    width: 240px;
-    padding: 10px;   /* 少し余裕を持たせる */
-    background-color: var(--success-green);
-    color: #fff;
-    font-size: 11px;
-    text-align: center;
-    border-radius: 6px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5); /* 影を強くして浮かせる */
-    z-index: 99999 !important; /* 何が何でも最前面に出す */
-    pointer-events: none;      /* メッセージ越しに下のボタンが押せるようにする */
+  position: fixed; /* absoluteよりfixedの方が画面全体に対して浮くので確実 */
+  top: 20px; /* 少し上に詰めるとコンパクトモードでも見やすい */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  padding: 10px; /* 少し余裕を持たせる */
+  background-color: var(--success-green);
+  color: #fff;
+  font-size: 11px;
+  text-align: center;
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); /* 影を強くして浮かせる */
+  z-index: 99999 !important; /* 何が何でも最前面に出す */
+  pointer-events: none; /* メッセージ越しに下のボタンが押せるようにする */
 }
 
 /* 表示・非表示の切り替え（JSのclassListと連動） */
 #message-area.hidden {
-    display: none !important;
+  display: none !important;
 }
 
 /* エラー時の色を強制 */
 #message-area.error {
-    background-color: #d32f2f !important;
-    color: #ffffff !important;
+  background-color: #d32f2f !important;
+  color: #ffffff !important;
 }
-
 
 /* --- モーダル部品 --- */
 
 .modal-overlay {
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 2000;
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
 }
 
 .modal-content {
-    background: var(--modal-bg);
-    padding: 20px;
-    border-radius: 8px;
-    width: 320px;
-    border: 1px solid var(--modal-border);
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-    text-align: center;
-    animation: modal-pop 0.3s ease-out;
-    color: var(--modal-text-main);
+  background: var(--modal-bg);
+  padding: 20px;
+  border-radius: 8px;
+  width: 320px;
+  border: 1px solid var(--modal-border);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: modal-pop 0.3s ease-out;
+  color: var(--modal-text-main);
 }
 
 @keyframes modal-pop {
-    from { transform: scale(0.9); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .path-display {
-    font-size: 10px;
-    background: #111;
-    padding: 10px;
-    border-radius: 4px;
-    border: 1px solid #444;
-    margin: 12px 0;
-    text-align: left;
-    font-family: monospace;
-    word-break: break-all;
-    color: var(--modal-text-main);
+  font-size: 10px;
+  background: #111;
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  margin: 12px 0;
+  text-align: left;
+  font-family: monospace;
+  word-break: break-all;
+  color: var(--modal-text-main);
 }
 
 .modal-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 /* --- ボタンデザイン：メモの質感に完全統合 --- */
 
 .modal-btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 12px;
-    transition: all 0.2s;
-    outline: none;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 12px;
+  transition: all 0.2s;
+  outline: none;
 }
 
 /* メインボタン：メモの primary と同じ馴染む水色 */
 .modal-btn.primary {
-    background: var(--modal-accent);
-    color: white;
+  background: var(--modal-accent);
+  color: white;
 }
 .modal-btn.primary:hover {
-    background: #2980b9;
+  background: #2980b9;
 }
 
 /* セカンダリボタン：メモのタグのような馴染むデザイン */
 .modal-btn.secondary {
-    background: #2c3e50;
-    color: var(--modal-accent);
-    border: 1px solid #34495e;
+  background: #2c3e50;
+  color: var(--modal-accent);
+  border: 1px solid #34495e;
 }
 .modal-btn.secondary:hover {
-    background: var(--modal-accent);
-    color: white;
-    border-color: #5dade2;
+  background: var(--modal-accent);
+  color: white;
+  border-color: #5dade2;
 }
 
 /* キャンセルボタン：メモの secondary（枠線のみ） */
 .modal-btn.cancel {
-    background: transparent;
-    color: var(--modal-text-dim);
-    border: 1px solid #444;
+  background: transparent;
+  color: var(--modal-text-dim);
+  border: 1px solid #444;
 }
 .modal-btn.cancel:hover {
-    background: var(--modal-hover-bg);
-    color: var(--modal-text-main);
-    border-color: #666;
+  background: var(--modal-hover-bg);
+  color: var(--modal-text-main);
+  border-color: #666;
 }

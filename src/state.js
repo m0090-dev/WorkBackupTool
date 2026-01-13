@@ -1,28 +1,25 @@
-/*
 import {
   WriteTextFile,
   ReadTextFile,
   GetConfigDir,
-  GetRestorePreviousState
-} from '../wailsjs/go/main/App';
-*/
-
-
-import {
-  WriteTextFile,
-  ReadTextFile,
-  GetConfigDir,
-  GetRestorePreviousState
-} from './tauri_exports';
-
-
-
-
+  GetRestorePreviousState,
+} from "./tauri_exports";
 
 // --- 状態管理 ---
 export let i18n = null;
-export let tabs = [{ id: Date.now(), workFile: '', workFileSize: 0, backupDir: '', active: true,selectedTargetDir: "" }];
-export let recentFiles = JSON.parse(localStorage.getItem('recentFiles') || '[]');
+export let tabs = [
+  {
+    id: Date.now(),
+    workFile: "",
+    workFileSize: 0,
+    backupDir: "",
+    active: true,
+    selectedTargetDir: "",
+  },
+];
+export let recentFiles = JSON.parse(
+  localStorage.getItem("recentFiles") || "[]",
+);
 
 export const MAX_RECENT_COUNT = 5;
 export const SESSION_FILE_NAME = "session.json";
@@ -33,14 +30,17 @@ export function setI18N(data) {
 }
 
 // --- ヘルパー ---
-export function getActiveTab() { 
-  return tabs.find(t => t.active); 
+export function getActiveTab() {
+  return tabs.find((t) => t.active);
 }
 
 export function addToRecentFiles(path) {
   if (!path) return;
-  recentFiles = [path, ...recentFiles.filter(p => p !== path)].slice(0, MAX_RECENT_COUNT);
-  localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+  recentFiles = [path, ...recentFiles.filter((p) => p !== path)].slice(
+    0,
+    MAX_RECENT_COUNT,
+  );
+  localStorage.setItem("recentFiles", JSON.stringify(recentFiles));
   // renderRecentFiles() はUI層にあるため、ここでは状態更新のみ
 }
 
@@ -67,13 +67,13 @@ export async function restoreSession() {
     const content = await ReadTextFile(sessionPath);
     if (content) {
       const saved = JSON.parse(content);
-      if (saved.tabs && saved.tabs.length > 0) { 
+      if (saved.tabs && saved.tabs.length > 0) {
         // 配列の中身を入れ替える（参照を維持するため）
         tabs.splice(0, tabs.length, ...saved.tabs);
       }
       if (saved.recentFiles) {
         recentFiles.splice(0, recentFiles.length, ...saved.recentFiles);
-        localStorage.setItem('recentFiles', JSON.stringify(recentFiles));
+        localStorage.setItem("recentFiles", JSON.stringify(recentFiles));
       }
     }
   } catch (err) {
@@ -82,9 +82,9 @@ export async function restoreSession() {
 }
 
 export function formatSize(bytes) {
-  if (!bytes) return '0 B';
+  if (!bytes) return "0 B";
   const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
