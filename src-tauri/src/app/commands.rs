@@ -242,7 +242,7 @@ pub async fn backup_or_diff(
         }
     }
 
-    if should_next_gen {
+    /*if should_next_gen {
         // --- 5a. 【世代交代】 新しいフォルダへ移行 ---
         let _ = fs::remove_file(&temp_diff);
         let new_idx = current_idx + 1;
@@ -253,6 +253,48 @@ pub async fn backup_or_diff(
 
         let new_base_full = new_gen_dir.join(format!("{}.base", file_name));
         let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
+
+        crate::app::hdiff::create_hdiff(
+            app.clone(),
+            &new_base_full.to_string_lossy(),
+            &work_file,
+            &final_path.to_string_lossy(),
+            &compress,
+        )
+        .await
+    } */
+
+    if should_next_gen {
+        // --- 5a. 【世代交代】 ここを新しいロジックに差し替えます ---
+        let _ = fs::remove_file(&temp_diff);
+
+        // ★修正：既存の最新世代があるか再確認
+        let (new_gen_dir, actual_idx) = match auto_generation::get_latest_generation(&project_root)?
+        {
+            Some(info) if info.base_idx > current_idx => {
+                println!(
+                    "DEBUG: Existing newer generation found (idx {}). Using it.",
+                    info.base_idx
+                );
+                (info.dir_path, info.base_idx)
+            }
+            _ => {
+                let next_idx = current_idx + 1;
+                println!("DEBUG: Creating next generation: idx {}", next_idx);
+                let path =
+                    auto_generation::create_new_generation(&project_root, next_idx, &work_file)?;
+                (path, next_idx)
+            }
+        };
+
+        // 以降、決定した new_gen_dir を使って diff を作成
+        let new_base_full = new_gen_dir.join(format!("{}.base", file_name));
+        let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
+
+        // 念のため、既存フォルダを使う場合に .base が無いならコピーする（より安全にする場合）
+        if !new_base_full.exists() {
+            fs::copy(&work_file, &new_base_full).map_err(|e| e.to_string())?;
+        }
 
         crate::app::hdiff::create_hdiff(
             app.clone(),
