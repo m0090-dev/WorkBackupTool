@@ -4,42 +4,40 @@
  */
 
 :root {
-    /* メインカラー */
-    --primary-blue: #3B5998;
-    --primary-dark: #1B2636;
-    --success-green: #2f8f5b;
-    --warning-orange: #db741f; /* 既存のオレンジボタン用 */
+  /* メインカラー */
+  --primary-blue: #3b5998;
+  --primary-dark: #1b2636;
+  --success-green: #2f8f5b;
+  --warning-orange: #db741f; /* 既存のオレンジボタン用 */
 
-    /* 背景・表面色 */
-    --bg-light: #f0f2f5;
-    --surface-white: #ffffff;
-    --surface-gray: #e9ecef;
-    --border-color: #ccd0d5;
+  /* 背景・表面色 */
+  --bg-light: #f0f2f5;
+  --surface-white: #ffffff;
+  --surface-gray: #e9ecef;
+  --border-color: #ccd0d5;
 
-    /* テキストカラー */
-    --text-main: #111111;
-    --text-muted: #555555;
-    --text-light: #ffffff;
-    --text-link: #8db5ff;
+  /* テキストカラー */
+  --text-main: #111111;
+  --text-muted: #555555;
+  --text-light: #ffffff;
+  --text-link: #8db5ff;
 
-    /* シャドウ・装飾 */
-    --shadow-light: 0 2px 0 #1e5c3a; /* ボタン用 */
-    --shadow-modal: 0 8px 30px rgba(0,0,0,0.5);
-    --shadow-popup: 0 4px 12px rgba(0,0,0,0.2);
+  /* シャドウ・装飾 */
+  --shadow-light: 0 2px 0 #1e5c3a; /* ボタン用 */
+  --shadow-modal: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow-popup: 0 4px 12px rgba(0, 0, 0, 0.2);
 
-    /* Z-index 階層定義 (管理しやすくするため) */
-    --z-status: 100;
-    --z-recent: 1000;
-    --z-modal: 2000;
-    --z-dragover: 3000;
-   --modal-bg: #1e1e1e;
-    --modal-border: #333;
-    --modal-accent: #3498db;
-    --modal-success: #27ae60;
-    --modal-text-main: #eeeeee;
-    --modal-text-dim: #999999;
-    --modal-input-bg: #252526;
-    --modal-hover-bg: rgba(255, 255, 255, 0.05);
+  /* Z-index 階層定義 (管理しやすくするため) */
+  --z-status: 100;
+  --z-recent: 1000;
+  --z-modal: 2000;
+  --z-dragover: 3000;
+  --modal-bg: #1e1e1e;
+  --modal-border: #333;
+  --modal-accent: #3498db;
+  --modal-success: #27ae60;
+  --modal-text-main: #eeeeee;
+  --modal-text-dim: #999999;
+  --modal-input-bg: #252526;
+  --modal-hover-bg: rgba(255, 255, 255, 0.05);
 }
-
-

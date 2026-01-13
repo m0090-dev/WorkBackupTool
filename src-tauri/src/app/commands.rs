@@ -17,12 +17,11 @@ use crate::app::types::BackupItem;
 use crate::app::types::*;
 use crate::app::{auto_generation, utils};
 use flate2::read::GzDecoder;
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs::File;
 use tar::Archive;
 use zip::ZipArchive;
- use regex::Regex;
-
 
 #[tauri::command]
 pub fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
@@ -119,59 +118,67 @@ pub async fn backup_or_diff(
     compress: String,
 ) -> Result<(), String> {
     use crate::app::state::AppState;
+    use regex::Regex;
     use std::fs;
     use std::path::{Path, PathBuf};
     use tauri::Manager;
 
-    // --- 1. ディレクトリの決定 (Go版の root 変数に相当) ---
-    // ここでの project_root は、常に baseN フォルダが作られる「親」を指すようにします。
+    // --- 1. ディレクトリの決定 ---
+    // Linux/WSL2での末尾スラッシュ問題を避けるため、一旦trimしてPathBufを作成
     let initial_path = if custom_dir.is_empty() {
         utils::default_backup_dir(&work_file)
     } else {
-        PathBuf::from(custom_dir)
+        PathBuf::from(custom_dir.trim_end_matches(|c| c == '/' || c == '\\'))
     };
 
     let mut target_dir: PathBuf;
     let mut current_idx: i32 = 0;
     let project_root: PathBuf;
 
+    // 確実に「最後のフォルダ名」を取得するための堅牢な方法
     let folder_name = initial_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("");
 
+    println!(
+        "DEBUG: STEP1 - initial_path={:?}, folder_name='{}'",
+        initial_path, folder_name
+    );
+
+    // --- 1a. 手動選択された世代フォルダか、親フォルダかの判定 ---
     if folder_name.starts_with("base") {
+        println!("DEBUG: STEP2 - Entering MANUAL route");
         // A. 特定の世代フォルダ (.../baseN) が直接指定されている場合
         target_dir = initial_path.clone();
-        project_root = initial_path.parent().unwrap_or(&initial_path).to_path_buf();
 
-        // 正規表現でインデックス抽出 (Go版: Sscanf(baseFolder, "base%d", &currentIdx))
-        /*
-        if let Some(idx_str) = folder_name
-            .strip_prefix("base")
-            .and_then(|s| s.split('_').next())
-        {
-            current_idx = idx_str.parse().unwrap_or(0);
+        // 親ディレクトリを「世代交代の起点」として保持する
+        project_root = initial_path
+            .parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or_else(|| initial_path.clone());
+
+        // Regexでインデックスを抽出
+        let re_idx = Regex::new(r"base(\d+)").unwrap();
+        if let Some(caps) = re_idx.captures(folder_name) {
+            current_idx = caps[1].parse().unwrap_or(0);
         }
-        */
-        // --- 修正後（これに差し替えてください） ---
-        if folder_name.starts_with("base") {
-         // どんな形式 (base1, base1_timestamp, base01) でも最初の数字を引っこ抜く
-         let re_idx = Regex::new(r"base(\d+)").unwrap();
-         if let Some(caps) = re_idx.captures(folder_name) {
-           current_idx = caps[1].parse().unwrap_or(0);
-         }
-        }
-
-
-
+        println!("DEBUG: Manual Index identified as {}", current_idx);
     } else {
-        // B. 親フォルダが指定されている場合 (Go版: a.ResolveGenerationDir)
+        println!(
+            "DEBUG: STEP2 - Entering AUTO route (via parent dir: '{}')",
+            folder_name
+        );
+        // B. 親フォルダが指定されている場合
         project_root = initial_path.clone();
         let (resolved_path, idx) =
             auto_generation::resolve_generation_dir(&project_root, &work_file)?;
         target_dir = resolved_path;
         current_idx = idx;
+        println!(
+            "DEBUG: Auto Resolved Path={:?}, idx={}",
+            target_dir, current_idx
+        );
     }
 
     // フォルダの存在保証
@@ -193,7 +200,7 @@ pub async fn backup_or_diff(
     let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
     let temp_diff = std::env::temp_dir().join(format!("{}.{}.tmp", file_name, ts));
 
-    // 差分生成 (hdiff)
+    // --- 3. 差分生成 (hdiff) ---
     if algo == "bsdiff" {
         return Err(String::from("`bsdiff` is not supported yet."));
     } else {
@@ -207,38 +214,46 @@ pub async fn backup_or_diff(
         .await?;
     }
 
-    // --- 3. サイズ・閾値判定 ---
+    // --- 4. サイズ・閾値判定 ---
     let work_size = fs::metadata(&work_file).map_err(|e| e.to_string())?.len();
     let diff_size = fs::metadata(&temp_diff).map_err(|e| e.to_string())?.len();
 
-    // Configから閾値を動的に取得
     let threshold = {
         let state = app.state::<AppState>();
         let cfg = state.config.lock().unwrap();
-        cfg.auto_base_generation_threshold // ここが 0.0001 なら即世代交代される
+        let t = cfg.auto_base_generation_threshold;
+        if t <= 0.0 {
+            0.8
+        } else {
+            t
+        }
     };
+
+    println!(
+        "DEBUG: work_size={}, diff_size={}, threshold={}, current_idx={}",
+        work_size, diff_size, threshold, current_idx
+    );
 
     let mut should_next_gen = false;
     if work_size > 100 * 1024 {
-        // 100KB超
         if (diff_size as f64) > (work_size as f64) * threshold {
             should_next_gen = true;
+            println!("DEBUG: Threshold exceeded. Rotation triggered.");
         }
     }
 
     if should_next_gen {
-        // --- 4a. 【サイズ超過】 世代交代ロジック ---
+        // --- 5a. 【世代交代】 新しいフォルダへ移行 ---
         let _ = fs::remove_file(&temp_diff);
         let new_idx = current_idx + 1;
 
-        // project_root（親）に対して新しい baseN を作る
+        println!("DEBUG: Creating new generation: idx {}", new_idx);
         let new_gen_dir =
             auto_generation::create_new_generation(&project_root, new_idx, &work_file)?;
 
         let new_base_full = new_gen_dir.join(format!("{}.base", file_name));
         let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
 
-        // 新しい .base に対して diff を作り直す
         crate::app::hdiff::create_hdiff(
             app.clone(),
             &new_base_full.to_string_lossy(),
@@ -248,10 +263,14 @@ pub async fn backup_or_diff(
         )
         .await
     } else {
-        // --- 4b. 【正常】 移動して確定 ---
+        // --- 5b. 【維持】 現在のフォルダ内に diff を確定 ---
         let final_path = target_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
         fs::rename(&temp_diff, &final_path)
             .map_err(|e| format!("Failed to finalize diff: {}", e))?;
+        println!(
+            "DEBUG: Diff saved to existing generation (idx {}).",
+            current_idx
+        );
         Ok(())
     }
 }

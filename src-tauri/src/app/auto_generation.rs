@@ -27,7 +27,10 @@ pub fn get_latest_generation(root: &Path) -> Result<Option<BackupGenInfo>, Strin
                 if let Ok(idx) = caps[1].parse::<i32>() {
                     // Go版の `if idx >= maxIdx` を再現。
                     // idxが同じなら、文字列比較（タイムスタンプが新しい方）を優先
-                    if idx > latest_idx || (idx == latest_idx && latest_dir_name.as_ref().map_or(true, |n| &name >= n)) {
+                    if idx > latest_idx
+                        || (idx == latest_idx
+                            && latest_dir_name.as_ref().map_or(true, |n| &name >= n))
+                    {
                         latest_idx = idx;
                         latest_dir_name = Some(name);
                     }

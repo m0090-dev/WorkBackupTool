@@ -1,145 +1,145 @@
 /* オーバーレイ（背景を暗くして操作を制限） */
 .memo-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
 
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px); /* 背景を少しぼかすと高級感が出ます */
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px); /* 背景を少しぼかすと高級感が出ます */
 }
 
 /* ダイアログ本体 */
 .memo-dialog {
-    background: #1e1e1e;
-    border: 1px solid #333;
-    border-radius: 8px;
-    width: 320px;
-    padding: 16px;
-    color: #eee;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  width: 320px;
+  padding: 16px;
+  color: #eee;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
 /* ヘッダー */
 .memo-dialog-header {
-    font-weight: bold;
-    margin-bottom: 12px;
-    color: #3498db;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  color: #3498db;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 /* 定型文タグのコンテナ */
 .memo-tag-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 12px;
-    max-height: 100px;
-    overflow-y: auto;
-    padding-right: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  max-height: 100px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 /* 各タグのスタイル */
 .tag-item {
-    display: inline-block;
-    background: #2c3e50;
-    color: #3498db;
-    border: 1px solid #34495e;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s;
+  display: inline-block;
+  background: #2c3e50;
+  color: #3498db;
+  border: 1px solid #34495e;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
 }
 
 .tag-item:hover {
-    background: #3498db;
-    color: white;
-    border-color: #5dade2;
+  background: #3498db;
+  color: white;
+  border-color: #5dade2;
 }
 
 /* 入力エリア（textarea） */
 #dialog-memo-input {
-    width: 100%;
-    background: #252526;
-    border: 1px solid #444;
-    color: #eee;
-    padding: 10px;
-    border-radius: 4px;
-    resize: none;
-    font-family: inherit;
-    font-size: 13px;
-    box-sizing: border-box;
-    outline: none;
+  width: 100%;
+  background: #252526;
+  border: 1px solid #444;
+  color: #eee;
+  padding: 10px;
+  border-radius: 4px;
+  resize: none;
+  font-family: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+  outline: none;
 }
 
 #dialog-memo-input:focus {
-    border-color: #3498db;
+  border-color: #3498db;
 }
 
 /* フッター（ボタンエリア） */
 .memo-dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 /* 保存ボタン */
 .memo-btn-primary {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 6px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background 0.2s;
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
 }
 
 .memo-btn-primary:hover {
-    background: #2980b9;
+  background: #2980b9;
 }
 
 /* キャンセルボタン */
 .memo-btn-secondary {
-    background: transparent;
-    color: #999;
-    border: 1px solid #444;
-    padding: 6px 16px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
+  background: transparent;
+  color: #999;
+  border: 1px solid #444;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .memo-btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: #eee;
-    border-color: #666;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eee;
+  border-color: #666;
 }
 
 /* スクロールバーのカスタマイズ（コンパクトにする） */
 .memo-tag-container::-webkit-scrollbar {
-    width: 4px;
+  width: 4px;
 }
 .memo-tag-container::-webkit-scrollbar-thumb {
-    background: #444;
-    border-radius: 2px;
+  background: #444;
+  border-radius: 2px;
 }
 
 .memo-textarea {
-    /* Windows環境で選択とメニューを確実に有効化する */
-    user-select: text !important;
-    -webkit-user-select: text !important;
-    -ms-user-select: text !important; /* IE/Old Edge用 */
-    pointer-events: auto !important;
+  /* Windows環境で選択とメニューを確実に有効化する */
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -ms-user-select: text !important; /* IE/Old Edge用 */
+  pointer-events: auto !important;
 }

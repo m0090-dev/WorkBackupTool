@@ -1,16 +1,15 @@
-@import './app.css';
+@import "./app.css";
 @font-face {
-    font-family: "MaruMinya";
-    src: url("./assets/fonts/x12y12pxMaruMinyaM.ttf") format("truetype");
-    font-weight: normal;
-    font-style: normal;
+  font-family: "MaruMinya";
+  src: url("./assets/fonts/x12y12pxMaruMinyaM.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
 }
 
 body {
-    font-family: "MaruMinya", sans-serif;
-    color: #eee;
-    background-color: #1b2636;
-    margin: 0;
-    padding: 0;
+  font-family: "MaruMinya", sans-serif;
+  color: #eee;
+  background-color: #1b2636;
+  margin: 0;
+  padding: 0;
 }
-
