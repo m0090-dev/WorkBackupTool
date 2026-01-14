@@ -184,21 +184,21 @@ export function setupGlobalEvents() {
 
   // --- Rust / Tray からのイベントリスナー ---
 
-  EventsOn("tray-execute-clicked", () => {
-    OnExecute();
-    // 通知を送信するためのアクセス権限はありますか？
-    let permissionGranted = isPermissionGranted();
+  EventsOn("tray-execute-clicked", async () => {
+    const resultMsg = await OnExecute();
+    if (!resultMsg) return;
+    let permissionGranted = await isPermissionGranted();
 
     // アクセス権限が設定されていない場合はアクセス権限を要求する必要があります
     if (!permissionGranted) {
-      const permission = requestPermission();
+      const permission = await requestPermission();
       permissionGranted = permission === "granted";
     }
     // アクセス権限が付与され次第、通知が送信されます
     if (permissionGranted) {
       sendNotification({
         title: "cg-file-backup",
-        body: i18n.copyBackupSuccess,
+        body: resultMsg,
       });
     }
   });

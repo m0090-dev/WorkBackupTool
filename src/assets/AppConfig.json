@@ -86,7 +86,9 @@
       "modeDiff": "Differential Backup",
       "tabMenuMoveLeft": "Move Left",
       "tabMenuMoveRight": "Move Right",
-      "tabMenuClose": "Close Tab"
+      "tabMenuClose": "Close Tab",
+      "labelWorkFile": "Work File:",
+      "labelLocation": "Location:"
     },
     "ja": {
       "settings": "設定",
@@ -166,7 +168,9 @@
       "modeDiff": "差分バックアップ",
       "tabMenuMoveLeft": "左へ移動",
       "tabMenuMoveRight": "右へ移動",
-      "tabMenuClose": "タブを閉じる"
+      "tabMenuClose": "タブを閉じる",
+      "labelWorkFile": "作業ファイル:",
+      "labelLocation": "バックアップ先:"
     }
   }
 }

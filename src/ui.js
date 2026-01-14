@@ -255,6 +255,15 @@ export function renderTabs() {
 export function UpdateDisplay() {
   const tab = getActiveTab();
   if (!i18n || !tab) return;
+  const workFileLabel = document.getElementById("label-target");
+  const locationLabel = document.getElementById("label-location");
+
+  if (workFileLabel) {
+    workFileLabel.textContent = i18n.labelWorkFile || "Work file:";
+  }
+  if (locationLabel) {
+    locationLabel.textContent = i18n.labelLocation || "Location:";
+  }
   const fileEl = document.getElementById("selected-workfile");
   const dirEl = document.getElementById("selected-backupdir");
   if (fileEl)
