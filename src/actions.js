@@ -185,9 +185,11 @@ export async function OnExecute() {
     toggleProgress(false);
     showFloatingMessage(successText);
     UpdateHistory(); // 履歴の更新
+    return successText;
   } catch (err) {
     toggleProgress(false);
     alert(err);
+    return null;
   }
 }
 
