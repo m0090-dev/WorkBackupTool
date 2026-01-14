@@ -7,11 +7,11 @@ import {
   saveCurrentSession,
   addToRecentFiles,
 } from "./state";
-import { GetConfigDir, ReadTextFile } from "./tauri_exports.js";
+import { GetConfigDir, ReadTextFile, WriteTextFile } from "./tauri_exports.js";
 
 // tags.json のパスを取得
 export async function getTagsFilePath() {
-  const configDir = GetConfigDir();
+  const configDir = await GetConfigDir();
   return configDir + "/tags.json"; // 簡易結合（filepath.Joinの代わり）
 }
 
@@ -35,7 +35,6 @@ export async function SaveTags(tags) {
 
 /**
  * 再利用可能なメモ入力ダイアログを表示する
- * すべてのテキストはグローバルの i18n オブジェクトを参照します
  */
 export async function showMemoDialog(initialText = "", onSave) {
   // 既存のダイアログがあれば削除
@@ -50,7 +49,7 @@ export async function showMemoDialog(initialText = "", onSave) {
   // 定型文の初期読み込み
   let tags = await LoadTags();
 
-  // i18n の安全な参照（Undefined 対策）
+  // i18n の安全な参照
   const t = {
     backupMemo: i18n?.backupMemo || "Note",
     addTagTitle: i18n?.addTagTitle || "Add Tag",
@@ -58,7 +57,7 @@ export async function showMemoDialog(initialText = "", onSave) {
     cancel: i18n?.cancel || "Cancel",
     save: i18n?.save || "Save",
     enterNewTag: i18n?.enterNewTag || "Enter tag content",
-    confirmDeleteTag: i18n?.confirmDeleteTag || "Delete #{tag}?",
+    delete: i18n?.delete || "Delete", // 削除ボタン用
   };
 
   // ダイアログのHTML構造
@@ -85,16 +84,13 @@ export async function showMemoDialog(initialText = "", onSave) {
   input.value = initialText;
   input.focus();
 
-  // --- マウス操作（コピー・貼り付け）を有効にするための処理 ---
-  // 入力欄での右クリックメニューをオーバーレイの onclick から保護する
-  input.addEventListener("contextmenu", (e) => {
-    e.stopPropagation();
-    return true;
-  });
-  // 入力欄でのクリックも念のため保護
-  input.onclick = (e) => e.stopPropagation();
+  // --- ヘルパー：既存のカスタムメニューを消去 ---
+  const removeContextMenu = () => {
+    const existing = document.getElementById("tag-context-menu");
+    if (existing) existing.remove();
+  };
 
-  // --- タグリストの描画と保存ロジック ---
+  // --- タグリストの描画 ---
   const renderTags = () => {
     tagList.innerHTML = "";
     tags.forEach((tag, index) => {
@@ -102,34 +98,75 @@ export async function showMemoDialog(initialText = "", onSave) {
       span.className = "tag-item";
       span.innerText = `#${tag}`;
 
-      // タグクリック：入力欄に追記
+      // 左クリック：タグ挿入
       span.onclick = (e) => {
         e.stopPropagation();
+        removeContextMenu();
         const val = input.value.trim();
         input.value = val ? `${val} #${tag}` : `#${tag}`;
         input.focus();
       };
 
-      // 右クリック：タグの削除
-      span.oncontextmenu = async (e) => {
+      // 右クリック：カスタムコンテキストメニュー表示
+      span.oncontextmenu = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const confirmMsg = t.confirmDeleteTag.replace("{tag}", tag);
-        if (confirm(confirmMsg)) {
+        removeContextMenu();
+
+        // メニュー生成
+        const menu = document.createElement("div");
+        menu.id = "tag-context-menu";
+        menu.className = "tab-context-menu"; // ご提示のCSSクラスを使用
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
+
+        // 削除アイテム生成
+        const delItem = document.createElement("div");
+        delItem.className = "tab-menu-item danger"; // 赤色強調スタイル
+        delItem.innerHTML = `<span>${t.delete}</span><span class="tab-menu-shortcut">#${tag}</span>`;
+
+        delItem.onclick = async (ev) => {
+          ev.stopPropagation();
           tags.splice(index, 1);
           await SaveTags(tags);
           renderTags();
-        }
+          removeContextMenu();
+          if (input) input.focus();
+        };
+
+        menu.appendChild(delItem);
+        document.body.appendChild(menu);
+
+        // メニュー以外をクリックしたら閉じる
+        const closeMenu = () => {
+          removeContextMenu();
+          document.removeEventListener("click", closeMenu);
+        };
+        setTimeout(() => document.addEventListener("click", closeMenu), 10);
       };
+
       tagList.appendChild(span);
     });
   };
 
   renderTags();
 
+  // --- 入力欄などのイベント保護（メニュー消去を兼ねる） ---
+  input.addEventListener("contextmenu", (e) => {
+    e.stopPropagation();
+    removeContextMenu();
+    return true;
+  });
+
+  input.onclick = (e) => {
+    e.stopPropagation();
+    removeContextMenu();
+  };
+
   // --- 定型文の新規追加ボタン ---
   overlay.querySelector("#dialog-tag-add-btn").onclick = async (e) => {
     e.stopPropagation();
+    removeContextMenu();
     const newTag = prompt(t.enterNewTag);
     if (newTag && newTag.trim() !== "") {
       const cleanTag = newTag.replace(/^#/, "").trim();
@@ -145,17 +182,20 @@ export async function showMemoDialog(initialText = "", onSave) {
   overlay.querySelector("#memo-save-btn").onclick = (e) => {
     e.stopPropagation();
     if (onSave) onSave(input.value.trim());
+    removeContextMenu();
     overlay.remove();
   };
 
   overlay.querySelector("#memo-cancel-btn").onclick = (e) => {
     e.stopPropagation();
+    removeContextMenu();
     overlay.remove();
   };
 
-  // 外側クリックで閉じる（targetが自分自身＝背景の時のみ実行）
+  // 外側クリックで閉じる
   overlay.onclick = (e) => {
     if (e.target === overlay) {
+      removeContextMenu();
       overlay.remove();
     }
   };

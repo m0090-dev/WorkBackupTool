@@ -122,7 +122,6 @@ export function renderRecentFiles() {
   });
 }
 
-
 //TODO: Drag and drop関係はtauri v2が修整されたら正常動作するはず
 export function renderTabs() {
   const list = document.getElementById("tabs-list");
@@ -130,12 +129,12 @@ export function renderTabs() {
 
   // 初期化
   list.innerHTML = "";
-  
+
   const clearGlobals = () => {
     const existingMenu = document.querySelector(".tab-context-menu");
     if (existingMenu) existingMenu.remove();
     const existingTooltips = document.querySelectorAll(".tab-tooltip");
-    existingTooltips.forEach(t => t.remove());
+    existingTooltips.forEach((t) => t.remove());
   };
   clearGlobals();
 
@@ -151,7 +150,10 @@ export function renderTabs() {
     el.textContent = fileName;
 
     const removeTooltip = () => {
-      if (tooltip) { tooltip.remove(); tooltip = null; }
+      if (tooltip) {
+        tooltip.remove();
+        tooltip = null;
+      }
     };
 
     // --- ツールチップ・ドラッグ設定（既存ロジック維持） ---
@@ -170,15 +172,35 @@ export function renderTabs() {
     el.addEventListener("mouseleave", removeTooltip);
     el.addEventListener("mousedown", removeTooltip);
 
-    el.draggable = true; 
+    el.draggable = true;
     el.dataset.id = tab.id;
-    el.ondragstart = (e) => { removeTooltip(); el.classList.add("dragging"); e.dataTransfer.setData("text/plain", tab.id); };
-    el.ondragover = (e) => { e.preventDefault(); e.stopPropagation(); el.classList.add("drag-over"); };
+    el.ondragstart = (e) => {
+      removeTooltip();
+      el.classList.add("dragging");
+      e.dataTransfer.setData("text/plain", tab.id);
+    };
+    el.ondragover = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.classList.add("drag-over");
+    };
     el.ondragleave = () => el.classList.remove("drag-over");
-    el.ondragend = () => { el.classList.remove("dragging"); list.querySelectorAll(".tab-item").forEach(i => i.classList.remove("drag-over")); };
-    el.ondrop = (e) => { e.preventDefault(); const dId = e.dataTransfer.getData("text/plain"); if (dId && dId !== el.dataset.id) reorderTabs(dId, el.dataset.id); };
+    el.ondragend = () => {
+      el.classList.remove("dragging");
+      list
+        .querySelectorAll(".tab-item")
+        .forEach((i) => i.classList.remove("drag-over"));
+    };
+    el.ondrop = (e) => {
+      e.preventDefault();
+      const dId = e.dataTransfer.getData("text/plain");
+      if (dId && dId !== el.dataset.id) reorderTabs(dId, el.dataset.id);
+    };
 
-    el.onclick = () => { removeTooltip(); switchTab(tab.id); };
+    el.onclick = () => {
+      removeTooltip();
+      switchTab(tab.id);
+    };
 
     // --- 右クリックメニュー（空表示防止版） ---
     el.oncontextmenu = (e) => {
@@ -196,7 +218,11 @@ export function renderTabs() {
         const item = document.createElement("div");
         item.className = "tab-menu-item";
         item.innerHTML = `<span>${i18n.tabMenuMoveLeft}</span><span class="tab-menu-shortcut">◀</span>`;
-        item.onclick = (ev) => { ev.stopPropagation(); reorderTabs(tab.id, tabs[index - 1].id); menu.remove(); };
+        item.onclick = (ev) => {
+          ev.stopPropagation();
+          reorderTabs(tab.id, tabs[index - 1].id);
+          menu.remove();
+        };
         menuItems.push(item);
       }
 
@@ -204,7 +230,11 @@ export function renderTabs() {
         const item = document.createElement("div");
         item.className = "tab-menu-item";
         item.innerHTML = `<span>${i18n.tabMenuMoveRight}</span><span class="tab-menu-shortcut">▶</span>`;
-        item.onclick = (ev) => { ev.stopPropagation(); reorderTabs(tab.id, tabs[index + 1].id); menu.remove(); };
+        item.onclick = (ev) => {
+          ev.stopPropagation();
+          reorderTabs(tab.id, tabs[index + 1].id);
+          menu.remove();
+        };
         menuItems.push(item);
       }
 
@@ -216,7 +246,11 @@ export function renderTabs() {
         const del = document.createElement("div");
         del.className = "tab-menu-item danger";
         del.innerHTML = `<span>${i18n.tabMenuClose}</span><span class="tab-menu-shortcut">×</span>`;
-        del.onclick = (ev) => { ev.stopPropagation(); removeTab(tab.id); menu.remove(); };
+        del.onclick = (ev) => {
+          ev.stopPropagation();
+          removeTab(tab.id);
+          menu.remove();
+        };
         menuItems.push(del);
       }
 
@@ -226,10 +260,10 @@ export function renderTabs() {
       // 3. 項目がある場合のみメニューを構築
       const menu = document.createElement("div");
       menu.className = "tab-context-menu";
-      menuItems.forEach(item => menu.appendChild(item));
+      menuItems.forEach((item) => menu.appendChild(item));
 
       document.body.appendChild(menu);
-      
+
       const menuRect = menu.getBoundingClientRect();
       let left = e.clientX;
       let top = e.clientY;

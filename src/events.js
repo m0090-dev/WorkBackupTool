@@ -52,7 +52,7 @@ export function setupGlobalEvents() {
     if (res) {
       tab.workFile = res;
       tab.workFileSize = await GetFileSize(res);
-      tab.backupDir = ""; 
+      tab.backupDir = "";
       tab.selectedTargetDir = "";
       addToRecentFiles(res);
       renderTabs();

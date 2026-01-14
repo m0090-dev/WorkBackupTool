@@ -128,8 +128,6 @@
   animation: tabTooltipFadeIn 0.15s ease-out; /* 他のポップアップと共通の動き */
 }
 
-
-
 /* --- タブ操作専用 コンテキストメニュー --- */
 .tab-context-menu {
   position: fixed;
@@ -152,7 +150,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .tab-menu-item:hover {

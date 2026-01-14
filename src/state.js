@@ -20,7 +20,6 @@ export let tabs = [
 export let recentFiles = JSON.parse(
   localStorage.getItem("recentFiles") || "[]",
 );
-
 export const MAX_RECENT_COUNT = 5;
 export const SESSION_FILE_NAME = "session.json";
 
