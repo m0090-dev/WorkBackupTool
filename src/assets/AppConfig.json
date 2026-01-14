@@ -88,7 +88,8 @@
       "tabMenuMoveRight": "Move Right",
       "tabMenuClose": "Close Tab",
       "labelWorkFile": "Work File:",
-      "labelLocation": "Location:"
+      "labelLocation": "Location:",
+      "delete": "Delete"
     },
     "ja": {
       "settings": "設定",
@@ -170,7 +171,8 @@
       "tabMenuMoveRight": "右へ移動",
       "tabMenuClose": "タブを閉じる",
       "labelWorkFile": "作業ファイル:",
-      "labelLocation": "バックアップ先:"
+      "labelLocation": "バックアップ先:",
+      "delete": "削除"
     }
   }
 }
