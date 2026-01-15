@@ -115,7 +115,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) 
                     _ => false,
                 };
                 (val, id.to_string())
-            }; 
+            };
             let _ = state.save();
 
             // 以降の処理
@@ -153,40 +153,76 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: tauri::menu::MenuEvent) 
         "quit" => {
             app.exit(0);
         }
-
         "lang_en" | "lang_ja" => {
             let lang_code = if id == "lang_en" { "en" } else { "ja" };
 
-            // 1. まずConfigを更新・保存（重要：setup_menuがこの値を見るため）
-            let config = {
+            // 1. まずConfigを更新・保存
+            let (config, is_always_on_top) = {
                 let mut cfg = state.config.lock().unwrap();
                 cfg.language = lang_code.to_string();
-                cfg.clone()
+                (cfg.clone(), cfg.always_on_top) // always_on_top の状態も一緒に取得しておく
             };
             let _ = state.save();
 
-            // 2. メニュー全体を再生成してセットし直す（これで確実に見た目が直る）
+            // 2. メニュー全体を再生成してセットし直す
             if let Ok(new_menu) = setup_menu(app, &config) {
                 let _ = app.set_menu(new_menu);
             }
 
-            // 3. 通知
+            // 3. 通知（Always on Top を考慮）
             let t = |key: &str| -> String {
                 get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string())
             };
-            let _ = app.dialog().message(&t("restartRequired")).show(|_| {});
+
+            if let Some(window) = app.get_webview_window("main") {
+                // ダイアログ表示前に一時解除
+                if is_always_on_top {
+                    let _ = window.set_always_on_top(false);
+                }
+
+                let window_clone = window.clone();
+                window
+                    .dialog()
+                    .message(&t("restartRequired"))
+                    .show(move |_| {
+                        // ダイアログを閉じたら復元
+                        if is_always_on_top {
+                            let _ = window_clone.set_always_on_top(true);
+                        }
+                    });
+            } else {
+                // 万が一ウィンドウがない場合は app 経由で出す（フォールバック）
+                let _ = app.dialog().message(&t("restartRequired")).show(|_| {});
+            }
         }
-        // --- 6. About ダイアログ ---
+
         "about" => {
             let t = |key: &str| -> String {
                 get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string())
             };
 
-            // 指定通り、title は about、message は aboutText の i18n テキストのみを表示
-            app.dialog()
-                .message(t("aboutText"))
-                .title(t("about"))
-                .show(|_| {});
+            if let Some(window) = app.get_webview_window("main") {
+                // --- 修正ポイント ---
+                // 現在の状態を保存
+                let is_always_on_top = state.config.lock().unwrap().always_on_top;
+
+                // ダイアログを出す前に一時的に解除（これでダイアログが上に来れる）
+                if is_always_on_top {
+                    let _ = window.set_always_on_top(false);
+                }
+
+                let window_clone = window.clone();
+                window
+                    .dialog()
+                    .message(t("aboutText"))
+                    .title(t("about"))
+                    .show(move |_| {
+                        // ダイアログが閉じられたら元の設定に戻す
+                        if is_always_on_top {
+                            let _ = window_clone.set_always_on_top(true);
+                        }
+                    });
+            }
         }
 
         _ => {}
@@ -240,12 +276,11 @@ pub fn run() {
             let tray_enabled = config.tray_mode;
             let always_on_top_enabled = config.always_on_top;
 
-
             // ウィンドウの可視性設定を復元
             let _ = utils::apply_window_visibility(app.handle().clone(), !tray_enabled);
 
             // ウィンドウの最前面設定を復元
-              let _ = utils::apply_window_always_on_top(app.handle().clone(),always_on_top_enabled);
+            let _ = utils::apply_window_always_on_top(app.handle().clone(), always_on_top_enabled);
 
             // 2. メニューアイテムのチェック状態を同期
             if let Some(item) = menu

@@ -366,17 +366,33 @@ pub fn get_file_size(path: String) -> Result<i64, String> {
 
 #[tauri::command]
 pub async fn select_any_file(app: AppHandle, title: String) -> Result<Option<String>, String> {
-    // メインウィンドウを取得して親にする
+    // 1. メインウィンドウとAppStateを取得
     let window = app
         .get_webview_window("main")
         .ok_or("Main window not found")?;
+    let state = app.state::<AppState>();
 
-    // window.dialog() を使うことで親子関係を持たせ、最前面問題を解決
+    // 2. 現在の AlwaysOnTop 設定を確認し、有効なら一時解除
+    let is_always_on_top = {
+        let cfg = state.config.lock().unwrap();
+        cfg.always_on_top
+    };
+
+    if is_always_on_top {
+        let _ = window.set_always_on_top(false);
+    }
+
+    // 3. ダイアログを表示 (既存ロジック)
     let file_path = window
         .dialog()
         .file()
         .set_title(&title)
         .blocking_pick_file();
+
+    // 4. 設定を元に戻す
+    if is_always_on_top {
+        let _ = window.set_always_on_top(true);
+    }
 
     match file_path {
         Some(path) => Ok(Some(path.to_string())),
@@ -387,16 +403,33 @@ pub async fn select_any_file(app: AppHandle, title: String) -> Result<Option<Str
 /// フォルダ選択ダイアログを表示する
 #[tauri::command]
 pub async fn select_backup_folder(app: AppHandle) -> Result<Option<String>, String> {
-    // メインウィンドウを取得して親にする
+    // 1. メインウィンドウとAppStateを取得
     let window = app
         .get_webview_window("main")
         .ok_or("Main window not found")?;
+    let state = app.state::<AppState>();
 
+    // 2. 現在の AlwaysOnTop 設定を確認し、有効なら一時解除
+    let is_always_on_top = {
+        let cfg = state.config.lock().unwrap();
+        cfg.always_on_top
+    };
+
+    if is_always_on_top {
+        let _ = window.set_always_on_top(false);
+    }
+
+    // 3. ダイアログを表示 (既存ロジック)
     let folder_path = window
         .dialog()
         .file()
         .set_title("Folder Select")
         .blocking_pick_folder();
+
+    // 4. 設定を元に戻す
+    if is_always_on_top {
+        let _ = window.set_always_on_top(true);
+    }
 
     match folder_path {
         Some(path) => Ok(Some(path.to_string())),
