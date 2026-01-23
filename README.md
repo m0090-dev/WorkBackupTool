@@ -1,4 +1,4 @@
-# cg-file-backup
+# WorkBackupTool
 
 A simple, lightweight backup utility built with Tauri (Rust + Svelte), specifically designed for managing 2DCG project files and work-in-progress versions.
 
