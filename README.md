@@ -13,7 +13,7 @@ The following is the current progress of features and planned updates.
 ### Core Backup Functions
 - [x] **Full Copy**: Simple duplication of workspace files.  
 - [x] **Archive**: Support for zip and tar.gz formats.  
-- [ ] **Encrypted Archive**: ZIP with password protection (Pending).  
+- [x] **Encrypted Archive**: ZIP with password protection (Pending).  
 - [x] **Differential (hdiff)**: Supports zstd / lzma2 / none compression methods.  
 - [ ] **Differential (bsdiff)**: (Pending).  
 - [x] **Generation Management**: Automatically creates a new ".base" (full copy baseline) and updates the backup destination when the diff size exceeds a threshold.  
