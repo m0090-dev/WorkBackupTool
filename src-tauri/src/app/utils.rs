@@ -19,6 +19,7 @@ use tauri_plugin_shell::ShellExt;
 use zip::write::SimpleFileOptions;
 use zip::ZipArchive;
 use zip::ZipWriter;
+use zip::{CompressionMethod, AesMode};
 
 /// ファイル名からタイムスタンプを抽出する (Go版のロジック通り)
 pub fn extract_timestamp_from_backup(path: &str) -> Result<String, String> {
@@ -132,23 +133,25 @@ pub fn copy_file(src: &str, dst: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn zip_backup_file(src: &str, backup_dir: &Path, _password: &str) -> Result<(), String> {
-    // 1. 保存先の決定
-    let stem = Path::new(src).file_stem().unwrap().to_string_lossy();
+
+pub fn zip_backup_file(src: &str, backup_dir: &Path, password: &str) -> Result<(), String> {
+    // 1. 保存先の決定 (既存ロジック維持)
+    let stem = Path::new(src).file_stem().ok_or("Invalid source path")?.to_string_lossy();
     let zip_filename = timestamped_name(&format!("{}.zip", stem));
     let zip_path = backup_dir.join(zip_filename);
 
     let file = File::create(&zip_path).map_err(|e| e.to_string())?;
     let mut zip = ZipWriter::new(file);
 
-    // 2. オプション構築 (パスワード処理を除去し、確実にビルドを通す)
+    // 2. オプション構築 (パスワードとAES暗号化を追加)
+    // password引数を使用してAES256モードで暗号化を設定します
     let options = SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated)
-        .unix_permissions(0o644);
+        .compression_method(CompressionMethod::Deflated)
+        .unix_permissions(0o644)
+        .with_aes_encryption(AesMode::Aes256, password);
 
     // 3. アーカイブ内にファイルエントリー作成
-    let file_name = Path::new(src).file_name().unwrap().to_string_lossy();
-    // start_file は String または &str を受け取るため、to_string() で渡します
+    let file_name = Path::new(src).file_name().ok_or("Invalid file name")?.to_string_lossy();
     zip.start_file(file_name.to_string(), options)
         .map_err(|e| e.to_string())?;
 
@@ -158,8 +161,11 @@ pub fn zip_backup_file(src: &str, backup_dir: &Path, _password: &str) -> Result<
 
     // 5. 書き込み確定
     zip.finish().map_err(|e| e.to_string())?;
+    
     Ok(())
 }
+
+
 
 pub fn tar_backup_file(src: &str, backup_dir: &Path) -> Result<(), String> {
     let stem = Path::new(src).file_stem().unwrap().to_string_lossy();
