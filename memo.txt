@@ -1,0 +1,2 @@
+# android ビルド (debug + target=aarch64)
+npx tauri android build --target aarch64 --debug
