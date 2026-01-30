@@ -651,7 +651,7 @@ fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32) ->
 
 /// ファイルをそのままコピーしてバックアップする (Go版の CopyBackupFile 相当)
 #[tauri::command]
-pub fn copy_backup_file(src: String, backup_dir: String) -> Result<String, String> {
+pub fn copy_backup_file(app: AppHandle, src: String, backup_dir: String) -> Result<String, String> {
     // 1. バックアップ先ディレクトリの決定
     // backup_dir が空ならソースファイルに基づいたデフォルトディレクトリを作成
     let target_dir = if backup_dir.is_empty() {
@@ -675,7 +675,7 @@ pub fn copy_backup_file(src: String, backup_dir: String) -> Result<String, Strin
     let dest_str = dest_path.to_string_lossy();
 
     // 5. utils::copy_file (Sync処理付き) を実行
-    utils::copy_file(&src, &dest_str).map_err(|e| e.to_string())?;
+    utils::copy_file(app.clone(), &src, &dest_str).map_err(|e| e.to_string())?;
 
     // 6. 成功したら保存先のパスを返す (JS側での表示用)
     Ok(dest_str.into_owned())
@@ -755,6 +755,6 @@ pub async fn restore_backup(
 
     // 4. フルコピー (.clip / .psd 等)
     // 既存の utils::copy_file を使用
-    utils::copy_file(&path, &restored_path)?;
+    utils::copy_file(app.clone(), &path, &restored_path)?;
     Ok(())
 }

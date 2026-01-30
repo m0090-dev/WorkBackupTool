@@ -30,6 +30,8 @@ import {
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
+import { copyFile, mkdir } from '@tauri-apps/plugin-fs';
+
 
 // --- ドラッグアンドドロップの基本防止設定 ---
 const preventDefault = (e) => {
@@ -247,4 +249,30 @@ export function setupGlobalEvents() {
       if (view) view.classList.add("hidden");
     }
   });
+  EventsOn("request-android-copy", async (payload) => {
+  const { src, dst } = payload;
+  
+  try {
+    // 1. 親ディレクトリを特定して作成 (recursive: true)
+    // Androidのパス区切り文字 '/' で判定
+    const lastSlashIndex = dst.lastIndexOf('/');
+    if (lastSlashIndex !== -1) {
+      const parentDir = dst.substring(0, lastSlashIndex);
+      await mkdir(parentDir, { recursive: true });
+    }
+
+    // 2. ファイルをコピー
+    await copyFile(src, dst);
+
+    console.log(`[Android Copy] Success: ${src} -> ${dst}`);
+    
+    // もしコピー完了をユーザーに知らせたいなら
+    // showFloatingMessage(`Success: ${dst.split('/').pop()}`);
+    
+  } catch (err) {
+    console.error(`[Android Copy] Error:`, err);
+    // エラー表示が必要なら
+    // showFloatingMessage(`Copy Failed: ${err}`, "error");
+  }
+});	
 }

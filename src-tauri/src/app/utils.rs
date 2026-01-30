@@ -11,15 +11,18 @@ use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use tar::Archive;
 use tar::Builder;
-use tauri::WebviewWindow;
-use tauri::{AppHandle, Manager};
-use tauri::{LogicalSize, Size, Window};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, Runtime, Size, WebviewWindow, Window};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_shell::ShellExt;
 use zip::write::SimpleFileOptions;
 use zip::ZipArchive;
 use zip::ZipWriter;
 use zip::{AesMode, CompressionMethod};
+use serde_json::json;
+
+
+#[cfg(mobile)]
+use tauri_plugin_fs::{Fs, FsExt};
 
 /// ファイル名からタイムスタンプを抽出する (Go版のロジック通り)
 pub fn extract_timestamp_from_backup(path: &str) -> Result<String, String> {
@@ -102,34 +105,48 @@ pub fn default_backup_dir(work_file: &str) -> PathBuf {
 
 /// 単純なファイルコピーを行う (Go版の CopyFile 相当)
 /// 親ディレクトリの作成、ストリームコピー、ディスク同期(Sync)を網羅
-pub fn copy_file(src: &str, dst: &str) -> Result<(), String> {
-    let src_path = Path::new(src);
-    let dst_path = Path::new(dst);
-
-    // 1. 出力先の親ディレクトリを MkdirAll (0755)
-    if let Some(parent) = dst_path.parent() {
-        if !parent.exists() {
-            fs::create_dir_all(parent).map_err(|e| format!("ディレクトリ作成失敗: {}", e))?;
-        }
+pub fn copy_file(app: AppHandle, src: &str, dst: &str) -> Result<(), String> {
+    #[cfg(mobile)]
+    {
+        // Android/iOS の場合は、JS 側のプラグインにすべて任せる
+        app.emit(
+            "request-android-copy",
+            json!({
+                "src": src,
+                "dst": dst
+            }),
+        )
+        .map_err(|e| format!("イベント送信失敗: {}", e))?;
     }
 
-    // 2. 入力ファイルを開く (os.Open)
-    let mut reader =
-        File::open(src_path).map_err(|e| format!("入力ファイルが開けません {}: {}", src, e))?;
+    #[cfg(not(mobile))]
+    {
+        let src_path = Path::new(src);
+        let dst_path = Path::new(dst);
 
-    // 3. 出力ファイルを作成 (os.Create)
-    let mut writer = File::create(dst_path)
-        .map_err(|e| format!("出力ファイルが作成できません {}: {}", dst, e))?;
+        // 1. 出力先の親ディレクトリを MkdirAll (0755)
+        if let Some(parent) = dst_path.parent() {
+            if !parent.exists() {
+                fs::create_dir_all(parent).map_err(|e| format!("ディレクトリ作成失敗: {}", e))?;
+            }
+        }
+        // 2. 入力ファイルを開く (os.Open)
+        let mut reader =
+            File::open(src_path).map_err(|e| format!("入力ファイルが開けません {}: {}", src, e))?;
 
-    // 4. 内容をコピー (io.Copy)
-    io::copy(&mut reader, &mut writer)
-        .map_err(|e| format!("コピー中にエラーが発生しました: {}", e))?;
+        // 3. 出力ファイルを作成 (os.Create)
+        let mut writer = File::create(dst_path)
+            .map_err(|e| format!("出力ファイルが作成できません {}: {}", dst, e))?;
 
-    // 5. ディスクに書き込みを確定させる (out.Sync)
-    writer
-        .sync_all()
-        .map_err(|e| format!("ディスク同期に失敗しました: {}", e))?;
+        // 4. 内容をコピー (io.Copy)
+        io::copy(&mut reader, &mut writer)
+            .map_err(|e| format!("コピー中にエラーが発生しました: {}", e))?;
 
+        // 5. ディスクに書き込みを確定させる (out.Sync)
+        writer
+            .sync_all()
+            .map_err(|e| format!("ディスク同期に失敗しました: {}", e))?;
+    }
     Ok(())
 }
 
@@ -315,7 +332,7 @@ pub fn apply_window_always_on_top(app: AppHandle, flag: bool) -> Result<(), Stri
 
 // 共通化：トレイメニューだけを生成するヘルパー関数
 #[cfg(desktop)]
-pub fn create_tray_menu<R: tauri::Runtime>(
+pub fn create_tray_menu<R: Runtime>(
     app: &tauri::AppHandle<R>,
     config: &AppConfig,
 ) -> tauri::Result<tauri::menu::Menu<R>> {
