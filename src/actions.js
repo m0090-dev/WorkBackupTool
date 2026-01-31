@@ -93,41 +93,13 @@ export async function OnExecute() {
     alert(i18n.selectFileFirst);
     return;
   }
-
-  // --- 1. モードの取得（通常・コンパクト両対応） ---
-  const isCompact = document.body.classList.contains("compact-mode");
-  tab.backupMode = isCompact
-    ? document.getElementById("compact-mode-select").value
-    : document.querySelector('input[name="backupMode"]:checked')?.value;
-  let mode = tab.backupMode;
-
+  UpdateDisplay();
+  const mode = tab.backupMode;
   // --- 2. 差分設定の取得 (既存ロジック維持 + 圧縮設定追加) ---
   let algo = document.getElementById("diff-algo").value;
-  let compress = "zstd"; // デフォルト値
-
-  if (mode === "diff") {
-    if (isCompact) {
-      // コンパクトモード時は常にhdiffとして扱う、またはグローバルなalgo設定を流用
-      // 圧縮設定はコンパクト専用のセレクトボックスから取得
-      compress = document.getElementById("compact-hdiff-compress").value;
-    } else {
-      // 通常モード時は表示されているセレクトボックスから取得
-      compress = document.getElementById("hdiff-compress").value;
-    }
-
-    // ファイルサイズ制限チェック（bsdiff用ロジック完全維持）
-    if (algo === "bsdiff") {
-      if (tab.workFileSize > bsdiffLimit) {
-        alert(
-          `${i18n.fileTooLarge} (Limit: ${Math.floor(bsdiffLimit / 1000000)}MB)`,
-        );
-        return;
-      }
-    }
-  }
+  const compress = tab.compressMode || "zstd";
 
   toggleProgress(true, i18n.processingMsg);
-
   try {
     let successText = "";
 
