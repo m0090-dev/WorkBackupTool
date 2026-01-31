@@ -307,13 +307,17 @@ export function UpdateDisplay() {
     }
   }
 
+  // --- 2. 圧縮設定 (compressMode) の同期を追加 ---
+  const normalComp = document.getElementById("hdiff-compress");
+  const compactComp = document.getElementById("compact-hdiff-compress");
+  if (tab.compressMode) {
+    if (normalComp) normalComp.value = tab.compressMode;
+    if (compactComp) compactComp.value = tab.compressMode;
+  }
   // 2. 現在のUIの状態を mode 変数に取得（これ以降の判定用）
   let mode = isCompact
     ? document.getElementById("compact-mode-select")?.value
     : document.querySelector('input[name="backupMode"]:checked')?.value;
-
-  // 3. 取得した mode をデータ側に同期
-  if (mode) tab.backupMode = mode;
 
   const isPass =
     mode === "archive" &&
@@ -324,7 +328,6 @@ export function UpdateDisplay() {
     document.getElementById("archive-password").disabled = !isPass;
   }
   updateExecute();
-
   // Compact同期
   const cFileEl = document.getElementById("compact-selected-file");
   if (cFileEl)
@@ -334,6 +337,7 @@ export function UpdateDisplay() {
   const cSel = document.getElementById("compact-mode-select");
   if (cSel && mode) cSel.value = mode;
 }
+
 export async function UpdateHistory() {
   const tab = getActiveTab();
   const list = document.getElementById("diff-history-list");

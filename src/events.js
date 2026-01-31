@@ -152,16 +152,19 @@ export function setupGlobalEvents() {
     const id = e.target.id;
     const name = e.target.name;
     const value = e.target.value;
-
+    const tab = getActiveTab();
     if (name === "backupMode") {
-      const tab = getActiveTab();
       if (tab) tab.backupMode = value; // データ側を確実に更新
     }
-
+    if (id === "hdiff-compress" || id === "compact-hdiff-compress") {
+      if (tab) tab.compressMode = value;
+    }
     if (
       ["backupMode", "archive-format"].includes(name) ||
       id === "archive-format" ||
-      id === "diff-algo"
+      id === "diff-algo" ||
+      id === "hdiff-compress" ||
+      id === "compact-hdiff-compress"
     ) {
       UpdateDisplay();
       updateExecute();
