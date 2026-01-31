@@ -96,10 +96,10 @@ export async function OnExecute() {
 
   // --- 1. モードの取得（通常・コンパクト両対応） ---
   const isCompact = document.body.classList.contains("compact-mode");
-  tab.backupMode = isCompact 
+  tab.backupMode = isCompact
     ? document.getElementById("compact-mode-select").value
     : document.querySelector('input[name="backupMode"]:checked')?.value;
-   let mode = tab.backupMode
+  let mode = tab.backupMode;
 
   // --- 2. 差分設定の取得 (既存ロジック維持 + 圧縮設定追加) ---
   let algo = document.getElementById("diff-algo").value;
@@ -185,7 +185,6 @@ export async function OnExecute() {
     return null;
   }
 }
-
 
 export function updateExecute() {
   // const tab = getActiveTab();
