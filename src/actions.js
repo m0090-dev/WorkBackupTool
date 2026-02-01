@@ -98,6 +98,7 @@ export async function OnExecute() {
   // --- 2. 差分設定の取得 (既存ロジック維持 + 圧縮設定追加) ---
   let algo = tab.diffAlgo || "hdiff";
   const compress = tab.compressMode || "zstd";
+  const archiveFormat = tab.archiveFormat || "zip";
 
   toggleProgress(true, i18n.processingMsg);
   try {
@@ -110,7 +111,7 @@ export async function OnExecute() {
     }
     // --- B. アーカイブモード ---
     else if (mode === "archive") {
-      let fmt = document.getElementById("archive-format").value;
+      let fmt = archiveFormat;
       let pwd =
         fmt === "zip-pass"
           ? document.getElementById("archive-password").value

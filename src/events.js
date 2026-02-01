@@ -162,6 +162,9 @@ export function setupGlobalEvents() {
     if (id === "hdiff-compress" || id === "compact-hdiff-compress") {
       if (tab) tab.compressMode = value;
     }
+    if (id == "archive-format") {
+      if (tab) tab.archiveFormat = value;
+    }
     if (
       ["backupMode", "archive-format"].includes(name) ||
       id === "archive-format" ||
