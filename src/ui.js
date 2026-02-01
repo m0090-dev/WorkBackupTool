@@ -279,6 +279,7 @@ export function renderTabs() {
   });
 }
 
+// 全体のUI更新
 export function UpdateDisplay() {
   const tab = getActiveTab();
   if (!i18n || !tab) return;
@@ -294,7 +295,7 @@ export function UpdateDisplay() {
 
   const isCompact = document.body.classList.contains("compact-mode");
 
-  // 1. もし tab.backupMode が保存されていたら、UI（ラジオボタン/セレクトボックス）に反映させる
+  // -- tab.backupMode が保存されていたら、UI（ラジオボタン/セレクトボックス）に反映させる --
   if (tab.backupMode) {
     if (isCompact) {
       const cSel = document.getElementById("compact-mode-select");
@@ -307,18 +308,21 @@ export function UpdateDisplay() {
     }
   }
 
-  // --- 2. 圧縮設定 (compressMode) の同期を追加 ---
+  // --- 各要素の同期 ---
   const normalComp = document.getElementById("hdiff-compress");
   const compactComp = document.getElementById("compact-hdiff-compress");
   const compress = tab.compressMode || "zstd";
   const normalAlgo = document.getElementById("diff-algo");
   const algo = tab.diffAlgo || "hdiff";
+  const normalArchive = document.getElementById("archive-format");
+  const archiveFormat = tab.archiveFormat || "zip";
+  const mode = tab.backupMode || "diff";
+
   if (normalAlgo) normalAlgo.value = algo;
   if (normalComp) normalComp.value = compress;
   if (compactComp) compactComp.value = compress;
-
-  // 2. 現在のUIの状態を mode 変数に取得（これ以降の判定用）
-  const mode = tab.backupMode || "diff";
+  if (normalArchive) normalArchive.value = archiveFormat;
+  
   const isPass =
     mode === "archive" &&
     document.getElementById("archive-format")?.value === "zip-pass";

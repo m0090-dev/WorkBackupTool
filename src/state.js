@@ -18,6 +18,7 @@ export let tabs = [
     backupMode: "diff",
     compressMode: "zstd",
     diffAlgo: "hdiff",
+    archiveFormat: "zip"
   },
 ];
 export let recentFiles = JSON.parse(
