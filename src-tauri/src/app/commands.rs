@@ -284,15 +284,14 @@ pub async fn backup_or_diff(
         let final_path = target_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
 
         if let Err(e) = fs::rename(&temp_diff, &final_path) {
-            // OS Error 17 (EXDEV) は、ドライブをまたぐ移動の時に発生する
-            if e.raw_os_error() == Some(17) {
+            if e.kind() == std::io::ErrorKind::CrossesDevices {
                 println!("DEBUG: Cross-device link detected. Falling back to copy & remove.");
                 fs::copy(&temp_diff, &final_path)
                     .map_err(|e| format!("Failed to copy diff to destination: {}", e))?;
                 fs::remove_file(&temp_diff)
                     .map_err(|e| format!("Failed to remove temp file: {}", e))?;
             } else {
-                return Err(format!("Failed to finalize diff: {}", e));
+                return Err(format!("Failed to finalize diff (OS error {}): {}", e.raw_os_error().unwrap_or(0), e));
             }
         }
 
