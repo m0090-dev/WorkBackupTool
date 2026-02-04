@@ -23,7 +23,7 @@ import {
   showFloatingMessage,
 } from "./ui";
 
-import { addTab, OnExecute} from "./actions";
+import { addTab, OnExecute } from "./actions";
 import { ask } from "@tauri-apps/plugin-dialog";
 import {
   isPermissionGranted,
@@ -153,8 +153,8 @@ export function setupGlobalEvents() {
     const name = e.target.name;
     const value = e.target.value;
     const tab = getActiveTab();
-    if (name == "diff-algo"){
-      if(tab) tab.diffAlgo = value;
+    if (name == "diff-algo") {
+      if (tab) tab.diffAlgo = value;
     }
     if (name === "backupMode") {
       if (tab) tab.backupMode = value; // データ側を確実に更新
@@ -262,7 +262,7 @@ export function setupGlobalEvents() {
       if (tab) {
         // 1. タブの状態に検索文字を保存
         tab.searchQuery = e.target.value;
-	saveCurrentSession();			
+        saveCurrentSession();
       }
       // 2. リストを更新
       UpdateHistory();
@@ -276,7 +276,7 @@ export function setupGlobalEvents() {
         tab.searchQuery = "";
         saveCurrentSession();
       }
-      
+
       if (searchInput) {
         searchInput.value = "";
         searchInput.focus();
