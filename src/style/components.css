@@ -237,6 +237,17 @@
   padding: 10px 0;
 }
 
+/* 透明な疑似要素でマウスの通り道を確保する */
+.recent-files-section::before {
+  content: "";
+  position: absolute;
+  top: -20px; /* ボタンとポップアップの間の隙間を埋める */
+  left: 0;
+  right: 0;
+  height: 20px;
+  background: transparent; /* 透明なので見えないがマウス判定はある */
+}
+
 /* --- プログレス・メッセージエリア --- */
 #progress-container {
   height: 12px;
