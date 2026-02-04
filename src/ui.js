@@ -18,7 +18,7 @@ import {
 
 import { showMemoDialog } from "./memo.js";
 
-import { switchTab, removeTab,reorderTabs } from "./actions";
+import { switchTab, removeTab, reorderTabs } from "./actions";
 
 // UI描画・メッセージ系（通常版）
 export function showFloatingMessage(text) {
@@ -61,7 +61,7 @@ export function renderRecentFiles() {
   const list = document.getElementById("recent-list");
   const section = document.getElementById("recent-files-section");
   if (!list) return;
-  
+
   if (recentFiles.length === 0) {
     list.innerHTML = `<span class="recent-empty">No recent files</span>`;
     return;
@@ -323,7 +323,7 @@ export function UpdateDisplay() {
   if (normalComp) normalComp.value = compress;
   if (compactComp) compactComp.value = compress;
   if (normalArchive) normalArchive.value = archiveFormat;
-  
+
   const isPass =
     mode === "archive" &&
     document.getElementById("archive-format")?.value === "zip-pass";

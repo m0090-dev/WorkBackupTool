@@ -19,7 +19,7 @@ export let tabs = [
     compressMode: "zstd",
     diffAlgo: "hdiff",
     archiveFormat: "zip",
-    searchQuery: ""
+    searchQuery: "",
   },
 ];
 export let recentFiles = JSON.parse(

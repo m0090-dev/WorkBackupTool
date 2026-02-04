@@ -54,8 +54,6 @@ pub fn get_restore_previous_state(state: State<'_, AppState>) -> bool {
     state.config.lock().unwrap().restore_previous_state
 }
 
-
-
 #[tauri::command]
 pub fn get_auto_base_generation_threshold(state: State<'_, AppState>) -> f64 {
     state.config.lock().unwrap().auto_base_generation_threshold
@@ -284,12 +282,20 @@ pub async fn backup_or_diff(
     } else {
         // --- 5b. 【維持】 現在のフォルダ内に diff を確定 ---
         let final_path = target_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
-        fs::rename(&temp_diff, &final_path)
-            .map_err(|e| format!("Failed to finalize diff: {}", e))?;
-        println!(
-            "DEBUG: Diff saved to existing generation (idx {}).",
-            current_idx
-        );
+
+        if let Err(e) = fs::rename(&temp_diff, &final_path) {
+            // OS Error 17 (EXDEV) は、ドライブをまたぐ移動の時に発生する
+            if e.raw_os_error() == Some(17) {
+                println!("DEBUG: Cross-device link detected. Falling back to copy & remove.");
+                fs::copy(&temp_diff, &final_path)
+                    .map_err(|e| format!("Failed to copy diff to destination: {}", e))?;
+                fs::remove_file(&temp_diff)
+                    .map_err(|e| format!("Failed to remove temp file: {}", e))?;
+            } else {
+                return Err(format!("Failed to finalize diff: {}", e));
+            }
+        }
+
         Ok(())
     }
 }
@@ -549,14 +555,22 @@ pub fn get_backup_list(work_file: String, backup_dir: String) -> Result<Vec<Back
         Some(ext) => format!(".{}", ext),
         None => String::new(),
     };
-    let mut valid_exts = vec![".diff".to_string(), ".zip".to_string(), ".tar.gz".to_string(), ".tar".to_string(), ".gz".to_string()];
+    let mut valid_exts = vec![
+        ".diff".to_string(),
+        ".zip".to_string(),
+        ".tar.gz".to_string(),
+        ".tar".to_string(),
+        ".gz".to_string(),
+    ];
     if !file_path_ext.is_empty() {
         valid_exts.push(file_path_ext.to_lowercase());
     }
     // 拡張子判定ヘルパー
     let is_valid_ext = |name: &str| -> bool {
         let n = name.to_lowercase();
-        valid_exts.iter().any(|ext| n.ends_with(&ext.to_lowercase()))
+        valid_exts
+            .iter()
+            .any(|ext| n.ends_with(&ext.to_lowercase()))
     };
 
     // --- 1. ルート直下のアーカイブをスキャン ---
