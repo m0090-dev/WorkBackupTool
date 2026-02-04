@@ -149,13 +149,6 @@ export function setupGlobalEvents() {
         UpdateHistory();
 
         showFloatingMessage(i18n.updatedWorkFile);
-
-        // ポップアップを閉じる処理（もしUIにあるなら）
-        const popup = document.querySelector(".recent-files-section");
-        if (popup) {
-          popup.style.display = "none";
-          setTimeout(() => popup.style.removeProperty("display"), 500);
-        }
       } catch (err) {
         console.error("Failed to load recent file:", err);
         // ファイルが存在しない場合はリストから削除するなどの処理
