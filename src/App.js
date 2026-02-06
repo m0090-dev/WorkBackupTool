@@ -32,10 +32,7 @@ async function Initialize() {
   setI18N(data);
 
   await restoreSession();
-  // 先頭タブを必ずアクティブにする
-  if (tabs.length > 0 && !tabs.some(t => t.active)) {
-      switchTab(tabs[0].id);
-  }
+ 
 
   const setText = (id, text) => {
     const el = document.getElementById(id);
@@ -142,6 +139,10 @@ async function Initialize() {
 
   setupGlobalEvents(); // events.js からイベントリスナーを登録
 
+  // 先頭タブを必ずアクティブにする
+  if (tabs.length > 0 && !tabs.some(t => t.active)) {
+      switchTab(tabs[0].id);
+  } else {
   renderTabs();
 
   renderRecentFiles();
@@ -149,6 +150,7 @@ async function Initialize() {
   UpdateDisplay();
 
   UpdateHistory();
+	}
 }
 
 // --- ドラッグアンドドロップ設定 ---
