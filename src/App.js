@@ -20,7 +20,7 @@ import {
 } from "./ui";
 
 import { setupGlobalEvents } from "./events";
-
+import { switchTab } from "./actions";
 // --- 初期化ロジック ---
 async function Initialize() {
   const data = await GetI18N();
@@ -32,6 +32,10 @@ async function Initialize() {
   setI18N(data);
 
   await restoreSession();
+  // 先頭タブを必ずアクティブにする
+  if (tabs.length > 0 && !tabs.some(t => t.active)) {
+      switchTab(tabs[0].id);
+  }
 
   const setText = (id, text) => {
     const el = document.getElementById(id);
