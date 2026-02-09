@@ -241,10 +241,10 @@
 .recent-files-section::before {
   content: "";
   position: absolute;
-  top: -20px; /* ボタンとポップアップの間の隙間を埋める */
+  top: -10px; /* ボタンとポップアップの間の隙間を埋める */
   left: 0;
   right: 0;
-  height: 20px;
+  height: 10px;
   background: transparent; /* 透明なので見えないがマウス判定はある */
 }
 
