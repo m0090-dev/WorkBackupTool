@@ -16,6 +16,7 @@ pub struct AppConfig {
     #[serde(skip_serializing, default)]
     pub compact_mode: bool,
     pub tray_backup_mode: String,
+    pub use_same_dir_for_temp: bool,
 }
 
 // JS側で確実に受け取るための構造体
@@ -36,7 +37,8 @@ pub struct BackupItem {
     pub file_path: String,
     pub timestamp: String,
     pub file_size: i64,
-    pub generation: i32, // 世代番号
+    pub generation: i32,
+    pub is_archived: bool,
 }
 
 // 世代管理を司る構造体 (JSに送らない場合は Serialize 不要ですが、一応付与)
