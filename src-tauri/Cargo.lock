@@ -106,6 +106,7 @@ dependencies = [
  "tauri-plugin-positioner",
  "tauri-plugin-shell",
  "tokio",
+ "walkdir",
  "zip",
 ]
 

@@ -589,7 +589,7 @@ pub fn get_backup_list(work_file: String, backup_dir: String) -> Result<Vec<Back
             if f_name_lower.contains(&base_lower) && is_valid_ext(file_name) {
                 // fs::metadata で確実に最新のサイズを取得
                 if let Ok(metadata) = fs::metadata(&path) {
-                    list.push(create_backup_item(file_name, &path, &metadata, 0));
+                    list.push(create_backup_item(file_name, &path, &metadata, 0,false));
                 }
             }
         }
@@ -631,7 +631,7 @@ pub fn get_backup_list(work_file: String, backup_dir: String) -> Result<Vec<Back
                             // 世代フォルダ内のファイルも fs::metadata でサイズを確定
                             if let Ok(metadata) = fs::metadata(&gen_path) {
                                 list.push(create_backup_item(
-                                    f_name, &gen_path, &metadata, gen_idx,
+                                    f_name, &gen_path, &metadata, gen_idx,false
                                 ));
                             }
                         }
@@ -650,7 +650,7 @@ fn is_valid_backup_ext(name: &str, exts: &[&str]) -> bool {
 }
 
 // ヘルパー関数: アイテム生成 (日付フォーマット含む)
-fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32) -> BackupItem {
+fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32,is_archived:bool) -> BackupItem {
     let modified: DateTime<Local> = meta
         .modified()
         .unwrap_or_else(|_| std::time::SystemTime::now())
@@ -661,6 +661,7 @@ fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32) ->
         timestamp: modified.format("%Y-%m-%d %H:%M:%S").to_string(),
         file_size: meta.len() as i64,
         generation: gen,
+        is_archived: is_archived
     }
 }
 
