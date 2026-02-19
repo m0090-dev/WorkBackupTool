@@ -387,36 +387,33 @@ pub fn create_tray_menu<R: tauri::Runtime>(
 
 
 /// フォルダをZIP圧縮する内部関数
-fn compress_dir_zip(src_dir: &Path, dst_file: &Path) -> Result<(), String> {
+pub fn compress_dir_zip(src_dir: &Path, dst_file: &Path, password: &str) -> Result<(), String> {
     let file = File::create(dst_file).map_err(|e| e.to_string())?;
-    let mut zip = ZipWriter::new(file);
-    let options = SimpleFileOptions::default()
-        .compression_method(CompressionMethod::Deflated)
-        .unix_permissions(0o644);
+    let mut zip = zip::ZipWriter::new(file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .unix_permissions(0o644)
+        .with_aes_encryption(zip::AesMode::Aes256, password);
 
     let walk = walkdir::WalkDir::new(src_dir);
     for entry in walk.into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
-        // フォルダ名そのものを含めてアーカイブするために parent() からの相対パスを取る
-        let name = path.strip_prefix(src_dir.parent().unwrap())
-            .map_err(|e| e.to_string())?;
+        let name = path.strip_prefix(src_dir.parent().unwrap()).map_err(|e| e.to_string())?;
+        let name_str = name.to_string_lossy().to_string();
 
         if path.is_file() {
-            zip.start_file(name.to_string_lossy().to_string(), options)
-                .map_err(|e| e.to_string())?;
+            zip.start_file(name_str, options).map_err(|e| e.to_string())?;
             let mut f = File::open(path).map_err(|e| e.to_string())?;
-            io::copy(&mut f, &mut zip).map_err(|e| e.to_string())?;
+            std::io::copy(&mut f, &mut zip).map_err(|e| e.to_string())?;
         } else if !name.as_os_str().is_empty() {
-            zip.add_directory(name.to_string_lossy().to_string(), options)
-                .map_err(|e| e.to_string())?;
+            zip.add_directory(name_str, options).map_err(|e| e.to_string())?;
         }
     }
     zip.finish().map_err(|e| e.to_string())?;
     Ok(())
 }
-
 /// フォルダをTAR.GZ圧縮する内部関数
-fn compress_dir_tar(src_dir: &Path, dst_file: &Path) -> Result<(), String> {
+pub fn compress_dir_tar(src_dir: &Path, dst_file: &Path) -> Result<(), String> {
     let file = File::create(dst_file).map_err(|e| e.to_string())?;
     let enc = GzEncoder::new(file, Compression::default());
     let mut tar = Builder::new(enc);

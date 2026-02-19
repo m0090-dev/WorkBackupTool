@@ -422,6 +422,7 @@ pub fn run() {
             write_text_file,
             read_text_file,
             get_backup_list,
+            archive_generation
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
