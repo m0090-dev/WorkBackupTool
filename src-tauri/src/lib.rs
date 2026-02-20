@@ -50,7 +50,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
     //println!("--- Menu Event: '{}' ---", id);
 
     match id {
-        // --- 1. バックアップモード切替 (フル / アーカイブ / 差分) ---
+        // --- 1. バックアップモード切替 (フル / アーカイブ / 差分) トレイモード用 ---
         "mode_full" | "mode_arc" | "mode_diff" => {
             let mode_str = match id {
                 "mode_full" => "copy",
@@ -128,7 +128,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
         }
 
         // --- 4. 最前面表示 / コンパクトモード / 状態復元 ---
-        "always_on_top" | "compact_mode" | "restore_state" => {
+        "always_on_top" | "compact_mode" | "restore_state" | "use_same_dir_for_temp" => {
             // スコープ（波括弧）を使って、ロックの寿命を短くします
             let (next_val, id_clone) = {
                 let mut cfg = state.config.lock().unwrap();
@@ -144,6 +144,10 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                     "restore_state" => {
                         cfg.restore_previous_state = !cfg.restore_previous_state;
                         cfg.restore_previous_state
+                    }
+                    "use_same_dir_for_temp" => {
+                        cfg.use_same_dir_for_temp = !cfg.use_same_dir_for_temp;
+                        cfg.use_same_dir_for_temp
                     }
                     _ => false,
                 };
