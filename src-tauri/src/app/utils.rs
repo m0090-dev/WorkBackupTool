@@ -5,8 +5,10 @@ use chrono::Local;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use tar::Archive;
@@ -432,4 +434,28 @@ pub fn compress_dir_tar(src_dir: &Path, dst_file: &Path) -> Result<(), String> {
 
     tar.finish().map_err(|e| e.to_string())?;
     Ok(())
+}
+
+pub fn get_cache_root(use_same_dir: bool, backup_dir: &str, work_file: &str) -> PathBuf {
+    if use_same_dir {
+        // 1. バックアップディレクトリと同じ場所（.wbt_cache）
+        if backup_dir.is_empty() {
+            default_backup_dir(work_file).join(".wbt_cache")
+        } else {
+            Path::new(backup_dir).join(".wbt_cache")
+        }
+    } else {
+        // 2. OSのTempディレクトリを使う場合（衝突回避のためハッシュ付与）
+        let mut s = DefaultHasher::new();
+        work_file.hash(&mut s);
+        let hash_val = format!("{:x}", s.finish());
+
+        let file_stem = Path::new(work_file)
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy();
+
+        // 例: temp/wbt_cache_myart_a1b2c3d4
+        std::env::temp_dir().join(format!("wbt_cache_{}_{}", file_stem, &hash_val[..8]))
+    }
 }

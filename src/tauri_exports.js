@@ -153,8 +153,8 @@ export async function ClearAllCaches(backupDir, workFile) {
 }
 
 // 特定のアーカイブを展開してキャッシュを作成（パスを返す）
-export async function PrepareArchiveCache(archivePath, password = null) {
-  return await invoke("prepare_archive_cache", { archivePath, password });
+export async function PrepareArchiveCache(archivePath,workFile, password = null) {
+  return await invoke("prepare_archive_cache", { archivePath,workFile, password });
 }
 
 // 指定ディレクトリ内のアーカイブを全てスキャンしてキャッシュを再構築
