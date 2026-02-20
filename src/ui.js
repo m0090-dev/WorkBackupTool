@@ -407,7 +407,7 @@ export async function UpdateHistory() {
 
           if (item.isArchived) {
             statusColor = "#666";
-            statusText = "世代アーカイブ (一時展開中)";
+            statusText = i18n.archived_generation_extracting || "世代アーカイブ (一時展開中)";
             statusIcon = "📦";
           }
 
