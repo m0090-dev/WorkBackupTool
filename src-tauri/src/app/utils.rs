@@ -390,14 +390,20 @@ pub fn create_tray_menu<R: tauri::Runtime>(
 pub fn compress_dir_zip(src_dir: &Path, dst_file: &Path, password: &str) -> Result<(), String> {
     let file = File::create(dst_file).map_err(|e| e.to_string())?;
     let mut zip = zip::ZipWriter::new(file);
-    let options = zip::write::SimpleFileOptions::default()
+
+    // パスワードがある場合のみAESを有効化
+    let mut options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
-        .unix_permissions(0o644)
-        .with_aes_encryption(zip::AesMode::Aes256, password);
+        .unix_permissions(0o644);
+    
+    if !password.is_empty() {
+        options = options.with_aes_encryption(zip::AesMode::Aes256, password);
+    }
 
     let walk = walkdir::WalkDir::new(src_dir);
     for entry in walk.into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
+        // パス計算（src_dirの親からの相対にすると展開時にフォルダごと戻る）
         let name = path.strip_prefix(src_dir.parent().unwrap()).map_err(|e| e.to_string())?;
         let name_str = name.to_string_lossy().to_string();
 
