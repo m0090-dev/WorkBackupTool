@@ -1,4 +1,9 @@
-import { GetI18N, GetFileSize, OnFileDrop } from "./tauri_exports";
+import {
+  GetI18N,
+  GetFileSize,
+  OnFileDrop,
+  RebuildArchiveCaches,
+} from "./tauri_exports";
 
 import {
   i18n,
@@ -17,7 +22,7 @@ import {
   UpdateHistory,
   showFloatingMessage,
   showFloatingError,
-  UpdateAllUI
+  UpdateAllUI,
 } from "./ui";
 
 import { setupGlobalEvents } from "./events";
@@ -33,7 +38,17 @@ async function Initialize() {
   setI18N(data);
 
   await restoreSession();
- 
+
+  try {
+    for (const tab of tabs) {
+      if (tab.workFile) {
+        // バックアップディレクトリ内の .zip / .tar.gz を .wbt_cache に展開
+        await RebuildArchiveCaches(tab.workFile, tab.backupDir);
+      }
+    }
+  } catch (e) {
+    console.error("Archive cache failed:", e);
+  }
 
   const setText = (id, text) => {
     const el = document.getElementById(id);
@@ -141,12 +156,11 @@ async function Initialize() {
   setupGlobalEvents(); // events.js からイベントリスナーを登録
 
   // 先頭タブを必ずアクティブにする
-  if (tabs.length > 0 && !tabs.some(t => t.active)) {
-      switchTab(tabs[0].id);
+  if (tabs.length > 0 && !tabs.some((t) => t.active)) {
+    switchTab(tabs[0].id);
   } else {
-  
-  UpdateAllUI();
-}
+    UpdateAllUI();
+  }
 }
 
 // --- ドラッグアンドドロップ設定 ---

@@ -21,15 +21,19 @@ import {
   UpdateHistory,
   toggleProgress,
   showFloatingMessage,
-  UpdateAllUI
+  UpdateAllUI,
 } from "./ui";
 
 // --- タブ操作ロジック ---
 export function switchTab(id) {
   tabs.forEach((t) => (t.active = t.id == id));
   // DEBUG
-  const activeTab = tabs.find(t => t.active);
-  console.log("DEBUG JS Switched to:", activeTab ? activeTab.id : "NONE", activeTab?.workFile);
+  const activeTab = tabs.find((t) => t.active);
+  console.log(
+    "DEBUG JS Switched to:",
+    activeTab ? activeTab.id : "NONE",
+    activeTab?.workFile,
+  );
   UpdateAllUI();
   saveCurrentSession();
 }
@@ -87,7 +91,7 @@ export async function OnExecute() {
     alert(i18n.selectFileFirst);
     return;
   }
-  
+
   UpdateAllUI();
   const mode = tab.backupMode;
   // --- 2. 差分設定の取得 (既存ロジック維持 + 圧縮設定追加) ---

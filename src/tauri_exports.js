@@ -116,3 +116,48 @@ export async function GetBackupList(workFile, backupDir) {
 export async function ApplyMultiDiff(workFile, diffPaths) {
   return await invoke("apply_multi_diff", { workFile, diffPaths });
 }
+
+/**
+ * 世代アーカイブ用：フォルダリストの取得
+ */
+export async function GetGenerationFolders(workFile, backupDir) {
+  return await invoke("get_generation_folders", { workFile, backupDir });
+}
+
+/**
+ * 世代アーカイブ用：圧縮実行
+ */
+export async function ArchiveGeneration(
+  targetN,
+  format,
+  workFile,
+  backupDir,
+  password = null,
+) {
+  return await invoke("archive_generation", {
+    targetN,
+    format,
+    workFile,
+    backupDir,
+    password,
+  });
+}
+
+/**
+ * キャッシュ関連コマンド
+ */
+
+// 全ての展開済みキャッシュを削除
+export async function ClearAllCaches(backupDir, workFile) {
+  return await invoke("clear_all_caches", { backupDir, workFile });
+}
+
+// 特定のアーカイブを展開してキャッシュを作成（パスを返す）
+export async function PrepareArchiveCache(archivePath, password = null) {
+  return await invoke("prepare_archive_cache", { archivePath, password });
+}
+
+// 指定ディレクトリ内のアーカイブを全てスキャンしてキャッシュを再構築
+export async function RebuildArchiveCaches(workFile, backupDir) {
+  return await invoke("rebuild_archive_caches", { workFile, backupDir });
+}

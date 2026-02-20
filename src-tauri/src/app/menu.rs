@@ -45,9 +45,10 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
     let lang_ja = CheckMenuItemBuilder::with_id("lang_ja", t("japanese"))
         .checked(config.language == "ja")
         .build(app)?;
-    let use_same_dir_for_temp = CheckMenuItemBuilder::with_id("use_same_dir_for_temp",t("useSameDirForTemp"))
-        .checked(config.use_same_dir_for_temp)
-        .build(app)?;
+    let use_same_dir_for_temp =
+        CheckMenuItemBuilder::with_id("use_same_dir_for_temp", t("useSameDirForTemp"))
+            .checked(config.use_same_dir_for_temp)
+            .build(app)?;
 
     // quit の作成
     let quit = MenuItem::with_id(

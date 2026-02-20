@@ -6,6 +6,7 @@
   "autoBaseGenerationThreshold": 0.6,
   "trayMode": false,
   "compactMode": false,
+  "useSameDirForTemp": false,
   "trayBackupMode": "diff",
   "i18n": {
     "en": {
@@ -91,7 +92,12 @@
       "labelLocation": "Location:",
       "delete": "Delete",
       "searchPlaceholder": "Search...",
-      "readyStatus": "Ready"
+      "readyStatus": "Ready",
+      "generationArchive": "Archive Generation",
+      "useSameDirForTemp": "Extract generation archives to the backup folder",
+      "archiveWarningText": "Archiving will delete the original generation folders (baseN). Restoring from history will still be possible.",
+      "noArchiveCandidates": "No generation folders available to archive.",
+      "archiveExecuteBtn": "Execute Archive"
     },
     "ja": {
       "settings": "設定",
@@ -176,7 +182,12 @@
       "labelLocation": "バックアップ先:",
       "delete": "削除",
       "searchPlaceholder": "検索...",
-      "readyStatus": "準備完了"
+      "readyStatus": "準備完了",
+      "generationArchive": "世代アーカイブ化",
+      "useSameDirForTemp": "世代アーカイブの解凍先をバックアップ先と同じにする",
+      "archiveWarningText": "アーカイブ化すると元の世代フォルダ（baseN）は削除されます。履歴からの復元は引き続き可能です。",
+      "noArchiveCandidates": "アーカイブ可能な世代フォルダが見つかりません。",
+      "archiveExecuteBtn": "アーカイブ実行"
     }
   }
 }
