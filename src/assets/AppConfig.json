@@ -97,7 +97,8 @@
       "useSameDirForTemp": "Extract generation archives to the backup folder",
       "archiveWarningText": "Archiving will delete the original generation folders (baseN). Restoring from history will still be possible.",
       "noArchiveCandidates": "No generation folders available to archive.",
-      "archiveExecuteBtn": "Execute Archive"
+      "archiveExecuteBtn": "Execute Archive",
+      "archived_generation_extracting": "Archived Generation (Extracting...)"
     },
     "ja": {
       "settings": "設定",
@@ -187,7 +188,8 @@
       "useSameDirForTemp": "世代アーカイブの解凍先をバックアップ先と同じにする",
       "archiveWarningText": "アーカイブ化すると元の世代フォルダ（baseN）は削除されます。履歴からの復元は引き続き可能です。",
       "noArchiveCandidates": "アーカイブ可能な世代フォルダが見つかりません。",
-      "archiveExecuteBtn": "アーカイブ実行"
+      "archiveExecuteBtn": "アーカイブ実行",
+      "archived_generation_extracting": "世代アーカイブ (一時展開中)"
     }
   }
 }
