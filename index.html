@@ -172,7 +172,9 @@
               </h3>
 
 
-
+<button id="generation-archive-btn" class="icon-btn" title="世代アーカイブ" style="margin-right: 8px; background: none; border: none; cursor: pointer; font-size: 16px;">
+  📦
+</button>
 
 <div class="search-container">
   <input
@@ -224,6 +226,44 @@
         </div>
       </div>
     </div>
+
+
+<div id="archive-modal" class="modal-overlay hidden">
+  <div class="modal-content" style="width: 380px;">
+    <h3 id="archive-modal-title" class="modal-title-text">
+      📦 <span id="title-gen-archive">Generation Archive</span>
+    </h3>
+    
+    <div id="archive-warning-box" class="archive-warning">
+      ⚠️ <strong>Warning:</strong><br>
+      <span id="label-archive-desc">Original folders will be deleted. Restore is still possible.</span>
+    </div>
+
+    <div class="archive-list-container">
+      <div class="archive-list-header">
+        <label class="archive-select-all">
+          <input type="checkbox" id="archive-select-all-check"> 
+          <span id="label-archive-select-all">Select All</span>
+        </label>
+        <select id="archive-format-select" class="mini-select dark-style">
+          <option value="zip">ZIP</option>
+          <option value="tar">tar.gz</option>
+        </select>
+      </div>
+      
+      <div id="archive-gen-list" class="archive-scroll-list">
+        </div>
+    </div>
+
+    <div class="modal-buttons archive-footer-btns">
+      <button id="archive-cancel-btn" class="modal-btn cancel">Cancel</button>
+      <button id="archive-execute-btn" class="modal-btn primary">Execute</button>
+    </div>
+  </div>
+</div>
+
+
+
 
     <div id="compact-view" class="hidden">
       <div class="compact-container">

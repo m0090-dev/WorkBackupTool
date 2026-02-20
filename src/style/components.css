@@ -328,6 +328,16 @@
   animation: modal-pop 0.3s ease-out;
   color: var(--modal-text-main);
 }
+.modal-content h3 {
+  color: var(--modal-text-main); /* #eeeeee */
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
 
 @keyframes modal-pop {
   from {
@@ -404,4 +414,71 @@
   background: var(--modal-hover-bg);
   color: var(--modal-text-main);
   border-color: #666;
+}
+
+
+/* --- 世代アーカイブモーダル専用スタイル --- */
+
+/* 警告ボックス：背景を少し暗めの赤にして文字を読みやすく */
+.archive-warning {
+  font-size: 11px;
+  color: #ff8a8a; 
+  background: rgba(211, 47, 47, 0.15);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(211, 47, 47, 0.3);
+  margin-bottom: 15px;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.archive-list-container {
+  text-align: left;
+  margin-bottom: 15px;
+}
+
+.archive-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.archive-select-all {
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--modal-text-main);
+}
+
+/* スクロールリスト：内側の背景を調整 */
+.archive-scroll-list {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--modal-border);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 5px;
+}
+
+/* JSで追加される各アイテムのスタイル（ui.jsのinnerHTMLに合わせて調整） */
+.archive-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s;
+}
+
+.archive-item:hover {
+  background: var(--modal-hover-bg);
+}
+
+.archive-item:last-child {
+  border-bottom: none;
 }

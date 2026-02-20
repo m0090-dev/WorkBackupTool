@@ -92,7 +92,7 @@ pub async fn apply_hdiff_wrapper(
         .extension()
         .and_then(|s| s.to_str())
         .unwrap_or("bin"); // 拡張子がない場合のフォールバック
-    // 文字列操作で .base 名を特定
+                           // 文字列操作で .base 名を特定
     let file_name = diff_path.file_name().unwrap().to_string_lossy();
     let mut base_name = format!("{}.base", file_name.split(".20").next().unwrap());
     let mut base_full = backup_dir.join(&base_name);

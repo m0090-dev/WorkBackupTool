@@ -4,6 +4,7 @@ import {
   WriteTextFile,
   ReadTextFile,
   GetConfigDir,
+  GetGenerationFolders,
 } from "./tauri_exports";
 
 import {
@@ -244,14 +245,17 @@ export function UpdateDisplay() {
   if (!i18n || !tab) return;
   const tabSelect = document.getElementById("compact-tab-select");
   if (tabSelect) {
-    tabSelect.innerHTML = tabs.map(t => {
-      const fileName = t.workFile ? t.workFile.split(/[\\/]/).pop() : "No File";
-      return `<option value="${t.id}" ${t.active ? "selected" : ""}>${fileName}</option>`;
-    }).join("");
-    tabSelect.value = tab.id;		
-  }  
+    tabSelect.innerHTML = tabs
+      .map((t) => {
+        const fileName = t.workFile
+          ? t.workFile.split(/[\\/]/).pop()
+          : "No File";
+        return `<option value="${t.id}" ${t.active ? "selected" : ""}>${fileName}</option>`;
+      })
+      .join("");
+    tabSelect.value = tab.id;
+  }
 
-  
   const fileEl = document.getElementById("selected-workfile");
   const dirEl = document.getElementById("selected-backupdir");
   if (fileEl)
@@ -262,12 +266,12 @@ export function UpdateDisplay() {
       (tab.workFile ? ` [${formatSize(tab.workFileSize)}]` : "");
   if (dirEl) dirEl.textContent = tab.backupDir || i18n.selectedBackupDir;
 
-
-  const radio = document.querySelector(`input[name="backupMode"][value="${tab.backupMode}"]`);
+  const radio = document.querySelector(
+    `input[name="backupMode"][value="${tab.backupMode}"]`,
+  );
   if (radio) radio.checked = true;
   const compactModeSel = document.getElementById("compact-mode-select");
   if (compactModeSel) compactModeSel.value = tab.backupMode;
-  
 
   // --- 各要素の同期 ---
   const normalComp = document.getElementById("hdiff-compress");
@@ -390,12 +394,22 @@ export async function UpdateHistory() {
         } else {
           const currentGen = item.generation || 1;
           const isTarget = itemDir === activeDirPath;
-
+          const subLabel = item.isArchived
+            ? ` <span style="font-size:9px; opacity:0.9;">(Archive)</span>`
+            : isTarget
+              ? ` <span style="font-size:9px; opacity:0.9;">(Target)</span>`
+              : "";
           let statusColor = isTarget ? "#2f8f5b" : "#3B5998";
           let statusIcon = isTarget ? "✅" : "";
           let statusText = isTarget
             ? i18n.compatible || "書き込み先 (Active)"
             : i18n.genMismatch || "別世代 (クリックで切替)";
+
+          if (item.isArchived) {
+            statusColor = "#666";
+            statusText = "世代アーカイブ (一時展開中)";
+            statusIcon = "📦";
+          }
 
           const genLabel = i18n.generationLabel || "Gen";
           const currentLabel = isTarget
@@ -432,7 +446,6 @@ export async function UpdateHistory() {
         </div>`;
       }),
     );
-
     // フィルタで null になった要素を除外して結合
     list.innerHTML = itemsHtml.filter((html) => html !== null).join("");
 
@@ -440,6 +453,83 @@ export async function UpdateHistory() {
   } catch (err) {
     console.error(err);
     list.innerHTML = `<div class="info-msg" style="color:red;">Error: ${err.message || "loading history"}</div>`;
+  }
+}
+
+/**
+ * 世代アーカイブ用モーダルのUIを更新して表示する
+ * 専用の GetGenerationFolders を使用して、正確な世代フォルダリストを表示します。
+ */
+export async function showArchiveModal() {
+  const tab = getActiveTab();
+  const modal = document.getElementById("archive-modal");
+  const listContainer = document.getElementById("archive-gen-list");
+
+  if (!tab || !modal || !listContainer || !i18n) return;
+
+  // i18nテキストの適用（タイトルやラベルの更新）
+  document.getElementById("title-gen-archive").textContent =
+    i18n.generationArchive || "Generation Archive";
+  document.getElementById("label-archive-desc").textContent =
+    i18n.archiveWarningText ||
+    "Original folders will be deleted. Restore is still possible.";
+  document.getElementById("label-archive-select-all").textContent =
+    i18n.selectAllBtn || "Select All";
+  document.getElementById("archive-cancel-btn").textContent =
+    i18n.cancel || "Cancel";
+  document.getElementById("archive-execute-btn").textContent =
+    i18n.executeBtn || "Execute";
+
+  try {
+    // 1. 専用コマンドでアーカイブ候補（baseN_ フォルダ）を直接取得
+    // ※ Rust側で「最新世代」は除外済みのリストが返ってきます
+    const archiveCandidates = await GetGenerationFolders(
+      tab.workFile,
+      tab.backupDir,
+    );
+
+    // 2. 世代番号でソート（新しい順に表示）
+    archiveCandidates.sort((a, b) => b.generation - a.generation);
+
+    if (archiveCandidates.length === 0) {
+      // 候補がない場合
+      listContainer.innerHTML = `
+        <div style="font-size:11px; color:#888; text-align:center; padding:15px;">
+          ${i18n.noArchiveCandidates || "No folders available to archive."}
+        </div>`;
+      document.getElementById("archive-execute-btn").disabled = true;
+    } else {
+      // 3. リストの構築
+      // data-gen 属性を付与して、実行時に Rust へ渡す targetN を特定しやすくします
+      listContainer.innerHTML = archiveCandidates
+        .map(
+          (c) => `
+        <label class="archive-item">
+          <input type="checkbox" class="archive-gen-check" 
+                 value="${c.filePath}" 
+                 data-gen="${c.generation}">
+          <div style="display:flex; flex-direction:column; text-align:left;">
+            <span style="font-weight:bold; color:#fff;">Gen.${c.generation}</span>
+            <span style="font-size:10px; color:#bbb;">${c.timestamp}</span>
+          </div>
+        </label>
+      `,
+        )
+        .join("");
+      document.getElementById("archive-execute-btn").disabled = false;
+    }
+
+    // 4. 全選択チェックボックスのリセット
+    const selectAll = document.getElementById("archive-select-all-check");
+    if (selectAll) selectAll.checked = false;
+
+    // 5. モーダルを表示
+    modal.classList.remove("hidden");
+  } catch (err) {
+    console.error("Failed to load archive candidates:", err);
+    showFloatingError(
+      i18n.errorLoadingHistory || "Failed to load generation folders",
+    );
   }
 }
 

@@ -611,7 +611,7 @@ pub fn get_backup_list(
     // --- 2. すべての世代フォルダ(base*)をスキャン ---
     // 通常のroot直下と、アーカイブ展開済みのcache_rootの両方を走査対象にする
     let scan_roots = vec![
-        (&root, false),       // (パス, is_archived_flag)
+        (&root, false), // (パス, is_archived_flag)
         (&cache_root, true),
     ];
 
@@ -639,7 +639,8 @@ pub fn get_backup_list(
                     if let Ok(gen_entries) = fs::read_dir(&path) {
                         for gen_entry in gen_entries.flatten() {
                             let gen_path = gen_entry.path();
-                            let f_name = gen_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                            let f_name =
+                                gen_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
 
                             // 除外条件
                             if gen_path.is_dir()
@@ -671,18 +672,19 @@ pub fn get_backup_list(
     Ok(list)
 }
 
-
-
-
-
-
 // ヘルパー関数: 拡張子チェック
 fn is_valid_backup_ext(name: &str, exts: &[&str]) -> bool {
     exts.iter().any(|&ext| name.ends_with(ext))
 }
 
 // ヘルパー関数: アイテム生成 (日付フォーマット含む)
-fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32,is_archived:bool) -> BackupItem {
+fn create_backup_item(
+    name: &str,
+    path: &Path,
+    meta: &fs::Metadata,
+    gen: i32,
+    is_archived: bool,
+) -> BackupItem {
     let modified: DateTime<Local> = meta
         .modified()
         .unwrap_or_else(|_| std::time::SystemTime::now())
@@ -693,7 +695,7 @@ fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32,is_
         timestamp: modified.format("%Y-%m-%d %H:%M:%S").to_string(),
         file_size: meta.len() as i64,
         generation: gen,
-        is_archived: is_archived
+        is_archived: is_archived,
     }
 }
 
@@ -834,17 +836,24 @@ pub fn get_generation_folders(
     for entry in entries.flatten() {
         if entry.file_type().map_or(false, |t| t.is_dir()) {
             let path = entry.path();
-            let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
 
             if let Some(caps) = re.captures(&name) {
                 // 最新のフォルダ（進行中の世代）はリストから除外する
                 if let Some(ref lp) = latest_path {
-                    if &path == lp { continue; }
+                    if &path == lp {
+                        continue;
+                    }
                 }
 
                 let gen_idx = caps[1].parse::<i32>().unwrap_or(0);
                 let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
-                let modified: chrono::DateTime<chrono::Local> = metadata.modified()
+                let modified: chrono::DateTime<chrono::Local> = metadata
+                    .modified()
                     .map(|t| t.into())
                     .unwrap_or_else(|_| chrono::Local::now());
 
@@ -901,8 +910,12 @@ pub async fn archive_generation(
         }
     }
 
-    let src_path = target_folder_path
-        .ok_or_else(|| format!("世代 {} のフォルダが見つかりません (接頭辞: {})", target_n, prefix))?;
+    let src_path = target_folder_path.ok_or_else(|| {
+        format!(
+            "世代 {} のフォルダが見つかりません (接頭辞: {})",
+            target_n, prefix
+        )
+    })?;
 
     // 2. 出力ファイル名の決定 (元フォルダ名に拡張子を付与)
     let folder_name = src_path.file_name().unwrap().to_string_lossy();
@@ -921,16 +934,20 @@ pub async fn archive_generation(
     if dst_path.exists() && fs::metadata(&dst_path).map(|m| m.len()).unwrap_or(0) > 0 {
         fs::remove_dir_all(&src_path).map_err(|e| format!("フォルダ削除に失敗しました: {}", e))?;
     } else {
-        return Err("アーカイブ作成に失敗した可能性があるため、元データの削除を中止しました".to_string());
+        return Err(
+            "アーカイブ作成に失敗した可能性があるため、元データの削除を中止しました".to_string(),
+        );
     }
 
     Ok(())
 }
 
-
-
 #[tauri::command]
-pub fn clear_all_caches(app: AppHandle, backup_dir: String, work_file: String) -> Result<(), String> {
+pub fn clear_all_caches(
+    app: AppHandle,
+    backup_dir: String,
+    work_file: String,
+) -> Result<(), String> {
     let state = app.state::<AppState>();
     let config = state.config.lock().unwrap();
 
@@ -949,7 +966,8 @@ pub fn clear_all_caches(app: AppHandle, backup_dir: String, work_file: String) -
         if let Err(_) = fs::remove_dir_all(&cache_root) {
             // 削除に失敗した場合（ロックされている等）、リネームして隔離を試みる
             // これにより「古いゴミと混ざる」ことだけは確実に防げる
-            let old_cache = cache_root.with_extension(format!("old_{}", chrono::Local::now().format("%H%M%S")));
+            let old_cache =
+                cache_root.with_extension(format!("old_{}", chrono::Local::now().format("%H%M%S")));
             if let Err(e) = fs::rename(&cache_root, &old_cache) {
                 // リネームすらできない場合は相当重篤なロック
                 return Err(format!("キャッシュをクリアできませんでした。エクスプローラー等でフォルダを閉じてください。"));
@@ -958,7 +976,7 @@ pub fn clear_all_caches(app: AppHandle, backup_dir: String, work_file: String) -
             let _ = fs::remove_dir_all(&old_cache);
         }
     }
-    
+
     // 確実に「新しい展開先」が作れる状態にする
     if !cache_root.exists() {
         let _ = fs::create_dir_all(&cache_root);
@@ -966,8 +984,6 @@ pub fn clear_all_caches(app: AppHandle, backup_dir: String, work_file: String) -
 
     Ok(())
 }
-
-
 
 #[tauri::command]
 pub async fn prepare_archive_cache(
@@ -1002,7 +1018,8 @@ pub async fn prepare_archive_cache(
                 archive.by_index_decrypt(i, p.as_bytes())
             } else {
                 archive.by_index(i)
-            }.map_err(|e| e.to_string())?;
+            }
+            .map_err(|e| e.to_string())?;
 
             let outpath = match file.enclosed_name() {
                 Some(path) => cache_root.join(path), // .wbt_cache の直下に展開
@@ -1012,7 +1029,9 @@ pub async fn prepare_archive_cache(
             if file.is_dir() {
                 fs::create_dir_all(&outpath).ok();
             } else {
-                if let Some(p) = outpath.parent() { fs::create_dir_all(p).ok(); }
+                if let Some(p) = outpath.parent() {
+                    fs::create_dir_all(p).ok();
+                }
                 let mut outfile = File::create(&outpath).map_err(|e| e.to_string())?;
                 std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
             }
@@ -1026,7 +1045,6 @@ pub async fn prepare_archive_cache(
 
     Ok(cache_root.to_string_lossy().to_string())
 }
-
 
 #[tauri::command]
 pub async fn rebuild_archive_caches(
@@ -1043,7 +1061,9 @@ pub async fn rebuild_archive_caches(
         PathBuf::from(&backup_dir)
     };
 
-    if !root.exists() { return Ok(()); }
+    if !root.exists() {
+        return Ok(());
+    }
 
     // ワークファイルのステム名（拡張子なし）を取得して、関連アーカイブか判定する材料にする
     let file_stem = Path::new(&work_file)
@@ -1055,7 +1075,9 @@ pub async fn rebuild_archive_caches(
     if let Ok(entries) = fs::read_dir(root) {
         for entry in entries.flatten() {
             let path = entry.path();
-            if !path.is_file() { continue; }
+            if !path.is_file() {
+                continue;
+            }
 
             let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
             let f_name_lower = file_name.to_lowercase();
@@ -1063,21 +1085,17 @@ pub async fn rebuild_archive_caches(
             // 判定条件:
             // ① 名前が "base" から始まる (世代アーカイブ)
             // ② かつ、拡張子が zip / tar.gz / tgz である
-            let is_archive_ext = f_name_lower.ends_with(".zip") || 
-                                 f_name_lower.ends_with(".tar.gz") || 
-                                 f_name_lower.ends_with(".tgz");
+            let is_archive_ext = f_name_lower.ends_with(".zip")
+                || f_name_lower.ends_with(".tar.gz")
+                || f_name_lower.ends_with(".tgz");
 
             if f_name_lower.starts_with("base") && is_archive_ext {
                 // 条件に合致するものだけを、専用サブフォルダへ展開
-                let _ = prepare_archive_cache(
-                    app.clone(), 
-                    path.to_string_lossy().to_string(), 
-                    None
-                ).await;
+                let _ =
+                    prepare_archive_cache(app.clone(), path.to_string_lossy().to_string(), None)
+                        .await;
             }
         }
     }
     Ok(())
 }
-
-
