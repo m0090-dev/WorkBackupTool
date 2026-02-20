@@ -807,21 +807,83 @@ pub async fn restore_backup(
     Ok(())
 }
 
+#[tauri::command]
+pub fn get_generation_folders(
+    work_file: String,
+    backup_dir: String,
+) -> Result<Vec<BackupItem>, String> {
+    let root = if backup_dir.is_empty() {
+        utils::default_backup_dir(&work_file)
+    } else {
+        PathBuf::from(&backup_dir)
+    };
 
+    if !root.exists() {
+        return Ok(Vec::new());
+    }
+
+    // 既存の get_latest_generation を使って「最新」を特定しておく
+    // (最新のフォルダは現在進行系で使っているのでアーカイブ対象から外すため)
+    let latest_info = auto_generation::get_latest_generation(&root)?;
+    let latest_path = latest_info.map(|i| i.dir_path);
+
+    let mut list = Vec::new();
+    let entries = fs::read_dir(&root).map_err(|e| e.to_string())?;
+    let re = regex::Regex::new(r"^base(\d+)_").unwrap();
+
+    for entry in entries.flatten() {
+        if entry.file_type().map_or(false, |t| t.is_dir()) {
+            let path = entry.path();
+            let name = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+
+            if let Some(caps) = re.captures(&name) {
+                // 最新のフォルダ（進行中の世代）はリストから除外する
+                if let Some(ref lp) = latest_path {
+                    if &path == lp { continue; }
+                }
+
+                let gen_idx = caps[1].parse::<i32>().unwrap_or(0);
+                let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+                let modified: chrono::DateTime<chrono::Local> = metadata.modified()
+                    .map(|t| t.into())
+                    .unwrap_or_else(|_| chrono::Local::now());
+
+                // 既存の BackupItem 構造体を流用（JS側で扱いやすいため）
+                list.push(BackupItem {
+                    file_name: name,
+                    file_path: path.to_string_lossy().to_string(),
+                    timestamp: modified.format("%Y/%m/%d %H:%M").to_string(),
+                    file_size: 0, // フォルダサイズ計算は重いので0でOK
+                    generation: gen_idx,
+                    is_archived: false,
+                });
+            }
+        }
+    }
+
+    // 世代が古い順に並べて表示したい
+    list.sort_by(|a, b| a.generation.cmp(&b.generation));
+    Ok(list)
+}
 
 #[tauri::command]
 pub async fn archive_generation(
     target_n: u32,
     format: String,
+    work_file: String,
     backup_dir: String,
     password: Option<String>,
 ) -> Result<(), String> {
-    let backup_path = Path::new(&backup_dir);
+    let backup_path = if backup_dir.is_empty() {
+        utils::default_backup_dir(&work_file)
+    } else {
+        PathBuf::from(&backup_dir)
+    };
     let pwd = password.unwrap_or_default();
 
     // 1. 対象となる世代フォルダ (baseN_timestamp) を特定
     // backup_dir 直下を走査し、"baseN_" で始まるディレクトリを探す
-    let entries = fs::read_dir(backup_path)
+    let entries = fs::read_dir(&backup_path)
         .map_err(|e| format!("バックアップディレクトリにアクセスできません: {}", e))?;
 
     let prefix = format!("base{}_", target_n);
@@ -864,3 +926,158 @@ pub async fn archive_generation(
 
     Ok(())
 }
+
+
+
+#[tauri::command]
+pub fn clear_all_caches(app: AppHandle, backup_dir: String, work_file: String) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let config = state.config.lock().unwrap();
+
+    let cache_root = if config.use_same_dir_for_temp {
+        if backup_dir.is_empty() {
+            utils::default_backup_dir(&work_file).join(".wbt_cache")
+        } else {
+            Path::new(&backup_dir).join(".wbt_cache")
+        }
+    } else {
+        std::env::temp_dir().join("wbt_cache")
+    };
+
+    if cache_root.exists() {
+        // 直接削除を試みる
+        if let Err(_) = fs::remove_dir_all(&cache_root) {
+            // 削除に失敗した場合（ロックされている等）、リネームして隔離を試みる
+            // これにより「古いゴミと混ざる」ことだけは確実に防げる
+            let old_cache = cache_root.with_extension(format!("old_{}", chrono::Local::now().format("%H%M%S")));
+            if let Err(e) = fs::rename(&cache_root, &old_cache) {
+                // リネームすらできない場合は相当重篤なロック
+                return Err(format!("キャッシュをクリアできませんでした。エクスプローラー等でフォルダを閉じてください。"));
+            }
+            // リネームできたなら、古い方はバックグラウンドで消せれば消す（失敗しても実害なし）
+            let _ = fs::remove_dir_all(&old_cache);
+        }
+    }
+    
+    // 確実に「新しい展開先」が作れる状態にする
+    if !cache_root.exists() {
+        let _ = fs::create_dir_all(&cache_root);
+    }
+
+    Ok(())
+}
+
+
+
+#[tauri::command]
+pub async fn prepare_archive_cache(
+    app: AppHandle,
+    archive_path: String,
+    password: Option<String>,
+) -> Result<String, String> {
+    let state = app.state::<AppState>();
+    let config = state.config.lock().unwrap();
+    let archive_file = Path::new(&archive_path);
+
+    // 1. キャッシュルートの決定
+    let cache_root = if config.use_same_dir_for_temp {
+        archive_file.parent().unwrap().join(".wbt_cache")
+    } else {
+        std::env::temp_dir().join("wbt_cache")
+    };
+
+    // 2. 展開先（.wbt_cache 直下！）
+    if !cache_root.exists() {
+        fs::create_dir_all(&cache_root).map_err(|e| e.to_string())?;
+    }
+
+    let f_name_lower = archive_path.to_lowercase();
+
+    if f_name_lower.ends_with(".zip") {
+        let file = File::open(archive_file).map_err(|e| e.to_string())?;
+        let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+
+        for i in 0..archive.len() {
+            let mut file = if let Some(ref p) = password {
+                archive.by_index_decrypt(i, p.as_bytes())
+            } else {
+                archive.by_index(i)
+            }.map_err(|e| e.to_string())?;
+
+            let outpath = match file.enclosed_name() {
+                Some(path) => cache_root.join(path), // .wbt_cache の直下に展開
+                None => continue,
+            };
+
+            if file.is_dir() {
+                fs::create_dir_all(&outpath).ok();
+            } else {
+                if let Some(p) = outpath.parent() { fs::create_dir_all(p).ok(); }
+                let mut outfile = File::create(&outpath).map_err(|e| e.to_string())?;
+                std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+            }
+        }
+    } else if f_name_lower.contains(".tar.gz") || f_name_lower.ends_with(".tgz") {
+        let tar_gz = File::open(archive_file).map_err(|e| e.to_string())?;
+        let tar = flate2::read::GzDecoder::new(tar_gz);
+        let mut archive = tar::Archive::new(tar);
+        archive.unpack(&cache_root).map_err(|e| e.to_string())?;
+    }
+
+    Ok(cache_root.to_string_lossy().to_string())
+}
+
+
+#[tauri::command]
+pub async fn rebuild_archive_caches(
+    app: AppHandle,
+    work_file: String,
+    backup_dir: String,
+) -> Result<(), String> {
+    // 1. まず古いキャッシュを一掃（混ざり防止）
+    clear_all_caches(app.clone(), backup_dir.clone(), work_file.clone())?;
+
+    let root = if backup_dir.is_empty() {
+        utils::default_backup_dir(&work_file)
+    } else {
+        PathBuf::from(&backup_dir)
+    };
+
+    if !root.exists() { return Ok(()); }
+
+    // ワークファイルのステム名（拡張子なし）を取得して、関連アーカイブか判定する材料にする
+    let file_stem = Path::new(&work_file)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+
+    // 2. アーカイブを探して、正当なものだけ展開
+    if let Ok(entries) = fs::read_dir(root) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() { continue; }
+
+            let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+            let f_name_lower = file_name.to_lowercase();
+
+            // 判定条件:
+            // ① 名前が "base" から始まる (世代アーカイブ)
+            // ② かつ、拡張子が zip / tar.gz / tgz である
+            let is_archive_ext = f_name_lower.ends_with(".zip") || 
+                                 f_name_lower.ends_with(".tar.gz") || 
+                                 f_name_lower.ends_with(".tgz");
+
+            if f_name_lower.starts_with("base") && is_archive_ext {
+                // 条件に合致するものだけを、専用サブフォルダへ展開
+                let _ = prepare_archive_cache(
+                    app.clone(), 
+                    path.to_string_lossy().to_string(), 
+                    None
+                ).await;
+            }
+        }
+    }
+    Ok(())
+}
+
+

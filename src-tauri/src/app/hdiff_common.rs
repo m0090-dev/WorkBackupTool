@@ -86,7 +86,12 @@ pub async fn apply_hdiff_wrapper(
 ) -> Result<(), String> {
     let diff_path = Path::new(diff_file);
     let backup_dir = diff_path.parent().unwrap();
-
+    let diff_name = diff_path.file_name().unwrap().to_string_lossy();
+    let original_full_name = diff_name.split(".20").next().unwrap_or(&diff_name);
+    let original_ext = Path::new(original_full_name)
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("bin"); // 拡張子がない場合のフォールバック
     // 文字列操作で .base 名を特定
     let file_name = diff_path.file_name().unwrap().to_string_lossy();
     let mut base_name = format!("{}.base", file_name.split(".20").next().unwrap());
@@ -99,8 +104,11 @@ pub async fn apply_hdiff_wrapper(
         );
         base_full = backup_dir.join(work_base_name);
     }
-
-    let out_path = utils::auto_output_path(work_file);
+    let temp_out_path = utils::auto_output_path(work_file);
+    let out_path = Path::new(&temp_out_path)
+        .with_extension(original_ext)
+        .to_string_lossy()
+        .to_string();
 
     // hpatchz (Sidecar) を呼び出す
     crate::app::hdiff::apply_hdiff(app, &base_full.to_string_lossy(), diff_file, &out_path).await

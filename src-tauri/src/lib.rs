@@ -426,7 +426,11 @@ pub fn run() {
             write_text_file,
             read_text_file,
             get_backup_list,
-            archive_generation
+            archive_generation,
+            get_generation_folders,
+            clear_all_caches,
+            rebuild_archive_caches,
+            prepare_archive_cache
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
