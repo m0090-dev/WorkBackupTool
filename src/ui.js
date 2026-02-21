@@ -314,7 +314,8 @@ export async function UpdateHistory() {
   const searchInput = document.getElementById("history-search");
   const searchTerm = (tab?.searchQuery || "").toLowerCase().trim();
   const clearBtn = document.getElementById("search-clear-btn");
-
+  const executeBtn = document.getElementById("execute-backup-btn");
+  const compactExecuteBtn = document.getElementById("compact-execute-btn");
   if (!list || !i18n) return;
   if (searchInput) {
     if (document.activeElement !== searchInput) {
@@ -366,6 +367,7 @@ export async function UpdateHistory() {
       );
     };
 
+    let isTargetArchivedGeneration = false;
     const itemsHtml = await Promise.all(
       data.map(async (item) => {
         const note = await ReadTextFile(item.filePath + ".note").catch(
@@ -396,6 +398,9 @@ export async function UpdateHistory() {
         } else {
           const currentGen = item.generation || 1;
           const isTarget = itemDir === activeDirPath;
+	  if (isTarget && item.isArchived) {
+            isTargetArchivedGeneration = true;
+          }
           const subLabel = item.isArchived
             ? ` <span style="font-size:9px; opacity:0.9;">(Archive)</span>`
             : isTarget
@@ -452,7 +457,12 @@ export async function UpdateHistory() {
     );
     // フィルタで null になった要素を除外して結合
     list.innerHTML = itemsHtml.filter((html) => html !== null).join("");
-
+    if (executeBtn) {
+      executeBtn.disabled = isTargetArchivedGeneration;
+    }
+    if (compactExecuteBtn) {
+      compactExecuteBtn.disabled = isTargetArchivedGeneration;
+    }
     setupHistoryPopups();
   } catch (err) {
     console.error(err);
