@@ -5,6 +5,8 @@ import {
   ReadTextFile,
   GetConfigDir,
   GetGenerationFolders,
+  UpdateConfigValue,
+  GetConfig,
 } from "./tauri_exports";
 
 import {
@@ -407,7 +409,9 @@ export async function UpdateHistory() {
 
           if (item.isArchived) {
             statusColor = "#666";
-            statusText = i18n.archived_generation_extracting || "世代アーカイブ (一時展開中)";
+            statusText =
+              i18n.archived_generation_extracting ||
+              "世代アーカイブ (一時展開中)";
             statusIcon = "📦";
           }
 
@@ -509,7 +513,7 @@ export async function showArchiveModal() {
                  value="${c.filePath}" 
                  data-gen="${c.generation}">
           <div style="display:flex; flex-direction:column; text-align:left;">
-            <span style="font-weight:bold; color:#fff;">Gen.${c.generation}</span>
+            <span style="font-weight:bold; color:#fff;">${i18n.generationLabel}.${c.generation}</span>
             <span style="font-size:10px; color:#bbb;">${c.timestamp}</span>
           </div>
         </label>
@@ -530,6 +534,42 @@ export async function showArchiveModal() {
     showFloatingError(
       i18n.errorLoadingHistory || "Failed to load generation folders",
     );
+  }
+}
+
+/**
+ * 詳細設定モーダルのUIを更新して表示する
+ */
+export async function showSettingsModal() {
+  const modal = document.getElementById("settings-modal");
+  if (!modal || !i18n) return;
+  try {
+    // 2. 最新の設定値をRust側から取得
+    const config = await GetConfig();
+
+    // 3. フォームに値をセット
+    const cacheInput = document.getElementById("input-cache-limit");
+    const thresholdInput = document.getElementById("input-threshold");
+
+    if (cacheInput) cacheInput.value = config.startupCacheLimit;
+    if (thresholdInput)
+      thresholdInput.value = config.autoBaseGenerationThreshold;
+
+    // 4. モーダルを表示
+    modal.classList.remove("hidden");
+  } catch (err) {
+    console.error("Failed to load settings:", err);
+    showFloatingError(i18n.errorLoadingHistory || "Failed to load settings");
+  }
+}
+
+export async function handleSettingChange(key, value) {
+  try {
+    await UpdateConfigValue(key, value);
+    showFloatingMessage(i18n.settingsSaved || "Settings saved");
+  } catch (err) {
+    console.error(`Failed to update ${key}:`, err);
+    showFloatingError(i18n.memoSaveError || "Save failed");
   }
 }
 
@@ -615,6 +655,56 @@ export function toggleProgress(show, text = "") {
       if (cBtn) cBtn.disabled = false;
     }, 500);
   }
+}
+
+/**
+ * 起動時の全画面オーバーレイを表示
+ */
+export function showStartupOverlay() {
+  const overlay = document.getElementById("startup-overlay");
+  if (!overlay) return;
+
+  // i18nからテキストを取得して反映
+  const titleEl = document.getElementById("loader-title");
+  const subEl = document.getElementById("loader-sub");
+
+  if (titleEl) titleEl.textContent = i18n.loadingTitle || "Initializing...";
+  if (subEl) subEl.textContent = i18n.pleaseWait || "Please wait...";
+
+  // 初期状態をセット
+  overlay.style.display = "flex";
+  overlay.style.opacity = "1";
+}
+
+/**
+ * キャッシュ生成などの進捗状況を更新する
+ * @param {number} current - 現在の処理数
+ * @param {number} total - 総数
+ */
+export function updateStartupProgress(current, total) {
+  const statusEl = document.getElementById("loader-status");
+  if (!statusEl || !i18n.loadingStatus) return;
+
+  // i18nの "アーカイブキャッシュを処理しています... ({current}/{total})" を置換
+  statusEl.textContent = i18n.loadingStatus
+    .replace("{current}", current)
+    .replace("{total}", total);
+}
+
+/**
+ * 起動時のオーバーレイをフェードアウトさせて非表示にする
+ */
+export function hideStartupOverlay() {
+  const overlay = document.getElementById("startup-overlay");
+  if (!overlay) return;
+
+  // フェードアウト
+  overlay.style.opacity = "0";
+
+  // アニメーションが終わるのを待ってから完全に消す（CSSのtransition時間に合わせる）
+  setTimeout(() => {
+    overlay.style.display = "none";
+  }, 400);
 }
 
 export function UpdateAllUI() {

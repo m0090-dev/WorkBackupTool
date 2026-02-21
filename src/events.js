@@ -25,6 +25,8 @@ import {
   showFloatingMessage,
   renderRecentFiles,
   showArchiveModal,
+  showSettingsModal,
+  handleSettingChange,
 } from "./ui";
 
 import { addTab, OnExecute, switchTab } from "./actions";
@@ -269,6 +271,14 @@ export function setupGlobalEvents() {
       }
       return;
     }
+    if (id === "settings-close-btn") {
+      document.getElementById("settings-modal").classList.add("hidden");
+    } else if (id === "settings-modal") {
+      // モーダル外側（オーバーレイ）をクリックしたときも閉じる
+      if (e.target.id === "settings-modal") {
+        e.target.classList.add("hidden");
+      }
+    }
   });
 
   // --- 変更イベントリスナー ---
@@ -316,6 +326,21 @@ export function setupGlobalEvents() {
     if (id == "archive-select-all-check") {
       const checks = document.querySelectorAll(".archive-gen-check");
       checks.forEach((c) => (c.checked = e.target.checked));
+    }
+    if (id === "input-cache-limit") {
+      const val = parseInt(value, 10);
+      if (!isNaN(val) && val >= 0) {
+        handleSettingChange("startupCacheLimit", val);
+      }
+    }
+    if (id === "input-threshold") {
+      const val = parseFloat(value);
+      if (!isNaN(val)) {
+        // 0.1 ～ 1.0 にクランプ
+        const clamped = Math.min(Math.max(val, 0.1), 1.0);
+        e.target.value = clamped; // UI上の表示も補正
+        handleSettingChange("autoBaseGenerationThreshold", clamped);
+      }
     }
   });
   window.addEventListener("contextmenu", (e) => {
@@ -403,6 +428,9 @@ export function setupGlobalEvents() {
       document.body.classList.remove("compact-mode");
       if (view) view.classList.add("hidden");
     }
+  });
+  EventsOn("open-advanced-settings", async () => {
+    await showSettingsModal();
   });
   // --- 検索窓の入力監視 ---
   const searchInput = document.getElementById("history-search");

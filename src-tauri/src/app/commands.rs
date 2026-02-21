@@ -30,6 +30,30 @@ pub fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
 }
 
 #[tauri::command]
+pub async fn update_config_value(
+    state: tauri::State<'_, AppState>,
+    key: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    let mut cfg = state.config.lock().unwrap();
+
+    match key.as_str() {
+        // usize用
+        "startupCacheLimit" => {
+            cfg.startup_cache_limit = value.as_u64().unwrap_or(0) as usize;
+        }
+        // f64用 (閾値 0.0 ~ 1.0)
+        "autoBaseGenerationThreshold" => {
+            cfg.auto_base_generation_threshold = value.as_f64().unwrap_or(0.6);
+        }
+        _ => return Err(format!("Unknown numeric config key: {}", key)),
+    }
+
+    drop(cfg);
+    state.save()
+}
+
+#[tauri::command]
 pub fn set_always_on_top(
     window: Window,
     state: State<'_, AppState>,
@@ -57,6 +81,16 @@ pub fn get_restore_previous_state(state: State<'_, AppState>) -> bool {
 #[tauri::command]
 pub fn get_auto_base_generation_threshold(state: State<'_, AppState>) -> f64 {
     state.config.lock().unwrap().auto_base_generation_threshold
+}
+
+#[tauri::command]
+pub fn get_rebuild_cache_on_startup(state: State<'_, AppState>) -> bool {
+    state.config.lock().unwrap().rebuild_cache_on_startup
+}
+
+#[tauri::command]
+pub fn get_startup_cache_limit(state: State<'_, AppState>) -> usize {
+    state.config.lock().unwrap().startup_cache_limit
 }
 
 /// 特定のキーに対応する翻訳テキストを返す (Goの GetLanguageText 相当)
