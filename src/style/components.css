@@ -416,13 +416,12 @@
   border-color: #666;
 }
 
-
 /* --- 世代アーカイブモーダル専用スタイル --- */
 
 /* 警告ボックス：背景を少し暗めの赤にして文字を読みやすく */
 .archive-warning {
   font-size: 11px;
-  color: #ff8a8a; 
+  color: #ff8a8a;
   background: rgba(211, 47, 47, 0.15);
   padding: 10px;
   border-radius: 6px;
@@ -481,4 +480,69 @@
 
 .archive-item:last-child {
   border-bottom: none;
+}
+
+/* --- 起動時オーバーレイのスタイル --- */
+.startup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #1e1e1e; /* アプリのメイン背景色に合わせる */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999; /* 全てのUI、モーダルより上に配置 */
+  transition: opacity 0.4s ease-out;
+  pointer-events: all; /* 背後の操作を完全にブロック */
+}
+
+.loader-container {
+  text-align: center;
+  max-width: 400px;
+  width: 80%;
+}
+
+/* スタイリッシュな円形スピン */
+.loader-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-left-color: #0078d4; /* アクセントカラー */
+  border-radius: 50%;
+  margin: 0 auto 24px;
+  animation: startup-spin 1s linear infinite;
+}
+
+@keyframes startup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-title {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.loader-status {
+  color: #aaaaaa;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.loader-sub {
+  color: #666666;
+  font-size: 0.75rem;
+}
+
+/* 非表示用クラス */
+.startup-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+  /* 実際のアニメーション後にJSで display:none にする */
 }

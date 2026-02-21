@@ -2,12 +2,21 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="data:,">
+    <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Work Backup Tool</title>
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
+    <div id="startup-overlay" class="startup-overlay">
+      <div class="loader-container">
+        <div class="loader-spinner"></div>
+        <div id="loader-title" class="loader-title">Initializing...</div>
+        <div id="loader-status" class="loader-status">Please wait</div>
+        <div id="loader-sub" class="loader-sub">Preparing your environment</div>
+      </div>
+    </div>
+
     <div class="container">
       <div class="tabs-bar">
         <div id="tabs-list" class="tabs-list"></div>
@@ -171,29 +180,44 @@
                 Backup History / Restore
               </h3>
 
+              <button
+                id="generation-archive-btn"
+                class="icon-btn"
+                title="世代アーカイブ"
+                style="
+                  margin-right: 8px;
+                  background: none;
+                  border: none;
+                  cursor: pointer;
+                  font-size: 16px;
+                "
+              >
+                📦
+              </button>
 
-<button id="generation-archive-btn" class="icon-btn" title="世代アーカイブ" style="margin-right: 8px; background: none; border: none; cursor: pointer; font-size: 16px;">
-  📦
-</button>
-
-<div class="search-container">
-  <input
-    type="text"
-    id="history-search"
-    placeholder=" Search..."
-    style="
-      padding: 4px 25px 4px 10px; /* 右側にボタン用の余白(25px)を確保 */
-      font-size: 11px;
-      border: 1px solid #ddd;
-      border-radius: 15px;
-      width: 130px;
-      outline: none;
-      background: #fafafa;
-    "
-  />
-  <button id="search-clear-btn" class="search-clear-btn" title="Clear">&times;</button>
-</div>
-
+              <div class="search-container">
+                <input
+                  type="text"
+                  id="history-search"
+                  placeholder=" Search..."
+                  style="
+                    padding: 4px 25px 4px 10px; /* 右側にボタン用の余白(25px)を確保 */
+                    font-size: 11px;
+                    border: 1px solid #ddd;
+                    border-radius: 15px;
+                    width: 130px;
+                    outline: none;
+                    background: #fafafa;
+                  "
+                />
+                <button
+                  id="search-clear-btn"
+                  class="search-clear-btn"
+                  title="Clear"
+                >
+                  &times;
+                </button>
+              </div>
             </div>
 
             <div id="diff-history-list" class="history-container"></div>
@@ -227,43 +251,113 @@
       </div>
     </div>
 
+    <div id="archive-modal" class="modal-overlay hidden">
+      <div class="modal-content" style="width: 380px">
+        <h3 id="archive-modal-title" class="modal-title-text">
+          📦 <span id="title-gen-archive">Generation Archive</span>
+        </h3>
 
-<div id="archive-modal" class="modal-overlay hidden">
-  <div class="modal-content" style="width: 380px;">
-    <h3 id="archive-modal-title" class="modal-title-text">
-      📦 <span id="title-gen-archive">Generation Archive</span>
-    </h3>
-    
-    <div id="archive-warning-box" class="archive-warning">
-      ⚠️ <strong>Warning:</strong><br>
-      <span id="label-archive-desc">Original folders will be deleted. Restore is still possible.</span>
-    </div>
-
-    <div class="archive-list-container">
-      <div class="archive-list-header">
-        <label class="archive-select-all">
-          <input type="checkbox" id="archive-select-all-check"> 
-          <span id="label-archive-select-all">Select All</span>
-        </label>
-        <select id="archive-format-select" class="mini-select dark-style">
-          <option value="zip">ZIP</option>
-          <option value="tar">tar.gz</option>
-        </select>
-      </div>
-      
-      <div id="archive-gen-list" class="archive-scroll-list">
+        <div id="archive-warning-box" class="archive-warning">
+          ⚠️ <strong>Warning:</strong><br />
+          <span id="label-archive-desc"
+            >Original folders will be deleted. Restore is still possible.</span
+          >
         </div>
+
+        <div class="archive-list-container">
+          <div class="archive-list-header">
+            <label class="archive-select-all">
+              <input type="checkbox" id="archive-select-all-check" />
+              <span id="label-archive-select-all">Select All</span>
+            </label>
+            <select id="archive-format-select" class="mini-select dark-style">
+              <option value="zip">ZIP</option>
+              <option value="tar">tar.gz</option>
+            </select>
+          </div>
+
+          <div id="archive-gen-list" class="archive-scroll-list"></div>
+        </div>
+
+        <div class="modal-buttons archive-footer-btns">
+          <button id="archive-cancel-btn" class="modal-btn cancel">
+            Cancel
+          </button>
+          <button id="archive-execute-btn" class="modal-btn primary">
+            Execute
+          </button>
+        </div>
+      </div>
     </div>
+    <div id="settings-modal" class="modal-overlay hidden">
+      <div class="modal-content" style="width: 360px">
+        <h3 class="modal-title-text">
+          ⚙️ <span id="settings-title">Advanced Settings</span>
+        </h3>
 
-    <div class="modal-buttons archive-footer-btns">
-      <button id="archive-cancel-btn" class="modal-btn cancel">Cancel</button>
-      <button id="archive-execute-btn" class="modal-btn primary">Execute</button>
+        <div class="settings-scroll-list" style="padding: 10px 0">
+          <div class="setting-row" style="margin-bottom: 15px">
+            <label
+              id="label-startup-cache-limit"
+              style="
+                display: block;
+                font-size: 12px;
+                margin-bottom: 5px;
+                font-weight: bold;
+              "
+            ></label>
+            <input
+              type="number"
+              id="input-cache-limit"
+              class="mini-input"
+              style="width: 100%; box-sizing: border-box"
+              min="0"
+              step="1"
+            />
+            <p
+              id="hint-cache-limit"
+              class="settings-hint"
+              style="font-size: 10px; color: #888; margin-top: 4px"
+            ></p>
+          </div>
+
+          <div class="setting-row" style="margin-bottom: 15px">
+            <label
+              id="label-threshold"
+              style="
+                display: block;
+                font-size: 12px;
+                margin-bottom: 5px;
+                font-weight: bold;
+              "
+            ></label>
+            <input
+              type="number"
+              id="input-threshold"
+              class="mini-input"
+              style="width: 100%; box-sizing: border-box"
+              min="0.1"
+              max="1.0"
+              step="0.1"
+            />
+            <p
+              id="hint-threshold"
+              class="settings-hint"
+              style="font-size: 10px; color: #888; margin-top: 4px"
+            ></p>
+          </div>
+        </div>
+
+        <div
+          class="modal-buttons"
+          style="margin-top: 10px; justify-content: flex-end"
+        >
+          <button id="settings-close-btn" class="modal-btn primary">
+            Close
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
-</div>
-
-
-
 
     <div id="compact-view" class="hidden">
       <div class="compact-container">
@@ -271,10 +365,13 @@
           <span class="compact-title-text">WorkBackupTool (Compact)</span>
         </div>
 
-        <div style="padding: 0 10px; margin-top: 8px;">
-      <select id="compact-tab-select" class="mini-select" style="width: 100%; height: 26px; font-size: 11px;">
-        </select>
-    </div>
+        <div style="padding: 0 10px; margin-top: 8px">
+          <select
+            id="compact-tab-select"
+            class="mini-select"
+            style="width: 100%; height: 26px; font-size: 11px"
+          ></select>
+        </div>
 
         <div class="compact-content">
           <div
@@ -352,14 +449,14 @@
                 class="mini-select"
                 style="width: 100%; padding: 4px; font-size: 10px"
               >
-                   <option value="none">None (Uncompressed)</option>
-                      <option value="zstd">Zstandard (zstd)</option>
-                      <option value="lzma2">LZMA2</option>
-                      <option value="lzma">LZMA</option>
-                      <option value="zlib">zlib</option>
-                      <option value="ldef">libdeflate (ldef)</option>
-                      <option value="pbzip2">pbzip2</option>
-                      <option value="bzip2">bzip2</option>
+                <option value="none">None (Uncompressed)</option>
+                <option value="zstd">Zstandard (zstd)</option>
+                <option value="lzma2">LZMA2</option>
+                <option value="lzma">LZMA</option>
+                <option value="zlib">zlib</option>
+                <option value="ldef">libdeflate (ldef)</option>
+                <option value="pbzip2">pbzip2</option>
+                <option value="bzip2">bzip2</option>
               </select>
             </div>
           </div>

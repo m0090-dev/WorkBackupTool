@@ -3,6 +3,8 @@ import {
   GetFileSize,
   OnFileDrop,
   RebuildArchiveCaches,
+  GetRebuildCacheOnStartup,
+  GetStartupCacheLimit,
 } from "./tauri_exports";
 
 import {
@@ -23,10 +25,14 @@ import {
   showFloatingMessage,
   showFloatingError,
   UpdateAllUI,
+  updateStartupProgress,
+  showStartupOverlay,
+  hideStartupOverlay,
 } from "./ui";
 
 import { setupGlobalEvents } from "./events";
 import { switchTab } from "./actions";
+
 // --- 初期化ロジック ---
 async function Initialize() {
   const data = await GetI18N();
@@ -34,22 +40,55 @@ async function Initialize() {
   if (!data) return;
 
   // stateにi18nデータをセット
-
   setI18N(data);
 
   await restoreSession();
+  showStartupOverlay();
+  await performStartupCacheRebuild();
 
-  try {
-    for (const tab of tabs) {
-      if (tab.workFile) {
-        // バックアップディレクトリ内の .zip / .tar.gz を .wbt_cache に展開
-        await RebuildArchiveCaches(tab.workFile, tab.backupDir);
-      }
-    }
-  } catch (e) {
-    console.error("Archive cache failed:", e);
+  setupInitialUI();
+
+  setupDragAndDrop();
+
+  setupGlobalEvents();
+
+  // 先頭タブを必ずアクティブにする
+  if (tabs.length > 0 && !tabs.some((t) => t.active)) {
+    switchTab(tabs[0].id);
+  } else {
+    UpdateAllUI();
   }
+  hideStartupOverlay();
+}
 
+/**
+ * 起動時のキャッシュ再構築処理
+ */
+async function performStartupCacheRebuild() {
+  const shouldRebuild = await GetRebuildCacheOnStartup();
+  if (!shouldRebuild) return;
+
+  const limit = await GetStartupCacheLimit();
+  const eligibleTabs = tabs.filter((t) => t.workFile);
+  let processedCount = 0;
+
+  for (const tab of eligibleTabs) {
+    if (limit > 0 && processedCount >= limit) break;
+
+    // プログレスバーの表示更新（関数があれば実行）
+    if (typeof updateStartupProgress === "function") {
+      updateStartupProgress(processedCount + 1, eligibleTabs.length);
+    }
+    try {
+      await RebuildArchiveCaches(tab.workFile, tab.backupDir || "");
+    } catch (e) {
+      console.error(`Cache rebuild failed for ${tab.workFile}:`, e);
+    }
+    processedCount++;
+  }
+}
+
+function setupInitialUI() {
   const setText = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text || "";
@@ -108,6 +147,13 @@ async function Initialize() {
 
   setText("drop-cancel", i18n.dropCancel);
 
+  setText("settings-title", i18n.advancedSettingsTitle);
+  setText("label-startup-cache-limit", i18n.startupCacheLimit);
+  setText("hint-cache-limit", i18n.startupCacheLimitHint);
+  setText("label-threshold", i18n.thresholdLabel);
+  setText("hint-threshold", i18n.thresholdHint);
+  setText("settings-close-btn", i18n.closeBtn);
+
   // Compact用テキスト
 
   setQueryText(".compact-title-text", i18n.compactMode || "Compact");
@@ -149,17 +195,6 @@ async function Initialize() {
       recentSec.style.display = "none";
       recentSec.style.opacity = "0";
     });
-  }
-
-  setupDragAndDrop();
-
-  setupGlobalEvents(); // events.js からイベントリスナーを登録
-
-  // 先頭タブを必ずアクティブにする
-  if (tabs.length > 0 && !tabs.some((t) => t.active)) {
-    switchTab(tabs[0].id);
-  } else {
-    UpdateAllUI();
   }
 }
 

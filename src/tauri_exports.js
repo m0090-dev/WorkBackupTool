@@ -42,12 +42,28 @@ export async function GetConfigDir() {
   return await invoke("get_config_dir");
 }
 
+export async function GetConfig() {
+  return await invoke("get_config");
+}
+
+/**
+ * 設定値を個別に更新して保存する
+ * @param {string} key
+ * @param {any} value
+ */
+export async function UpdateConfigValue(key, value) {
+  return await invoke("update_config_value", { key, value });
+}
+
 export async function GetRestorePreviousState() {
   return await invoke("get_restore_previous_state");
 }
 
-export async function GetBsdiffMaxFileSize() {
-  return await invoke("get_bsdiff_max_file_size");
+export async function GetRebuildCacheOnStartup() {
+  return await invoke("get_rebuild_cache_on_startup");
+}
+export async function GetStartupCacheLimit() {
+  return await invoke("get_startup_cache_limit");
 }
 
 /**
@@ -153,8 +169,16 @@ export async function ClearAllCaches(backupDir, workFile) {
 }
 
 // 特定のアーカイブを展開してキャッシュを作成（パスを返す）
-export async function PrepareArchiveCache(archivePath,workFile, password = null) {
-  return await invoke("prepare_archive_cache", { archivePath,workFile, password });
+export async function PrepareArchiveCache(
+  archivePath,
+  workFile,
+  password = null,
+) {
+  return await invoke("prepare_archive_cache", {
+    archivePath,
+    workFile,
+    password,
+  });
 }
 
 // 指定ディレクトリ内のアーカイブを全てスキャンしてキャッシュを再構築

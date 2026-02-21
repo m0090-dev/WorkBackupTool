@@ -2,12 +2,13 @@
   "language": "ja",
   "alwaysOnTop": false,
   "restorePreviousState": true,
-  "bsdiffMaxFileSize": 100000000,
   "autoBaseGenerationThreshold": 0.6,
   "trayMode": false,
   "compactMode": false,
   "useSameDirForTemp": false,
   "trayBackupMode": "diff",
+  "rebuildCacheOnStartup": true,
+  "startupCacheLimit": 5,
   "i18n": {
     "en": {
       "settings": "Settings",
@@ -98,7 +99,18 @@
       "archiveWarningText": "Archiving will delete the original generation folders (baseN). Restoring from history will still be possible.",
       "noArchiveCandidates": "No generation folders available to archive.",
       "archiveExecuteBtn": "Execute Archive",
-      "archived_generation_extracting": "Archived Generation (Extracting...)"
+      "archived_generation_extracting": "Archived Generation (Extracting...)",
+      "rebuildCacheOnStartup": "Rebuild cache on startup",
+      "startupCacheLimit": "Max cache processing limit",
+      "startupCacheLimitHint": "(0 for unlimited. Reducing this speeds up startup)",
+      "loadingTitle": "Initializing",
+      "loadingStatus": "Processing archive caches... ({current}/{total})",
+      "pleaseWait": "Please wait a moment",
+      "advancedSettingsTitle": "Advanced Settings",
+      "thresholdLabel": "Auto Base Generation Threshold",
+      "thresholdHint": "Diff ratio to trigger base generation (0.1 - 1.0)",
+      "settingsSaved": "Settings applied and saved.",
+      "closeBtn": "Close"
     },
     "ja": {
       "settings": "設定",
@@ -189,7 +201,18 @@
       "archiveWarningText": "アーカイブ化すると元の世代フォルダ（baseN）は削除されます。履歴からの復元は引き続き可能です。",
       "noArchiveCandidates": "アーカイブ可能な世代フォルダが見つかりません。",
       "archiveExecuteBtn": "アーカイブ実行",
-      "archived_generation_extracting": "世代アーカイブ (一時展開中)"
+      "archived_generation_extracting": "世代アーカイブ (一時展開中)",
+      "rebuildCacheOnStartup": "起動時にキャッシュを再構築する",
+      "startupCacheLimit": "起動時のキャッシュ処理数上限",
+      "startupCacheLimitHint": "(0で無制限。少なくすると起動が早くなります)",
+      "loadingTitle": "初期化中",
+      "loadingStatus": "アーカイブキャッシュを処理しています... ({current}/{total})",
+      "pleaseWait": "そのまましばらくお待ちください",
+      "advancedSettingsTitle": "詳細設定",
+      "thresholdLabel": "自動ベース生成閾値",
+      "thresholdHint": "ベース生成を実行する差分比率 (0.1 〜 1.0)",
+      "settingsSaved": "設定を保存しました。",
+      "closeBtn": "閉じる"
     }
   }
 }

@@ -128,7 +128,11 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
         }
 
         // --- 4. 最前面表示 / コンパクトモード / 状態復元 ---
-        "always_on_top" | "compact_mode" | "restore_state" | "use_same_dir_for_temp" => {
+        "always_on_top"
+        | "compact_mode"
+        | "restore_state"
+        | "use_same_dir_for_temp"
+        | "rebuild_cache_on_startup" => {
             // スコープ（波括弧）を使って、ロックの寿命を短くします
             let (next_val, id_clone) = {
                 let mut cfg = state.config.lock().unwrap();
@@ -148,6 +152,10 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                     "use_same_dir_for_temp" => {
                         cfg.use_same_dir_for_temp = !cfg.use_same_dir_for_temp;
                         cfg.use_same_dir_for_temp
+                    }
+                    "rebuild_cache_on_startup" => {
+                        cfg.rebuild_cache_on_startup = !cfg.rebuild_cache_on_startup;
+                        cfg.rebuild_cache_on_startup
                     }
                     _ => false,
                 };
@@ -185,6 +193,10 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
         }
         "change_backup" => {
             let _ = app.emit("tray-change-backup-clicked", ());
+        }
+        // 詳細設定
+        "advanced_settings" => {
+            let _ = app.emit("open-advanced-settings", ());
         }
 
         "quit" => {
@@ -404,7 +416,6 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            get_config,
             set_always_on_top,
             get_restore_previous_state,
             get_auto_base_generation_threshold,
@@ -430,7 +441,11 @@ pub fn run() {
             get_generation_folders,
             clear_all_caches,
             rebuild_archive_caches,
-            prepare_archive_cache
+            prepare_archive_cache,
+            get_rebuild_cache_on_startup,
+            get_startup_cache_limit,
+            get_config,
+            update_config_value
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
