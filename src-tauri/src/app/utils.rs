@@ -5,8 +5,10 @@ use chrono::Local;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::fs::File;
+use std::hash::{Hash, Hasher};
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use tar::Archive;
@@ -381,4 +383,79 @@ pub fn create_tray_menu<R: tauri::Runtime>(
         .separator()
         .item(&tauri::menu::MenuItemBuilder::with_id("quit", t("quit")).build(app)?)
         .build()
+}
+
+/// フォルダをZIP圧縮する内部関数
+pub fn compress_dir_zip(src_dir: &Path, dst_file: &Path, password: &str) -> Result<(), String> {
+    let file = File::create(dst_file).map_err(|e| e.to_string())?;
+    let mut zip = zip::ZipWriter::new(file);
+
+    // パスワードがある場合のみAESを有効化
+    let mut options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated)
+        .unix_permissions(0o644);
+
+    if !password.is_empty() {
+        options = options.with_aes_encryption(zip::AesMode::Aes256, password);
+    }
+
+    let walk = walkdir::WalkDir::new(src_dir);
+    for entry in walk.into_iter().filter_map(|e| e.ok()) {
+        let path = entry.path();
+        // パス計算（src_dirの親からの相対にすると展開時にフォルダごと戻る）
+        let name = path
+            .strip_prefix(src_dir.parent().unwrap())
+            .map_err(|e| e.to_string())?;
+        let name_str = name.to_string_lossy().to_string();
+
+        if path.is_file() {
+            zip.start_file(name_str, options)
+                .map_err(|e| e.to_string())?;
+            let mut f = File::open(path).map_err(|e| e.to_string())?;
+            std::io::copy(&mut f, &mut zip).map_err(|e| e.to_string())?;
+        } else if !name.as_os_str().is_empty() {
+            zip.add_directory(name_str, options)
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    zip.finish().map_err(|e| e.to_string())?;
+    Ok(())
+}
+/// フォルダをTAR.GZ圧縮する内部関数
+pub fn compress_dir_tar(src_dir: &Path, dst_file: &Path) -> Result<(), String> {
+    let file = File::create(dst_file).map_err(|e| e.to_string())?;
+    let enc = GzEncoder::new(file, Compression::default());
+    let mut tar = Builder::new(enc);
+
+    // src_dir の終端（フォルダ名）をアーカイブ内のルートにする
+    let folder_name = src_dir.file_name().ok_or("Invalid folder name")?;
+    tar.append_dir_all(folder_name, src_dir)
+        .map_err(|e| format!("TAR追加失敗: {}", e))?;
+
+    tar.finish().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn get_cache_root(use_same_dir: bool, backup_dir: &str, work_file: &str) -> PathBuf {
+    if use_same_dir {
+        // 1. バックアップディレクトリと同じ場所（.wbt_cache）
+        if backup_dir.is_empty() {
+            default_backup_dir(work_file).join(".wbt_cache")
+        } else {
+            Path::new(backup_dir).join(".wbt_cache")
+        }
+    } else {
+        // 2. OSのTempディレクトリを使う場合（衝突回避のためハッシュ付与）
+        let mut s = DefaultHasher::new();
+        work_file.hash(&mut s);
+        let hash_val = format!("{:x}", s.finish());
+
+        let file_stem = Path::new(work_file)
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy();
+
+        // 例: temp/wbt_cache_myart_a1b2c3d4
+        std::env::temp_dir().join(format!("wbt_cache_{}_{}", file_stem, &hash_val[..8]))
+    }
 }

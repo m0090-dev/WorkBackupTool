@@ -10,7 +10,6 @@
   display: none !important;
 }
 
-
 body.compact-mode .container,
 body.compact-mode .status-panel,
 body.compact-mode .tabs-bar,
@@ -40,7 +39,6 @@ body.compact-mode #compact-view {
   gap: 4px;
   position: relative;
   overflow: hidden !important;
-
 }
 
 /* =============================================
@@ -205,7 +203,5 @@ body.compact-mode .modal-btn {
   box-shadow: 0 2px 0 #1e5c3a;
 }
 .compact-row {
-  margin-bottom: 2px !important;     /* 8px → 4px */
+  margin-bottom: 2px !important; /* 8px → 4px */
 }
-
-

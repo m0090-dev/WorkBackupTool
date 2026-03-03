@@ -45,7 +45,21 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
     let lang_ja = CheckMenuItemBuilder::with_id("lang_ja", t("japanese"))
         .checked(config.language == "ja")
         .build(app)?;
-
+    let use_same_dir_for_temp =
+        CheckMenuItemBuilder::with_id("use_same_dir_for_temp", t("useSameDirForTemp"))
+            .checked(config.use_same_dir_for_temp)
+            .build(app)?;
+    let rebuild_cache_on_startup =
+        CheckMenuItemBuilder::with_id("rebuild_cache_on_startup", t("rebuildCacheOnStartup"))
+            .checked(config.rebuild_cache_on_startup)
+            .build(app)?;
+    let advanced_settings_title = MenuItem::with_id(
+        app,
+        "advanced_settings",
+        t("advancedSettingsTitle"),
+        true,
+        None::<&str>,
+    )?;
     // quit の作成
     let quit = MenuItem::with_id(
         app,
@@ -71,8 +85,11 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .item(&restore_state)
         .item(&compact_mode)
         .item(&tray_mode)
+        .item(&use_same_dir_for_temp)
+        .item(&rebuild_cache_on_startup)
         .item(&lang_en)
         .item(&lang_ja)
+        .item(&advanced_settings_title)
         .item(&quit)
         .build()?;
 

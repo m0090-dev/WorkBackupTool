@@ -42,12 +42,28 @@ export async function GetConfigDir() {
   return await invoke("get_config_dir");
 }
 
+export async function GetConfig() {
+  return await invoke("get_config");
+}
+
+/**
+ * 設定値を個別に更新して保存する
+ * @param {string} key
+ * @param {any} value
+ */
+export async function UpdateConfigValue(key, value) {
+  return await invoke("update_config_value", { key, value });
+}
+
 export async function GetRestorePreviousState() {
   return await invoke("get_restore_previous_state");
 }
 
-export async function GetBsdiffMaxFileSize() {
-  return await invoke("get_bsdiff_max_file_size");
+export async function GetRebuildCacheOnStartup() {
+  return await invoke("get_rebuild_cache_on_startup");
+}
+export async function GetStartupCacheLimit() {
+  return await invoke("get_startup_cache_limit");
 }
 
 /**
@@ -115,4 +131,57 @@ export async function GetBackupList(workFile, backupDir) {
 
 export async function ApplyMultiDiff(workFile, diffPaths) {
   return await invoke("apply_multi_diff", { workFile, diffPaths });
+}
+
+/**
+ * 世代アーカイブ用：フォルダリストの取得
+ */
+export async function GetGenerationFolders(workFile, backupDir) {
+  return await invoke("get_generation_folders", { workFile, backupDir });
+}
+
+/**
+ * 世代アーカイブ用：圧縮実行
+ */
+export async function ArchiveGeneration(
+  targetN,
+  format,
+  workFile,
+  backupDir,
+  password = null,
+) {
+  return await invoke("archive_generation", {
+    targetN,
+    format,
+    workFile,
+    backupDir,
+    password,
+  });
+}
+
+/**
+ * キャッシュ関連コマンド
+ */
+
+// 全ての展開済みキャッシュを削除
+export async function ClearAllCaches(backupDir, workFile) {
+  return await invoke("clear_all_caches", { backupDir, workFile });
+}
+
+// 特定のアーカイブを展開してキャッシュを作成（パスを返す）
+export async function PrepareArchiveCache(
+  archivePath,
+  workFile,
+  password = null,
+) {
+  return await invoke("prepare_archive_cache", {
+    archivePath,
+    workFile,
+    password,
+  });
+}
+
+// 指定ディレクトリ内のアーカイブを全てスキャンしてキャッシュを再構築
+export async function RebuildArchiveCaches(workFile, backupDir) {
+  return await invoke("rebuild_archive_caches", { workFile, backupDir });
 }

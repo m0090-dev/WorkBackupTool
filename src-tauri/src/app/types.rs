@@ -4,8 +4,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+// 設定ファイル情報
 #[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")] // これで基本はキャメルケースになる
+#[serde(rename_all = "camelCase")]
 pub struct AppConfig {
     pub language: String,
     pub always_on_top: bool,
@@ -16,9 +17,12 @@ pub struct AppConfig {
     #[serde(skip_serializing, default)]
     pub compact_mode: bool,
     pub tray_backup_mode: String,
+    pub use_same_dir_for_temp: bool,
+    pub rebuild_cache_on_startup: bool,
+    pub startup_cache_limit: usize,
 }
 
-// JS側で確実に受け取るための構造体
+// 差分ファイル情報
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DiffFileInfo {
@@ -36,7 +40,8 @@ pub struct BackupItem {
     pub file_path: String,
     pub timestamp: String,
     pub file_size: i64,
-    pub generation: i32, // 世代番号
+    pub generation: i32,
+    pub is_archived: bool,
 }
 
 // 世代管理を司る構造体 (JSに送らない場合は Serialize 不要ですが、一応付与)
