@@ -663,7 +663,7 @@ export function toggleProgress(show, text = "") {
       if (cSts) cSts.textContent = readyText;
       if (cBar) cBar.style.width = "0%";
       if (cBtn) cBtn.disabled = false;
-    }, 500);
+    }, 1000);
   }
 }
 

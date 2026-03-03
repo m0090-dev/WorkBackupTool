@@ -36,10 +36,10 @@
   box-shadow: none;
 }
 .execute-btn:disabled {
-  background-color: #ccc;
+  background-color: #ccc !important;
   cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
+  box-shadow: none !important;
+  transform: none !important;
 }
 
 /* --- タブ機能 --- */
