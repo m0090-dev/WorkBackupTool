@@ -21,15 +21,19 @@ import {
   UpdateHistory,
   toggleProgress,
   showFloatingMessage,
-  UpdateAllUI
+  UpdateAllUI,
 } from "./ui";
 
 // --- タブ操作ロジック ---
 export function switchTab(id) {
   tabs.forEach((t) => (t.active = t.id == id));
   // DEBUG
-  const activeTab = tabs.find(t => t.active);
-  console.log("DEBUG JS Switched to:", activeTab ? activeTab.id : "NONE", activeTab?.workFile);
+  const activeTab = tabs.find((t) => t.active);
+  console.log(
+    "DEBUG JS Switched to:",
+    activeTab ? activeTab.id : "NONE",
+    activeTab?.workFile,
+  );
   UpdateAllUI();
   saveCurrentSession();
 }
@@ -87,14 +91,14 @@ export async function OnExecute() {
     alert(i18n.selectFileFirst);
     return;
   }
-  
-  UpdateAllUI();
   const mode = tab.backupMode;
   // --- 2. 差分設定の取得 (既存ロジック維持 + 圧縮設定追加) ---
   let algo = tab.diffAlgo || "hdiff";
   const compress = tab.compressMode || "zstd";
   const archiveFormat = tab.archiveFormat || "zip";
-
+  const pwdEl = document.getElementById("archive-password");
+  const pwdValue = pwdEl ? pwdEl.value : "";
+  UpdateAllUI();
   toggleProgress(true, i18n.processingMsg);
   try {
     let successText = "";
@@ -107,10 +111,7 @@ export async function OnExecute() {
     // --- B. アーカイブモード ---
     else if (mode === "archive") {
       let fmt = archiveFormat;
-      let pwd =
-        fmt === "zip-pass"
-          ? document.getElementById("archive-password").value
-          : "";
+      let pwd = (fmt === "zip-pass") ? pwdValue : ""; 
       if (fmt === "zip-pass") fmt = "zip";
       await ArchiveBackupFile(tab.workFile, tab.backupDir, fmt, pwd);
       successText = i18n.archiveBackupSuccess.replace(

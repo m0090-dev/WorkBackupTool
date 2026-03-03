@@ -6,6 +6,7 @@ import {
   ReadTextFile,
   RestoreBackup,
   EventsOn,
+  ArchiveGeneration,
 } from "./tauri_exports";
 
 import {
@@ -23,9 +24,12 @@ import {
   toggleProgress,
   showFloatingMessage,
   renderRecentFiles,
+  showArchiveModal,
+  showSettingsModal,
+  handleSettingChange,
 } from "./ui";
 
-import { addTab, OnExecute,switchTab } from "./actions";
+import { addTab, OnExecute, switchTab } from "./actions";
 import { ask } from "@tauri-apps/plugin-dialog";
 import {
   isPermissionGranted,
@@ -206,6 +210,75 @@ export function setupGlobalEvents() {
       }
       return;
     }
+    if (id == "generation-archive-btn") {
+      const tab = getActiveTab();
+
+      if (!tab || !tab.workFile) {
+        // ファイルが選択されていない場合はエラー表示して中断
+        showFloatingError(
+          i18n?.selectFileFirst || "Please select a work file first.",
+        );
+        return;
+      }
+
+      // モーダルを表示してリストを更新
+      showArchiveModal();
+    }
+
+    if (id == "archive-cancel-btn") {
+      document.getElementById("archive-modal").classList.add("hidden");
+    } else if (id == "archive-modal") {
+      if (e.target.id === "archive-modal") {
+        e.target.classList.add("hidden");
+      }
+    }
+
+    if (id === "archive-execute-btn") {
+      const selectedChecks = document.querySelectorAll(
+        ".archive-gen-check:checked",
+      );
+      if (selectedChecks.length === 0) {
+        showFloatingError("Please select at least one generation.");
+        return;
+      }
+
+      const format = document.getElementById("archive-format-select").value;
+      const tab = getActiveTab();
+
+      // 進行状況がわかるようにプログレスを表示
+      toggleProgress(true, "Archiving...");
+
+      try {
+        for (const cb of selectedChecks) {
+          // チェックボックスの value にパスを入れているか、
+          // あるいは ID などから世代番号 (targetN) を特定する
+          // ここでは、リスト生成時に generation 番号を dataset に入れている想定
+          const genNum = parseInt(cb.getAttribute("data-gen"));
+
+          await ArchiveGeneration(genNum, format, tab.workFile, tab.backupDir);
+        }
+
+        toggleProgress(false);
+        showFloatingMessage("Archiving completed.");
+        document.getElementById("archive-modal").classList.add("hidden");
+
+        // 完了後に履歴リストを更新して、アーカイブされたものがリストから消える（または変わる）のを確認
+        UpdateHistory();
+      } catch (err) {
+        toggleProgress(false);
+        console.error(err);
+        alert("Archive Error: " + err);
+      }
+      return;
+    }
+    if (id === "settings-close-btn") {
+      document.getElementById("settings-modal").classList.add("hidden");
+    } else if (id === "settings-modal") {
+      // モーダル外側（オーバーレイ）をクリックしたときも閉じる
+      if (e.target.id === "settings-modal") {
+        e.target.classList.add("hidden");
+      }
+    }
   });
 
   // --- 変更イベントリスナー ---
@@ -248,6 +321,25 @@ export function setupGlobalEvents() {
       if (radio) {
         radio.checked = true;
         if (tab) tab.backupMode = value;
+      }
+    }
+    if (id == "archive-select-all-check") {
+      const checks = document.querySelectorAll(".archive-gen-check");
+      checks.forEach((c) => (c.checked = e.target.checked));
+    }
+    if (id === "input-cache-limit") {
+      const val = parseInt(value, 10);
+      if (!isNaN(val) && val >= 0) {
+        handleSettingChange("startupCacheLimit", val);
+      }
+    }
+    if (id === "input-threshold") {
+      const val = parseFloat(value);
+      if (!isNaN(val)) {
+        // 0.1 ～ 1.0 にクランプ
+        const clamped = Math.min(Math.max(val, 0.1), 1.0);
+        e.target.value = clamped; // UI上の表示も補正
+        handleSettingChange("autoBaseGenerationThreshold", clamped);
       }
     }
   });
@@ -336,6 +428,9 @@ export function setupGlobalEvents() {
       document.body.classList.remove("compact-mode");
       if (view) view.classList.add("hidden");
     }
+  });
+  EventsOn("open-advanced-settings", async () => {
+    await showSettingsModal();
   });
   // --- 検索窓の入力監視 ---
   const searchInput = document.getElementById("history-search");

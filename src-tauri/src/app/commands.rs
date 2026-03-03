@@ -30,6 +30,30 @@ pub fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
 }
 
 #[tauri::command]
+pub async fn update_config_value(
+    state: tauri::State<'_, AppState>,
+    key: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    let mut cfg = state.config.lock().unwrap();
+
+    match key.as_str() {
+        // usize用
+        "startupCacheLimit" => {
+            cfg.startup_cache_limit = value.as_u64().unwrap_or(0) as usize;
+        }
+        // f64用 (閾値 0.0 ~ 1.0)
+        "autoBaseGenerationThreshold" => {
+            cfg.auto_base_generation_threshold = value.as_f64().unwrap_or(0.6);
+        }
+        _ => return Err(format!("Unknown numeric config key: {}", key)),
+    }
+
+    drop(cfg);
+    state.save()
+}
+
+#[tauri::command]
 pub fn set_always_on_top(
     window: Window,
     state: State<'_, AppState>,
@@ -57,6 +81,16 @@ pub fn get_restore_previous_state(state: State<'_, AppState>) -> bool {
 #[tauri::command]
 pub fn get_auto_base_generation_threshold(state: State<'_, AppState>) -> f64 {
     state.config.lock().unwrap().auto_base_generation_threshold
+}
+
+#[tauri::command]
+pub fn get_rebuild_cache_on_startup(state: State<'_, AppState>) -> bool {
+    state.config.lock().unwrap().rebuild_cache_on_startup
+}
+
+#[tauri::command]
+pub fn get_startup_cache_limit(state: State<'_, AppState>) -> usize {
+    state.config.lock().unwrap().startup_cache_limit
 }
 
 /// 特定のキーに対応する翻訳テキストを返す (Goの GetLanguageText 相当)
@@ -533,8 +567,14 @@ pub fn write_text_file(path: String, content: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_backup_list(work_file: String, backup_dir: String) -> Result<Vec<BackupItem>, String> {
+pub fn get_backup_list(
+    app: AppHandle,
+    work_file: String,
+    backup_dir: String,
+) -> Result<Vec<BackupItem>, String> {
     let mut list = Vec::new();
+    let state = app.state::<AppState>();
+    let config = state.config.lock().unwrap();
 
     // --- 1. ルートディレクトリの決定 ---
     let root = if backup_dir.is_empty() {
@@ -546,6 +586,9 @@ pub fn get_backup_list(work_file: String, backup_dir: String) -> Result<Vec<Back
     if !root.exists() {
         return Ok(list);
     }
+
+    // キャッシュルートの決定
+    let cache_root = utils::get_cache_root(config.use_same_dir_for_temp, &backup_dir, &work_file);
 
     // ファイル名（拡張子なし）を取得
     let file_path_obj = Path::new(&work_file);
@@ -587,52 +630,71 @@ pub fn get_backup_list(work_file: String, backup_dir: String) -> Result<Vec<Back
             let f_name_lower = file_name.to_lowercase();
             let base_lower = base_name_only.to_lowercase();
             if f_name_lower.contains(&base_lower) && is_valid_ext(file_name) {
-                // fs::metadata で確実に最新のサイズを取得
                 if let Ok(metadata) = fs::metadata(&path) {
-                    list.push(create_backup_item(file_name, &path, &metadata, 0));
+                    // 通常のルート直下ファイルはアーカイブフラグ false
+                    list.push(create_backup_item(file_name, &path, &metadata, 0, false));
                 }
             }
         }
     }
 
     // --- 2. すべての世代フォルダ(base*)をスキャン ---
-    if let Ok(entries) = fs::read_dir(&root) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if !path.is_dir() {
-                continue;
-            }
+    // 通常のroot直下と、アーカイブ展開済みのcache_rootの両方を走査対象にする
+    let scan_roots = vec![
+        (&root, false), // (パス, is_archived_flag)
+        (&cache_root, true),
+    ];
 
-            let dir_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    for (current_root, is_archived_flag) in scan_roots {
+        if !current_root.exists() {
+            continue;
+        }
 
-            if dir_name.starts_with("base") {
-                // 【修正】base1_2024... から "1" だけを取り出すロジック
-                let gen_idx: i32 = dir_name
-                    .strip_prefix("base")
-                    .and_then(|s| s.split('_').next()) // アンダーバーで区切って最初の要素を取る
-                    .and_then(|s| s.parse().ok())
-                    .unwrap_or(0);
+        if let Ok(entries) = fs::read_dir(current_root) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if !path.is_dir() {
+                    continue;
+                }
 
-                if let Ok(gen_entries) = fs::read_dir(&path) {
-                    for gen_entry in gen_entries.flatten() {
-                        let gen_path = gen_entry.path();
-                        let f_name = gen_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+                let dir_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
 
-                        // 除外条件
-                        if gen_path.is_dir()
-                            || f_name.ends_with(".base")
-                            || f_name == "checksum.json"
-                        {
-                            continue;
-                        }
-                        let f_name_lower = f_name.to_lowercase();
-                        let base_lower = base_name_only.to_lowercase();
-                        if f_name_lower.contains(&base_lower) && is_valid_ext(f_name) {
-                            // 世代フォルダ内のファイルも fs::metadata でサイズを確定
-                            if let Ok(metadata) = fs::metadata(&gen_path) {
-                                list.push(create_backup_item(
-                                    f_name, &gen_path, &metadata, gen_idx,
-                                ));
+                if dir_name.starts_with("base") {
+                    let gen_idx: i32 = dir_name
+                        .strip_prefix("base")
+                        .and_then(|s| s.split('_').next())
+                        .and_then(|s| s.parse().ok())
+                        .unwrap_or(0);
+
+                    if let Ok(gen_entries) = fs::read_dir(&path) {
+                        for gen_entry in gen_entries.flatten() {
+                            let gen_path = gen_entry.path();
+                            if gen_path.is_dir() {
+                                continue;
+                            }
+                            let f_name =
+                                gen_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+
+                            // 除外条件
+                            if gen_path.is_dir() || f_name.ends_with(".base") {
+                                continue;
+                            }
+                            let f_name_lower = f_name.to_lowercase();
+                            let base_lower = base_name_only.to_lowercase();
+                            if f_name_lower.contains(&base_lower) && is_valid_ext(f_name) {
+                                if let Ok(metadata) = fs::metadata(&gen_path) {
+                                    let pure_name = gen_path
+                                        .file_name()
+                                        .and_then(|s| s.to_str())
+                                        .unwrap_or(f_name);
+                                    list.push(create_backup_item(
+                                        pure_name,
+                                        &gen_path,
+                                        &metadata,
+                                        gen_idx,
+                                        is_archived_flag, // ここで判定値を注入
+                                    ));
+                                }
                             }
                         }
                     }
@@ -650,7 +712,13 @@ fn is_valid_backup_ext(name: &str, exts: &[&str]) -> bool {
 }
 
 // ヘルパー関数: アイテム生成 (日付フォーマット含む)
-fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32) -> BackupItem {
+fn create_backup_item(
+    name: &str,
+    path: &Path,
+    meta: &fs::Metadata,
+    gen: i32,
+    is_archived: bool,
+) -> BackupItem {
     let modified: DateTime<Local> = meta
         .modified()
         .unwrap_or_else(|_| std::time::SystemTime::now())
@@ -661,6 +729,7 @@ fn create_backup_item(name: &str, path: &Path, meta: &fs::Metadata, gen: i32) ->
         timestamp: modified.format("%Y-%m-%d %H:%M:%S").to_string(),
         file_size: meta.len() as i64,
         generation: gen,
+        is_archived: is_archived,
     }
 }
 
@@ -771,5 +840,331 @@ pub async fn restore_backup(
     // 4. フルコピー (.clip / .psd 等)
     // 既存の utils::copy_file を使用
     utils::copy_file(&path, &restored_path)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_generation_folders(
+    work_file: String,
+    backup_dir: String,
+) -> Result<Vec<BackupItem>, String> {
+    let root = if backup_dir.is_empty() {
+        utils::default_backup_dir(&work_file)
+    } else {
+        PathBuf::from(&backup_dir)
+    };
+
+    if !root.exists() {
+        return Ok(Vec::new());
+    }
+
+    // 既存の get_latest_generation を使って「最新」を特定しておく
+    // (最新のフォルダは現在進行系で使っているのでアーカイブ対象から外すため)
+    let latest_info = auto_generation::get_latest_generation(&root)?;
+    let latest_path = latest_info.map(|i| i.dir_path);
+
+    let mut list = Vec::new();
+    let entries = fs::read_dir(&root).map_err(|e| e.to_string())?;
+    let re = regex::Regex::new(r"^base(\d+)_").unwrap();
+
+    for entry in entries.flatten() {
+        if entry.file_type().map_or(false, |t| t.is_dir()) {
+            let path = entry.path();
+            let name = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+
+            if let Some(caps) = re.captures(&name) {
+                // 最新のフォルダ（進行中の世代）はリストから除外する
+                if let Some(ref lp) = latest_path {
+                    if &path == lp {
+                        continue;
+                    }
+                }
+
+                let gen_idx = caps[1].parse::<i32>().unwrap_or(0);
+                let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+                let modified: chrono::DateTime<chrono::Local> = metadata
+                    .modified()
+                    .map(|t| t.into())
+                    .unwrap_or_else(|_| chrono::Local::now());
+
+                // 既存の BackupItem 構造体を流用（JS側で扱いやすいため）
+                list.push(BackupItem {
+                    file_name: name,
+                    file_path: path.to_string_lossy().to_string(),
+                    timestamp: modified.format("%Y/%m/%d %H:%M").to_string(),
+                    file_size: 0, // フォルダサイズ計算は重いので0でOK
+                    generation: gen_idx,
+                    is_archived: false,
+                });
+            }
+        }
+    }
+
+    // 世代が古い順に並べて表示したい
+    list.sort_by(|a, b| a.generation.cmp(&b.generation));
+    Ok(list)
+}
+
+#[tauri::command]
+pub async fn archive_generation(
+    target_n: u32,
+    format: String,
+    work_file: String,
+    backup_dir: String,
+    password: Option<String>,
+) -> Result<(), String> {
+    let backup_path = if backup_dir.is_empty() {
+        utils::default_backup_dir(&work_file)
+    } else {
+        PathBuf::from(&backup_dir)
+    };
+    let pwd = password.unwrap_or_default();
+
+    // 1. 対象となる世代フォルダ (baseN_timestamp) を特定
+    // backup_dir 直下を走査し、"baseN_" で始まるディレクトリを探す
+    let entries = fs::read_dir(&backup_path)
+        .map_err(|e| format!("バックアップディレクトリにアクセスできません: {}", e))?;
+
+    let prefix = format!("base{}_", target_n);
+    let mut target_folder_path = None;
+
+    for entry in entries.flatten() {
+        if let Ok(file_type) = entry.file_type() {
+            if file_type.is_dir() {
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if name.starts_with(&prefix) {
+                    target_folder_path = Some(entry.path());
+                    break;
+                }
+            }
+        }
+    }
+
+    let src_path = target_folder_path.ok_or_else(|| {
+        format!(
+            "世代 {} のフォルダが見つかりません (接頭辞: {})",
+            target_n, prefix
+        )
+    })?;
+
+    // 2. 出力ファイル名の決定 (元フォルダ名に拡張子を付与)
+    let folder_name = src_path.file_name().unwrap().to_string_lossy();
+    let ext = if format == "tar" { "tar.gz" } else { "zip" };
+    let archive_filename = format!("{}.{}", folder_name, ext);
+    let dst_path = backup_path.join(&archive_filename);
+
+    // 3. 圧縮実行
+    if format == "tar" {
+        utils::compress_dir_tar(&src_path, &dst_path)?;
+    } else {
+        utils::compress_dir_zip(&src_path, &dst_path, &pwd)?;
+    }
+
+    // 4. 安全策: 成功確認（ファイル存在とサイズ）後に元フォルダを削除
+    if dst_path.exists() && fs::metadata(&dst_path).map(|m| m.len()).unwrap_or(0) > 0 {
+        fs::remove_dir_all(&src_path).map_err(|e| format!("フォルダ削除に失敗しました: {}", e))?;
+    } else {
+        return Err(
+            "アーカイブ作成に失敗した可能性があるため、元データの削除を中止しました".to_string(),
+        );
+    }
+
+    Ok(())
+}
+#[tauri::command]
+pub fn clear_all_caches(
+    app: AppHandle,
+    backup_dir: String,
+    work_file: String,
+) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let config = state.config.lock().unwrap();
+
+    // 1. utils の共通関数を使用して、この作業ファイル専用のキャッシュパスを取得
+    let cache_root = utils::get_cache_root(config.use_same_dir_for_temp, &backup_dir, &work_file);
+
+    if cache_root.exists() {
+        // 2. 直接削除を試みる
+        if let Err(_) = fs::remove_dir_all(&cache_root) {
+            // 削除に失敗した場合（ファイルが他で開かれている等）、リネームして隔離
+            // これにより、新しい展開処理が古いゴミと混ざるのを確実に防ぐ
+            let timestamp = chrono::Local::now().format("%H%M%S");
+            let old_cache = cache_root.with_extension(format!("old_{}", timestamp));
+
+            if let Err(_) = fs::rename(&cache_root, &old_cache) {
+                // リネームすら失敗する場合は、ユーザーに通知
+                return Err("キャッシュをクリアできませんでした。エクスプローラー等でキャッシュフォルダを閉じてください。".to_string());
+            }
+
+            // リネームに成功した「古いゴミ」は、消せれば消す（失敗しても次回起動時に掃除される）
+            let _ = fs::remove_dir_all(&old_cache);
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn prepare_archive_cache(
+    app: AppHandle,
+    archive_path: String,
+    work_file: String,
+    password: Option<String>,
+) -> Result<String, String> {
+    let state = app.state::<AppState>();
+    let config = state.config.lock().unwrap();
+    let archive_file = Path::new(&archive_path);
+
+    if !archive_file.exists() {
+        return Err("アーカイブファイルが見つかりません".to_string());
+    }
+
+    let backup_dir = archive_file
+        .parent()
+        .unwrap_or(Path::new(""))
+        .to_string_lossy();
+    let cache_root = utils::get_cache_root(config.use_same_dir_for_temp, &backup_dir, &work_file);
+    fs::create_dir_all(&cache_root).map_err(|e| e.to_string())?;
+
+    let f_name_lower = archive_path.to_lowercase();
+
+    if f_name_lower.ends_with(".zip") {
+        let file = File::open(archive_file).map_err(|e| e.to_string())?;
+        let mut archive = zip::ZipArchive::new(file).map_err(|e| e.to_string())?;
+
+        for i in 0..archive.len() {
+            let mut file = if let Some(ref p) = password {
+                archive.by_index_decrypt(i, p.as_bytes())
+            } else {
+                archive.by_index(i)
+            }
+            .map_err(|e| format!("展開エラー: {}", e))?;
+
+            if file.is_dir() {
+                continue;
+            }
+
+            let raw_name = file.name();
+            let sanitized_path_str = raw_name.replace('\u{F05C}', "/").replace('\\', "/");
+            let rel_path = Path::new(&sanitized_path_str);
+
+            // get_backup_list が認識できるように「base...」フォルダを特定して配置
+            let components: Vec<_> = rel_path
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy())
+                .collect();
+
+            // パスの中から最初に見つかった "base" で始まるディレクトリ名を使用
+            if let Some(base_dir_name) = components.iter().find(|c| c.starts_with("base")) {
+                if let Some(file_name) = rel_path.file_name() {
+                    let final_path = cache_root.join(base_dir_name.as_ref()).join(file_name);
+
+                    if let Some(parent) = final_path.parent() {
+                        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                    }
+
+                    let mut outfile = File::create(&final_path).map_err(|e| e.to_string())?;
+                    std::io::copy(&mut file, &mut outfile).map_err(|e| e.to_string())?;
+                }
+            }
+        }
+    } else if f_name_lower.contains(".tar.gz") || f_name_lower.ends_with(".tgz") {
+        let tar_gz = File::open(archive_file).map_err(|e| e.to_string())?;
+        let tar = flate2::read::GzDecoder::new(tar_gz);
+        let mut archive = tar::Archive::new(tar);
+        let entries = archive.entries().map_err(|e| e.to_string())?;
+
+        for entry in entries {
+            let mut entry = entry.map_err(|e| e.to_string())?;
+            if !entry.header().entry_type().is_file() {
+                continue;
+            }
+
+            let path_owned = entry
+                .path()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let sanitized_path_str = path_owned.replace('\u{F05C}', "/").replace('\\', "/");
+            let rel_path = Path::new(&sanitized_path_str);
+
+            let components: Vec<_> = rel_path
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy())
+                .collect();
+
+            if let Some(base_dir_name) = components.iter().find(|c| c.starts_with("base")) {
+                if let Some(file_name) = rel_path.file_name() {
+                    let final_path = cache_root.join(base_dir_name.as_ref()).join(file_name);
+
+                    if let Some(parent) = final_path.parent() {
+                        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                    }
+                    entry.unpack(&final_path).map_err(|e| e.to_string())?;
+                }
+            }
+        }
+    }
+
+    Ok(cache_root.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn rebuild_archive_caches(
+    app: AppHandle,
+    work_file: String,
+    backup_dir: String,
+) -> Result<(), String> {
+    // 1. まず古いキャッシュを一掃（混ざり防止）
+    clear_all_caches(app.clone(), backup_dir.clone(), work_file.clone())?;
+
+    let root = if backup_dir.is_empty() {
+        utils::default_backup_dir(&work_file)
+    } else {
+        PathBuf::from(&backup_dir)
+    };
+
+    if !root.exists() {
+        return Ok(());
+    }
+
+    // ワークファイルのステム名（拡張子なし）を取得して、関連アーカイブか判定する材料にする
+    let file_stem = Path::new(&work_file)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("");
+
+    // 2. アーカイブを探して、正当なものだけ展開
+    if let Ok(entries) = fs::read_dir(root) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+
+            let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+            let f_name_lower = file_name.to_lowercase();
+
+            // 判定条件:
+            // ① 名前が "base" から始まる (世代アーカイブ)
+            // ② かつ、拡張子が zip / tar.gz / tgz である
+            let is_archive_ext = f_name_lower.ends_with(".zip")
+                || f_name_lower.ends_with(".tar.gz")
+                || f_name_lower.ends_with(".tgz");
+
+            if f_name_lower.starts_with("base") && is_archive_ext {
+                // 条件に合致するものだけを、専用サブフォルダへ展開
+                let _ = prepare_archive_cache(
+                    app.clone(),
+                    path.to_string_lossy().to_string(),
+                    work_file.clone(),
+                    None,
+                )
+                .await;
+            }
+        }
+    }
     Ok(())
 }
