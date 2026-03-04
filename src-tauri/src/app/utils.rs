@@ -98,8 +98,8 @@ pub fn default_backup_dir(work_file: &str) -> PathBuf {
         .map(|s| s.to_string_lossy())
         .unwrap_or_default();
 
-    // cg_backup_ファイル名 フォルダ
-    dir.join(format!("cg_backup_{}", file_stem))
+    // wbt_backup_ファイル名 フォルダ
+    dir.join(format!("wbt_backup_{}", file_stem))
 }
 
 /// 単純なファイルコピーを行う (Go版の CopyFile 相当)
