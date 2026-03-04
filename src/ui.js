@@ -23,6 +23,9 @@ import { showMemoDialog } from "./memo.js";
 
 import { switchTab, removeTab, reorderTabs } from "./actions";
 
+let isExecuting = false;
+
+
 // UI描画・メッセージ系（通常版）
 export function showFloatingMessage(text) {
   const msgArea = document.getElementById("message-area");
@@ -461,14 +464,14 @@ export async function UpdateHistory() {
     if (executeBtn) {
       if (isTargetArchivedGeneration) {
         executeBtn.setAttribute("disabled", "");
-      } else {
+      } else if(!isExecuting) {
         executeBtn.removeAttribute("disabled");
       }
     }
     if (compactExecuteBtn) {
       if (isTargetArchivedGeneration) {
         compactExecuteBtn.setAttribute("disabled", "");
-      } else {
+      } else if(!isExecuting)  {
         compactExecuteBtn.removeAttribute("disabled");
       }
     }
@@ -652,6 +655,7 @@ export function toggleProgress(show, text = "") {
   const cBtn = document.getElementById("compact-execute-btn");
 
   if (show) {
+    isExecuting = true;
     if (container) container.style.display = "block";
     if (status) {
       status.style.display = "block";
@@ -666,6 +670,7 @@ export function toggleProgress(show, text = "") {
     if (bar) bar.style.width = "100%";
     if (cBar) cBar.style.width = "100%";
     setTimeout(() => {
+      isExecuting = false;
       if (container) container.style.display = "none";
       if (status) status.style.display = "none";
       if (btn) btn.removeAttribute("disabled");
