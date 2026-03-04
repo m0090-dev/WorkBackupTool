@@ -457,14 +457,19 @@ export async function UpdateHistory() {
     );
     // フィルタで null になった要素を除外して結合
     list.innerHTML = itemsHtml.filter((html) => html !== null).join("");
-    if (executeBtn && !executeBtn.hasAttribute("disabled")) {
+
+    if (executeBtn) {
       if (isTargetArchivedGeneration) {
         executeBtn.setAttribute("disabled", "");
+      } else {
+        executeBtn.removeAttribute("disabled");
       }
     }
-    if (compactExecuteBtn && !compactExecuteBtn.hasAttribute("disabled")) {
+    if (compactExecuteBtn) {
       if (isTargetArchivedGeneration) {
         compactExecuteBtn.setAttribute("disabled", "");
+      } else {
+        compactExecuteBtn.removeAttribute("disabled");
       }
     }
     setupHistoryPopups();
