@@ -171,7 +171,8 @@ export function setupGlobalEvents() {
       await handleSelectBackupDir();
       return;
     } else if (id === "execute-backup-btn" || id === "compact-execute-btn") {
-      OnExecute();
+      if (target.disabled) return;
+      await OnExecute();
       return;
     } else if (id === "refresh-diff-btn") {
       UpdateHistory();

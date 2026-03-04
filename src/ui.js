@@ -398,7 +398,7 @@ export async function UpdateHistory() {
         } else {
           const currentGen = item.generation || 1;
           const isTarget = itemDir === activeDirPath;
-	  if (isTarget && item.isArchived) {
+          if (isTarget && item.isArchived) {
             isTargetArchivedGeneration = true;
           }
           const subLabel = item.isArchived
@@ -457,11 +457,15 @@ export async function UpdateHistory() {
     );
     // フィルタで null になった要素を除外して結合
     list.innerHTML = itemsHtml.filter((html) => html !== null).join("");
-    if (executeBtn) {
-      executeBtn.disabled = isTargetArchivedGeneration;
+    if (executeBtn && !executeBtn.hasAttribute("disabled")) {
+      if (isTargetArchivedGeneration) {
+        executeBtn.setAttribute("disabled", "");
+      }
     }
-    if (compactExecuteBtn) {
-      compactExecuteBtn.disabled = isTargetArchivedGeneration;
+    if (compactExecuteBtn && !compactExecuteBtn.hasAttribute("disabled")) {
+      if (isTargetArchivedGeneration) {
+        compactExecuteBtn.setAttribute("disabled", "");
+      }
     }
     setupHistoryPopups();
   } catch (err) {
@@ -649,21 +653,21 @@ export function toggleProgress(show, text = "") {
       status.textContent = displayMsg;
     }
     if (bar) bar.style.width = "0%";
-    if (btn) btn.disabled = true;
+    if (btn) btn.setAttribute("disabled", "");
     if (cSts) cSts.textContent = displayMsg;
     if (cBar) cBar.style.width = "0%";
-    if (cBtn) cBtn.disabled = true;
+    if (cBtn) cBtn.setAttribute("disabled", "");
   } else {
     if (bar) bar.style.width = "100%";
     if (cBar) cBar.style.width = "100%";
     setTimeout(() => {
       if (container) container.style.display = "none";
       if (status) status.style.display = "none";
-      if (btn) btn.disabled = false;
+      if (btn) btn.removeAttribute("disabled");
       if (cSts) cSts.textContent = readyText;
       if (cBar) cBar.style.width = "0%";
-      if (cBtn) cBtn.disabled = false;
-    }, 1000);
+      if (cBtn) cBtn.removeAttribute("disabled");
+    }, 500);
   }
 }
 

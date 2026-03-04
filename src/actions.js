@@ -111,7 +111,7 @@ export async function OnExecute() {
     // --- B. アーカイブモード ---
     else if (mode === "archive") {
       let fmt = archiveFormat;
-      let pwd = (fmt === "zip-pass") ? pwdValue : ""; 
+      let pwd = fmt === "zip-pass" ? pwdValue : "";
       if (fmt === "zip-pass") fmt = "zip";
       await ArchiveBackupFile(tab.workFile, tab.backupDir, fmt, pwd);
       successText = i18n.archiveBackupSuccess.replace(
