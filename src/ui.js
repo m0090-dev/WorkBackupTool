@@ -25,7 +25,6 @@ import { switchTab, removeTab, reorderTabs } from "./actions";
 
 let isExecuting = false;
 
-
 // UI描画・メッセージ系（通常版）
 export function showFloatingMessage(text) {
   const msgArea = document.getElementById("message-area");
@@ -244,6 +243,33 @@ export function renderTabs() {
   });
 }
 
+function setupPathTooltip(el, fullPath) {
+  if (!el || !fullPath) return;
+  if (el._pathTooltipSetup) {
+    el._tooltipPath = fullPath; // パスだけ更新
+    return;
+  }
+  el._pathTooltipSetup = true;
+  el._tooltipPath = fullPath;
+  el.addEventListener("mouseenter", () => {
+    if (el.scrollWidth <= el.clientWidth) return;
+    const tooltip = document.createElement("div");
+    tooltip.className = "tab-tooltip";
+    tooltip.innerHTML = `<code>${el._tooltipPath}</code>`;
+    document.body.appendChild(tooltip);
+    const rect = el.getBoundingClientRect();
+    tooltip.style.left = `${rect.left}px`;
+    tooltip.style.top = `${rect.bottom + 5}px`;
+    el._tooltip = tooltip;
+  });
+  el.addEventListener("mouseleave", () => {
+    if (el._tooltip) {
+      el._tooltip.remove();
+      el._tooltip = null;
+    }
+  });
+}
+
 // 全体のUI更新
 export function UpdateDisplay() {
   const tab = getActiveTab();
@@ -263,6 +289,8 @@ export function UpdateDisplay() {
 
   const fileEl = document.getElementById("selected-workfile");
   const dirEl = document.getElementById("selected-backupdir");
+  setupPathTooltip(fileEl, tab.workFile);
+  setupPathTooltip(dirEl, tab.backupDir);
   if (fileEl)
     fileEl.textContent =
       (tab.workFile
@@ -464,14 +492,14 @@ export async function UpdateHistory() {
     if (executeBtn) {
       if (isTargetArchivedGeneration) {
         executeBtn.setAttribute("disabled", "");
-      } else if(!isExecuting) {
+      } else if (!isExecuting) {
         executeBtn.removeAttribute("disabled");
       }
     }
     if (compactExecuteBtn) {
       if (isTargetArchivedGeneration) {
         compactExecuteBtn.setAttribute("disabled", "");
-      } else if(!isExecuting)  {
+      } else if (!isExecuting) {
         compactExecuteBtn.removeAttribute("disabled");
       }
     }
