@@ -128,12 +128,14 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                 let _ = app.set_menu(new_menu);
             }
         }
-
 "show_compact" => {
     if let Some(window) = app.get_webview_window("main") {
         let _ = utils::apply_tray_popup_mode(&window, true);
         let _ = app.emit("compact-mode-event", true);
+        #[cfg(target_os = "windows")]
         let _ = window.as_ref().window().move_window(Position::TrayCenter);
+        #[cfg(not(target_os = "windows"))]
+        let _ = window.as_ref().window().move_window(Position::BottomRight);
         let _ = window.show();
         let _ = window.set_focus();
     }
