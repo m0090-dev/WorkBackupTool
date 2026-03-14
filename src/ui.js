@@ -307,6 +307,12 @@ export function UpdateDisplay() {
   if (compactModeSel) compactModeSel.value = tab.backupMode;
 
   // --- 各要素の同期 ---
+  const locked = tab.isLocked || false;
+
+  // ラジオボタン
+  document.querySelectorAll('input[name="backupMode"]').forEach((r) => {
+    r.disabled = locked;
+  });
   const normalComp = document.getElementById("hdiff-compress");
   const compactComp = document.getElementById("compact-hdiff-compress");
   const compress = tab.compressMode || "zstd";
@@ -317,10 +323,20 @@ export function UpdateDisplay() {
   const mode = tab.backupMode || "diff";
 
   if (normalAlgo) normalAlgo.value = algo;
-  if (normalComp) normalComp.value = compress;
-  if (compactComp) compactComp.value = compress;
+  if (normalComp) {
+    normalComp.value = compress;
+    normalComp.disabled = locked;
+  }
+  if (compactComp) {
+    compactComp.value = compress;
+    compactComp.disabled = locked;
+  }
   if (normalArchive) normalArchive.value = archiveFormat;
-
+  const lockBtn = document.getElementById("lock-mode-btn");
+  if (lockBtn) {
+    lockBtn.textContent = locked ? "🔒" : "🔓";
+    lockBtn.title = locked ? i18n.unlockMode : i18n.lockMode;
+  }
   const isPass =
     mode === "archive" &&
     document.getElementById("archive-format")?.value === "zip-pass";
@@ -336,6 +352,7 @@ export function UpdateDisplay() {
       ? tab.workFile.split(/[\\/]/).pop()
       : i18n.selectedWorkFile || "No File Selected";
   const cSel = document.getElementById("compact-mode-select");
+  if (cSel) cSel.disabled = locked;
   if (cSel && mode) cSel.value = mode;
 }
 

@@ -110,7 +110,9 @@
       "thresholdLabel": "Auto Base Generation Threshold",
       "thresholdHint": "Diff ratio to trigger base generation (0.1 - 1.0)",
       "settingsSaved": "Settings applied and saved.",
-      "closeBtn": "Close"
+      "closeBtn": "Close",
+      "lockMode": "Lock backup mode",
+      "unlockMode": "Unlock backup mode"
     },
     "ja": {
       "settings": "設定",
@@ -212,7 +214,9 @@
       "thresholdLabel": "自動ベース生成閾値",
       "thresholdHint": "ベース生成を実行する差分比率 (0.1 〜 1.0)",
       "settingsSaved": "設定を保存しました。",
-      "closeBtn": "閉じる"
+      "closeBtn": "閉じる",
+      "lockMode": "バックアップモードをロック",
+      "unlockMode": "バックアップモードのロックを解除"
     }
   }
 }

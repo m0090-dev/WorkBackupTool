@@ -20,6 +20,7 @@ export let tabs = [
     diffAlgo: "hdiff",
     archiveFormat: "zip",
     searchQuery: "",
+    isLocked: false,
   },
 ];
 export let recentFiles = JSON.parse(

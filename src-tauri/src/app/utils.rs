@@ -258,9 +258,9 @@ pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Re
         window.set_max_size(None::<Size>)?;
     }
     let (width, height, title) = if is_compact {
-        (300.0, 210.0, "cg-file-backup (Compact mode)")
+        (300.0, 210.0, "WorkBackupTool (Compact mode)")
     } else {
-        (640.0, 450.0, "cg-file-backup")
+        (640.0, 450.0, "WorkBackupTool")
     };
 
     let new_size = Size::Logical(LogicalSize::new(width, height));

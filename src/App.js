@@ -132,6 +132,8 @@ function setupInitialUI() {
   }
 
   setText("execute-backup-btn", i18n.executeBtn);
+  const lockBtn = document.getElementById("lock-mode-btn");
+  if (lockBtn) lockBtn.title = i18n.lockMode || "Lock backup mode";
 
   setText("refresh-diff-btn", i18n.refreshBtn);
 
