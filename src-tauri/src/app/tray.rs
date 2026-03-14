@@ -46,7 +46,7 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
 
     // 2. メニューアイテムの構築
     let show_window = MenuItemBuilder::with_id("show_window", t("showWindow")).build(app)?;
-
+    let show_compact = MenuItemBuilder::with_id("show_compact", t("compactMode")).build(app)?;
     // アクション系
     let execute = MenuItemBuilder::with_id("execute", t("executeBtn")).build(app)?;
     let change_work = MenuItemBuilder::with_id("change_work", t("workFileBtn")).build(app)?;
@@ -63,6 +63,7 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
     let tray_menu = MenuBuilder::new(app)
         .items(&[
             &show_window,
+            &show_compact,
             &separator,
             &backup_mode_menu, // ← ここにモード選択を追加
             &execute,
