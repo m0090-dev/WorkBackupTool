@@ -18,6 +18,8 @@ use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut,
 
 #[cfg(desktop)]
 use tauri::menu::MenuEvent;
+#[cfg(desktop)]
+use tauri_plugin_positioner::{Position, WindowExt};
 
 #[cfg(desktop)]
 pub fn handle_window_event(window: &tauri::WebviewWindow, event: &tauri::WindowEvent) {
@@ -100,7 +102,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
             }
             let _ = state.save();
         }
-
+         
         // --- 3. ウィンドウ表示 (トレイから復帰時) ---
         "show_window" => {
             let config = {
@@ -126,6 +128,16 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                 let _ = app.set_menu(new_menu);
             }
         }
+
+"show_compact" => {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = utils::apply_tray_popup_mode(&window, true);
+        let _ = app.emit("compact-mode-event", true);
+        let _ = window.as_ref().window().move_window(Position::TrayCenter);
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
+}
 
         // --- 4. 最前面表示 / コンパクトモード / 状態復元 ---
         "always_on_top"
