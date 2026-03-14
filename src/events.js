@@ -272,6 +272,13 @@ export function setupGlobalEvents() {
       }
       return;
     }
+    if (id == "lock-mode-btn") {
+      const tab = getActiveTab();
+      if (!tab) return;
+      tab.isLocked = !tab.isLocked;
+      UpdateDisplay();
+      saveCurrentSession();
+    }
     if (id === "settings-close-btn") {
       document.getElementById("settings-modal").classList.add("hidden");
     } else if (id === "settings-modal") {
