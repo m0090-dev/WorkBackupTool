@@ -260,7 +260,7 @@ pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Re
     let (width, height, title) = if is_compact {
         (300.0, 260.0, "WorkBackupTool (Compact mode)")
     } else {
-        (640.0, 450.0, "WorkBackupTool")
+        (640.0, 430.0, "WorkBackupTool")
     };
 
     let new_size = Size::Logical(LogicalSize::new(width, height));
@@ -304,7 +304,7 @@ pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> taur
         window.set_always_on_top(false)?;
         window.set_skip_taskbar(false)?;
 
-        let size = Size::Logical(LogicalSize::new(640.0, 450.0));
+        let size = Size::Logical(LogicalSize::new(640.0, 430.0));
         window.set_size(size)?;
         window.set_min_size(Some(size))?;
         window.set_max_size(Some(size))?;
