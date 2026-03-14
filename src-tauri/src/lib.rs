@@ -102,7 +102,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
             }
             let _ = state.save();
         }
-         
+
         // --- 3. ウィンドウ表示 (トレイから復帰時) ---
         "show_window" => {
             let config = {
@@ -128,18 +128,18 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                 let _ = app.set_menu(new_menu);
             }
         }
-"show_compact" => {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = utils::apply_tray_popup_mode(&window, true);
-        let _ = app.emit("compact-mode-event", true);
-        #[cfg(target_os = "windows")]
-        let _ = window.as_ref().window().move_window(Position::TrayCenter);
-        #[cfg(not(target_os = "windows"))]
-        let _ = window.as_ref().window().move_window(Position::TopRight);
-        let _ = window.show();
-        let _ = window.set_focus();
-    }
-}
+        "show_compact" => {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = utils::apply_tray_popup_mode(&window, true);
+                let _ = app.emit("compact-mode-event", true);
+                #[cfg(target_os = "windows")]
+                let _ = window.as_ref().window().move_window(Position::TrayCenter);
+                #[cfg(not(target_os = "windows"))]
+                let _ = window.as_ref().window().move_window(Position::TopRight);
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }
 
         // --- 4. 最前面表示 / コンパクトモード / 状態復元 ---
         "always_on_top"
