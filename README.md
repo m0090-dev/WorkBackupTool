@@ -1,6 +1,6 @@
 # WorkBackupTool
 
-A simple, lightweight backup utility built with Tauri (Rust + Svelte), specifically designed for managing 2DCG project files and work-in-progress versions.
+A simple, lightweight backup utility built with Tauri (Rust), specifically designed for managing 2DCG project files and work-in-progress versions.
 
 This tool was created by the author for personal use to ensure quick and reliable versioning during creative workflows.
 
