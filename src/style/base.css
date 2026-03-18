@@ -111,7 +111,7 @@ html {
   max-width: 320px; /* ダイアログ幅に合わせて調整 */
   line-height: 1.5;
   animation: tabTooltipFadeIn 0.15s ease-out; /* アニメーション名を具体化 */
-
+  white-space: normal;
   /* Windows/Mac でフォントを綺麗に見せる */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

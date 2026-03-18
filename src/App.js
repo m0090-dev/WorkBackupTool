@@ -50,13 +50,13 @@ async function Initialize() {
 
   setupDragAndDrop();
 
-  setupGlobalEvents();
+  await setupGlobalEvents();
 
   // 先頭タブを必ずアクティブにする
   if (tabs.length > 0 && !tabs.some((t) => t.active)) {
     switchTab(tabs[0].id);
   } else {
-    UpdateAllUI();
+    await UpdateAllUI();
   }
   hideStartupOverlay();
 }
@@ -203,7 +203,7 @@ function setupInitialUI() {
 // --- ドラッグアンドドロップ設定 ---
 
 function setupDragAndDrop() {
-  OnFileDrop((x, y, paths) => {
+  OnFileDrop(async (x, y, paths) => {
     if (!paths || paths.length === 0) return;
 
     const droppedPath = paths[0];
@@ -272,12 +272,12 @@ function setupDragAndDrop() {
         modal.classList.add("hidden");
       };
 
-      function finishDrop(msg) {
+      async function finishDrop(msg) {
         modal.classList.add("hidden");
 
         showFloatingMessage(msg);
 
-        UpdateAllUI();
+        await UpdateAllUI();
 
         saveCurrentSession();
       }

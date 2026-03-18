@@ -442,6 +442,7 @@ pub fn run() {
             copy_backup_file,
             archive_backup_file,
             dir_exists,
+            file_exists,
             restore_backup,
             get_file_size,
             select_any_file,
