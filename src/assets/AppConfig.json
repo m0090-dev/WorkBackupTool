@@ -38,7 +38,7 @@
       "japanese": "Japanese",
       "restartRequired": "Language changes will take effect after restart.",
       "about": "About",
-      "aboutText": "WorkBackupTool 1.1.9-alpha (2026)\n© 2025 m0090-dev.",
+      "aboutText": "WorkBackupTool 1.1.9 (2026)\n© 2025 m0090-dev.",
       "selectFileFirst": "Please select a work file first.",
       "restoreConfirm": "Restore selected versions? This will create a new file.",
       "restoreError": "Restore failed",
