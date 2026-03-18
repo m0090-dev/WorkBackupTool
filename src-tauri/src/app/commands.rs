@@ -801,6 +801,15 @@ pub fn dir_exists(path: String) -> Result<bool, String> {
     Ok(p.is_dir())
 }
 
+/// 指定されたパスがファイルとして存在するか確認します
+#[tauri::command]
+pub fn file_exists(path: String) -> Result<bool, String> {
+    let p = Path::new(&path);
+    // exists() かつ is_file() であることを判定します
+    // (ディレクトリの場合は false になります)
+    Ok(p.is_file())
+}
+
 #[tauri::command]
 pub async fn restore_backup(
     app: tauri::AppHandle,

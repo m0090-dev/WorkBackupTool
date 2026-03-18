@@ -45,7 +45,7 @@ const preventDefault = (e) => {
   e.stopPropagation();
 };
 
-export function setupGlobalEvents() {
+export async function setupGlobalEvents() {
   // Only this
   window.addEventListener("dragenter", preventDefault, true);
 
@@ -64,7 +64,7 @@ export function setupGlobalEvents() {
       tab.selectedTargetDir = "";
       addToRecentFiles(res);
       renderTabs();
-      UpdateDisplay();
+      await UpdateDisplay();
       UpdateHistory();
       saveCurrentSession();
       showFloatingMessage(i18n.updatedWorkFile);
@@ -77,7 +77,7 @@ export function setupGlobalEvents() {
     const res = await SelectBackupFolder();
     if (res) {
       tab.backupDir = res;
-      UpdateDisplay();
+      await UpdateDisplay();
       UpdateHistory();
       saveCurrentSession();
       showFloatingMessage(i18n.updatedBackupDir);
@@ -149,7 +149,7 @@ export function setupGlobalEvents() {
         // UIの再描画
         renderRecentFiles();
         renderTabs();
-        UpdateDisplay();
+        await UpdateDisplay();
         UpdateHistory();
 
         showFloatingMessage(i18n.updatedWorkFile);
@@ -276,7 +276,7 @@ export function setupGlobalEvents() {
       const tab = getActiveTab();
       if (!tab) return;
       tab.isLocked = !tab.isLocked;
-      UpdateDisplay();
+      await UpdateDisplay();
       saveCurrentSession();
     }
     if (id === "settings-close-btn") {
@@ -290,7 +290,7 @@ export function setupGlobalEvents() {
   });
 
   // --- 変更イベントリスナー ---
-  document.addEventListener("change", (e) => {
+  document.addEventListener("change", async (e) => {
     const id = e.target.id;
     const name = e.target.name;
     const value = e.target.value;
@@ -318,7 +318,7 @@ export function setupGlobalEvents() {
       id === "hdiff-compress" ||
       id === "compact-hdiff-compress"
     ) {
-      UpdateDisplay();
+      await UpdateDisplay();
       saveCurrentSession();
     }
 
@@ -403,7 +403,7 @@ export function setupGlobalEvents() {
   });
 
   // 【物理同期版】トレイ：バックアップモードの同期
-  EventsOn("tray-mode-change", (newMode) => {
+  EventsOn("tray-mode-change", async (newMode) => {
     const radio = document.querySelector(
       `input[name="backupMode"][value="${newMode}"]`,
     );
@@ -420,18 +420,18 @@ export function setupGlobalEvents() {
       if (tab) tab.backupMode = newMode;
 
       // 4. UI更新と通知
-      UpdateDisplay();
+      await UpdateDisplay();
       saveCurrentSession();
       showFloatingMessage(`${i18n.updatedBackupMode || "Mode"}: ${newMode}`);
     }
   });
 
-  EventsOn("compact-mode-event", (isCompact) => {
+  EventsOn("compact-mode-event", async (isCompact) => {
     const view = document.getElementById("compact-view");
     if (isCompact) {
       document.body.classList.add("compact-mode");
       if (view) view.classList.remove("hidden");
-      if (typeof UpdateDisplay === "function") UpdateDisplay();
+      if (typeof UpdateDisplay === "function") await UpdateDisplay();
     } else {
       document.body.classList.remove("compact-mode");
       if (view) view.classList.add("hidden");

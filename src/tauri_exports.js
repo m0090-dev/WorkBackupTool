@@ -98,6 +98,9 @@ export async function GetFileSize(path) {
 export async function DirExists(path) {
   return await invoke("dir_exists", { path });
 }
+export async function FileExists(path) {
+  return await invoke("file_exists", { path });
+}
 
 export async function CopyBackupFile(src, backupDir) {
   return await invoke("copy_backup_file", { src, backupDir });

@@ -7,6 +7,8 @@ import {
   GetGenerationFolders,
   UpdateConfigValue,
   GetConfig,
+  FileExists,
+  DirExists,
 } from "./tauri_exports";
 
 import {
@@ -106,33 +108,12 @@ export function renderTabs() {
       : i18n?.selectedWorkFile || "No file selected";
     el.textContent = fileName;
 
-    const removeTooltip = () => {
-      if (tooltip) {
-        tooltip.remove();
-        tooltip = null;
-      }
-    };
-
-    // --- ツールチップ・ドラッグ設定（既存ロジック維持） ---
-    el.addEventListener("mouseenter", () => {
-      if (document.querySelector(".tab-context-menu")) return;
-      removeTooltip();
-      tooltip = document.createElement("div");
-      tooltip.className = "tab-tooltip";
-      const fullPath = tab.workFile || "No file selected";
-      tooltip.innerHTML = `<b>${fileName}</b><code>${fullPath}</code>`;
-      document.body.appendChild(tooltip);
-      const rect = el.getBoundingClientRect();
-      tooltip.style.left = `${rect.left}px`;
-      tooltip.style.top = `${rect.bottom + 5}px`;
-    });
-    el.addEventListener("mouseleave", removeTooltip);
-    el.addEventListener("mousedown", removeTooltip);
+    setupTabTooltip(el, tab);
 
     el.draggable = true;
     el.dataset.id = tab.id;
     el.ondragstart = (e) => {
-      removeTooltip();
+      if (el._removeTooltip) el._removeTooltip();
       el.classList.add("dragging");
       e.dataTransfer.setData("text/plain", tab.id);
     };
@@ -148,22 +129,22 @@ export function renderTabs() {
         .querySelectorAll(".tab-item")
         .forEach((i) => i.classList.remove("drag-over"));
     };
-    el.ondrop = (e) => {
+    el.ondrop = async (e) => {
       e.preventDefault();
       const dId = e.dataTransfer.getData("text/plain");
-      if (dId && dId !== el.dataset.id) reorderTabs(dId, el.dataset.id);
+      if (dId && dId !== el.dataset.id) await reorderTabs(dId, el.dataset.id);
     };
 
-    el.onclick = () => {
-      removeTooltip();
-      switchTab(tab.id);
+    el.onclick = async () => {
+      if (el._removeTooltip) el._removeTooltip();
+      await switchTab(tab.id);
     };
 
     // --- 右クリックメニュー（空表示防止版） ---
     el.oncontextmenu = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      removeTooltip();
+      if (el._removeTooltip) el._removeTooltip();
 
       const existingMenu = document.querySelector(".tab-context-menu");
       if (existingMenu) existingMenu.remove();
@@ -175,9 +156,9 @@ export function renderTabs() {
         const item = document.createElement("div");
         item.className = "tab-menu-item";
         item.innerHTML = `<span>${i18n.tabMenuMoveLeft}</span><span class="tab-menu-shortcut">◀</span>`;
-        item.onclick = (ev) => {
+        item.onclick = async (ev) => {
           ev.stopPropagation();
-          reorderTabs(tab.id, tabs[index - 1].id);
+          await reorderTabs(tab.id, tabs[index - 1].id);
           menu.remove();
         };
         menuItems.push(item);
@@ -187,9 +168,9 @@ export function renderTabs() {
         const item = document.createElement("div");
         item.className = "tab-menu-item";
         item.innerHTML = `<span>${i18n.tabMenuMoveRight}</span><span class="tab-menu-shortcut">▶</span>`;
-        item.onclick = (ev) => {
+        item.onclick = async (ev) => {
           ev.stopPropagation();
-          reorderTabs(tab.id, tabs[index + 1].id);
+          await reorderTabs(tab.id, tabs[index + 1].id);
           menu.remove();
         };
         menuItems.push(item);
@@ -203,9 +184,9 @@ export function renderTabs() {
         const del = document.createElement("div");
         del.className = "tab-menu-item danger";
         del.innerHTML = `<span>${i18n.tabMenuClose}</span><span class="tab-menu-shortcut">×</span>`;
-        del.onclick = (ev) => {
+        del.onclick = async (ev) => {
           ev.stopPropagation();
-          removeTab(tab.id);
+          await removeTab(tab.id);
           menu.remove();
         };
         menuItems.push(del);
@@ -243,25 +224,94 @@ export function renderTabs() {
   });
 }
 
+/**
+ * タブ専用のツールチップをセットアップします
+ * @param {HTMLElement} el - 対象のタブ要素
+ * @param {Object} tab - state.js のタブオブジェクト
+ */
+function setupTabTooltip(el, tab) {
+  if (!el || !tab || !i18n) return;
+
+  // ツールチップ実体への参照を管理するためのクロージャ用変数
+  let tooltip = null;
+
+  const removeTooltip = () => {
+    if (tooltip) {
+      tooltip.remove();
+      tooltip = null;
+    }
+  };
+
+  el.addEventListener("mouseenter", () => {
+    // コンテキストメニューが表示されている時は出さない
+    if (document.querySelector(".tab-context-menu")) return;
+
+    removeTooltip();
+
+    const fileName = tab.workFile
+      ? tab.workFile.split(/[\\/]/).pop()
+      : i18n?.selectedWorkFile || "No file selected";
+    const workPath =
+      tab.workFile || i18n?.selectedWorkFile || "No file selected";
+    const backupPath =
+      tab.backupDir || i18n?.selectedBackupDir || "Default location";
+    const mode = tab.backupMode || "diff";
+
+    tooltip = document.createElement("div");
+    tooltip.className = "tab-tooltip";
+    tooltip.innerHTML = `
+      <div style="margin-bottom:4px;"><b>${fileName}</b></div>
+      <div style="font-size:10px; opacity:0.8; line-height: 1.4;">
+        <b>${i18n.labelWorkFile}</b> <code>${workPath}</code><br>
+        <b>${i18n.labelLocation}</b> <code>${backupPath}</code><br>
+        <b>${i18n.backupMode}:</b> <span style="color:#ffd700">${mode.toUpperCase()}</span>
+      </div>
+    `;
+
+    document.body.appendChild(tooltip);
+
+    // 位置計算
+    const rect = el.getBoundingClientRect();
+    tooltip.style.left = `${rect.left}px`;
+    tooltip.style.top = `${rect.bottom + 5}px`;
+  });
+
+  // 各種イベントで確実に消す
+  el.addEventListener("mouseleave", removeTooltip);
+  el.addEventListener("mousedown", removeTooltip);
+
+  // ドラッグ開始時などにも消えるように el に関数を保持させておくと便利
+  el._removeTooltip = removeTooltip;
+}
+
 function setupPathTooltip(el, fullPath) {
   if (!el || !fullPath) return;
+
+  // 既存のセットアップ済みチェック
   if (el._pathTooltipSetup) {
-    el._tooltipPath = fullPath; // パスだけ更新
+    el._tooltipPath = fullPath;
     return;
   }
+
   el._pathTooltipSetup = true;
   el._tooltipPath = fullPath;
+
   el.addEventListener("mouseenter", () => {
-    if (el.scrollWidth <= el.clientWidth) return;
+    // 【修正】幅の判定を削除し、常に表示するように変更
     const tooltip = document.createElement("div");
     tooltip.className = "tab-tooltip";
-    tooltip.innerHTML = `<code>${el._tooltipPath}</code>`;
+
+    // 改行コード (\n) を <br> に変換して表示できるようにする
+    const displayPath = el._tooltipPath.replace(/\n/g, "<br>");
+    tooltip.innerHTML = `<code>${displayPath}</code>`;
+
     document.body.appendChild(tooltip);
     const rect = el.getBoundingClientRect();
     tooltip.style.left = `${rect.left}px`;
     tooltip.style.top = `${rect.bottom + 5}px`;
     el._tooltip = tooltip;
   });
+
   el.addEventListener("mouseleave", () => {
     if (el._tooltip) {
       el._tooltip.remove();
@@ -271,9 +321,18 @@ function setupPathTooltip(el, fullPath) {
 }
 
 // 全体のUI更新
-export function UpdateDisplay() {
+export async function UpdateDisplay() {
+  let fileExists = true;
+  let dirExists = true;
   const tab = getActiveTab();
   if (!i18n || !tab) return;
+
+  if (tab.workFile) {
+    fileExists = await FileExists(tab.workFile);
+  }
+  if (tab.backupDir) {
+    dirExists = await DirExists(tab.backupDir);
+  }
   const tabSelect = document.getElementById("compact-tab-select");
   if (tabSelect) {
     tabSelect.innerHTML = tabs
@@ -289,15 +348,31 @@ export function UpdateDisplay() {
 
   const fileEl = document.getElementById("selected-workfile");
   const dirEl = document.getElementById("selected-backupdir");
-  setupPathTooltip(fileEl, tab.workFile);
-  setupPathTooltip(dirEl, tab.backupDir);
-  if (fileEl)
-    fileEl.textContent =
-      (tab.workFile
-        ? tab.workFile.split(/[\\/]/).pop()
-        : i18n.selectedWorkFile) +
-      (tab.workFile ? ` [${formatSize(tab.workFileSize)}]` : "");
-  if (dirEl) dirEl.textContent = tab.backupDir || i18n.selectedBackupDir;
+  if (fileEl) {
+    const baseName = tab.workFile
+      ? tab.workFile.split(/[\\/]/).pop()
+      : i18n.selectedWorkFile;
+    const sizeText = tab.workFile ? ` [${formatSize(tab.workFileSize)}]` : "";
+    if (!fileExists && tab.workFile) {
+      // 存在しない場合：赤文字で (Not Found) を付加
+      fileEl.innerHTML = `<span style="color: #ff4d4d; font-weight: bold;">${baseName} (Not Found)</span>`;
+    } else {
+      fileEl.textContent = `${baseName}${sizeText}`;
+      fileEl.style.color = ""; // リセット
+    }
+  }
+  if (dirEl) {
+    const baseName = tab.backupDir
+      ? tab.backupDir.split(/[\\/]/).pop()
+      : i18n.selectedBackupDir;
+    if (!dirExists && tab.backupDir) {
+      // 存在しない場合：赤文字で (Not Found) を付加
+      dirEl.innerHTML = `<span style="color: #ff4d4d; font-weight: bold;">${baseName} (Not Found)</span>`;
+    } else {
+      dirEl.textContent = baseName;
+      dirEl.style.color = ""; // リセット
+    }
+  }
 
   const radio = document.querySelector(
     `input[name="backupMode"][value="${tab.backupMode}"]`,
@@ -776,9 +851,9 @@ export function hideStartupOverlay() {
   }, 400);
 }
 
-export function UpdateAllUI() {
+export async function UpdateAllUI() {
   renderRecentFiles();
   renderTabs();
-  UpdateDisplay();
+  await UpdateDisplay();
   UpdateHistory();
 }

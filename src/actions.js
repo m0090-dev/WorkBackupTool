@@ -25,7 +25,7 @@ import {
 } from "./ui";
 
 // --- タブ操作ロジック ---
-export function switchTab(id) {
+export async function switchTab(id) {
   tabs.forEach((t) => (t.active = t.id == id));
   // DEBUG
   const activeTab = tabs.find((t) => t.active);
@@ -34,11 +34,11 @@ export function switchTab(id) {
     activeTab ? activeTab.id : "NONE",
     activeTab?.workFile,
   );
-  UpdateAllUI();
+  await UpdateAllUI();
   saveCurrentSession();
 }
 
-export function addTab() {
+export async function addTab() {
   tabs.forEach((t) => (t.active = false));
   tabs.push({
     id: Date.now(),
@@ -49,20 +49,20 @@ export function addTab() {
     backupMode: "diff",
     compressMode: "zstd",
   });
-  UpdateAllUI();
+  await UpdateAllUI();
   saveCurrentSession();
 }
 
-export function removeTab(id) {
+export async function removeTab(id) {
   const index = tabs.findIndex((t) => t.id === id);
   const wasActive = tabs[index].active;
   tabs.splice(index, 1);
   if (wasActive) tabs[Math.max(0, index - 1)].active = true;
-  UpdateAllUI();
+  await UpdateAllUI();
   saveCurrentSession();
 }
 
-export function reorderTabs(draggedId, targetId) {
+export async function reorderTabs(draggedId, targetId) {
   // 文字列IDを比較するために型を合わせる（念のため）
   const draggedIndex = tabs.findIndex(
     (t) => String(t.id) === String(draggedId),
@@ -81,7 +81,7 @@ export function reorderTabs(draggedId, targetId) {
     // 2. セッションを強制保存（ここで localStorage などに書き込まれる）
     saveCurrentSession();
 
-    UpdateAllUI();
+    await UpdateAllUI();
   }
 }
 
@@ -98,7 +98,7 @@ export async function OnExecute() {
   const archiveFormat = tab.archiveFormat || "zip";
   const pwdEl = document.getElementById("archive-password");
   const pwdValue = pwdEl ? pwdEl.value : "";
-  UpdateAllUI();
+  await UpdateAllUI();
   toggleProgress(true, i18n.processingMsg);
   try {
     let successText = "";
@@ -146,7 +146,7 @@ export async function OnExecute() {
 
     toggleProgress(false);
     showFloatingMessage(successText);
-    UpdateAllUI();
+    await UpdateAllUI();
     return successText;
   } catch (err) {
     toggleProgress(false);
@@ -169,7 +169,7 @@ export async function applySelectedBackups() {
       }
       toggleProgress(false);
       showFloatingMessage(i18n.diffApplySuccess);
-      UpdateAllUI();
+      await UpdateAllUI();
     } catch (err) {
       toggleProgress(false);
       alert(err);
