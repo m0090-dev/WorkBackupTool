@@ -18,8 +18,9 @@ jobs:
       # ★ ここで 1.1.8 の最終地点であるコミットハッシュを指定してチェックアウトします
       - uses: actions/checkout@v4
         with:
-          ref: '9f7c683'
           fetch-depth: 0
+      - name: Force checkout to 1.1.8 commit
+        run: git checkout 9f7c683 # ここで直接ハッシュを指定して切り替える
 
       - name: setup node
         uses: actions/setup-node@v4
