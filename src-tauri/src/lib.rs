@@ -146,7 +146,8 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
         | "compact_mode"
         | "restore_state"
         | "use_same_dir_for_temp"
-        | "rebuild_cache_on_startup" => {
+        | "rebuild_cache_on_startup"
+        | "show_memo_after_backup" => {
             // スコープ（波括弧）を使って、ロックの寿命を短くします
             let (next_val, id_clone) = {
                 let mut cfg = state.config.lock().unwrap();
@@ -170,6 +171,10 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                     "rebuild_cache_on_startup" => {
                         cfg.rebuild_cache_on_startup = !cfg.rebuild_cache_on_startup;
                         cfg.rebuild_cache_on_startup
+                    }
+                    "show_memo_after_backup" => {
+                        cfg.show_memo_after_backup = !cfg.show_memo_after_backup;
+                        cfg.show_memo_after_backup
                     }
                     _ => false,
                 };
@@ -329,6 +334,7 @@ pub fn run() {
             app.manage(AppState {
                 config: Mutex::new(config.clone()),
                 config_path,
+                i18n: default_i18n(),
             });
 
             #[cfg(desktop)]
@@ -458,6 +464,7 @@ pub fn run() {
             rebuild_archive_caches,
             prepare_archive_cache,
             get_rebuild_cache_on_startup,
+            get_show_memo_after_backup,
             get_startup_cache_limit,
             get_config,
             update_config_value

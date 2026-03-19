@@ -1,4 +1,5 @@
 use crate::app::types::AppConfig;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use tauri::AppHandle;
@@ -6,10 +7,14 @@ use tauri::Manager;
 
 // デフォルト値を include_str! で埋め込み
 const DEFAULT_CONFIG_JSON: &str = include_str!("../../../src/assets/AppConfig.json");
+const DEFAULT_I18N_JSON: &str = include_str!("../../../src/assets/i18n.json");
 
 pub fn default_config() -> AppConfig {
     serde_json::from_str(DEFAULT_CONFIG_JSON)
         .expect("Embedded AppConfig.json is invalid. Please check the JSON format at compile time.")
+}
+pub fn default_i18n() -> HashMap<String, HashMap<String, String>> {
+    serde_json::from_str(DEFAULT_I18N_JSON).unwrap_or_default()
 }
 
 pub fn load_app_config(app: &AppHandle) -> Result<(AppConfig, PathBuf), String> {

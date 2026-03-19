@@ -5,6 +5,10 @@ import {
   RestoreBackup,
   GetFileSize,
   DirExists,
+  GetShowMemoAfterBackup,
+  GetBackupList,
+  ReadTextFile,
+  WriteTextFile,
 } from "./tauri_exports";
 
 import {
@@ -23,6 +27,7 @@ import {
   showFloatingMessage,
   UpdateAllUI,
 } from "./ui";
+import { showMemoDialog } from "./memo.js";
 
 // --- タブ操作ロジック ---
 export async function switchTab(id) {
@@ -146,6 +151,22 @@ export async function OnExecute() {
 
     toggleProgress(false);
     showFloatingMessage(successText);
+
+    // メモダイアログをオプションで表示
+    const showMemo = await GetShowMemoAfterBackup();
+    if (showMemo) {
+      const data = await GetBackupList(tab.workFile, tab.backupDir);
+      if (data && data.length > 0) {
+        data.sort((a, b) => b.fileName.localeCompare(a.fileName));
+        const latest = data[0];
+        const notePath = latest.filePath + ".note";
+        const currentNote = await ReadTextFile(notePath).catch(() => "");
+        showMemoDialog(currentNote, async (newText) => {
+          await WriteTextFile(notePath, newText);
+          UpdateHistory();
+        });
+      }
+    }
     await UpdateAllUI();
     return successText;
   } catch (err) {

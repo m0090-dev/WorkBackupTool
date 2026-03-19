@@ -87,6 +87,10 @@ pub fn get_auto_base_generation_threshold(state: State<'_, AppState>) -> f64 {
 pub fn get_rebuild_cache_on_startup(state: State<'_, AppState>) -> bool {
     state.config.lock().unwrap().rebuild_cache_on_startup
 }
+#[tauri::command]
+pub fn get_show_memo_after_backup(state: State<'_, AppState>) -> bool {
+    state.config.lock().unwrap().show_memo_after_backup
+}
 
 #[tauri::command]
 pub fn get_startup_cache_limit(state: State<'_, AppState>) -> usize {
@@ -98,17 +102,20 @@ pub fn get_startup_cache_limit(state: State<'_, AppState>) -> usize {
 
 #[tauri::command]
 pub fn get_language_text(state: State<'_, AppState>, key: &str) -> Result<String, String> {
-    let cfg = state.config.lock().unwrap();
-    let lang = if cfg.language.is_empty() {
-        "ja"
-    } else {
-        &cfg.language
+    let lang = {
+        let cfg = state.config.lock().unwrap();
+        if cfg.language.is_empty() {
+            "ja".to_string()
+        } else {
+            cfg.language.clone()
+        }
     };
 
     // i18n -> lang -> key を安全に辿る
     Ok(
-        cfg.i18n
-            .get(lang)
+        state
+            .i18n
+            .get(&lang)
             .and_then(|dict| dict.get(key))
             .cloned()
             .unwrap_or_else(|| key.to_string()), // 見つからなければキー名をそのまま返す
@@ -118,14 +125,16 @@ pub fn get_language_text(state: State<'_, AppState>, key: &str) -> Result<String
 /// 現在の言語設定に基づいた辞書をまるごと返す (Goの GetI18N 相当)
 #[tauri::command]
 pub fn get_i18n(state: State<'_, AppState>) -> Result<HashMap<String, String>, String> {
-    let cfg = state.config.lock().unwrap();
-    let lang = if cfg.language.is_empty() {
-        "ja"
-    } else {
-        &cfg.language
+    let lang = {
+        let cfg = state.config.lock().unwrap();
+        if cfg.language.is_empty() {
+            "ja".to_string()
+        } else {
+            cfg.language.clone()
+        }
     };
 
-    Ok(cfg.i18n.get(lang).cloned().unwrap_or_default())
+    Ok(state.i18n.get(&lang).cloned().unwrap_or_default())
 }
 
 /// 言語を切り替えて保存する (Goの SetLanguage 相当)

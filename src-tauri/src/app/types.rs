@@ -13,13 +13,13 @@ pub struct AppConfig {
     pub restore_previous_state: bool,
     pub tray_mode: bool,
     pub auto_base_generation_threshold: f64,
-    pub i18n: HashMap<String, HashMap<String, String>>,
     #[serde(skip_serializing, default)]
     pub compact_mode: bool,
     pub tray_backup_mode: String,
     pub use_same_dir_for_temp: bool,
     pub rebuild_cache_on_startup: bool,
     pub startup_cache_limit: usize,
+    pub show_memo_after_backup: bool,
 }
 
 // 差分ファイル情報

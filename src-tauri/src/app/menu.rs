@@ -53,6 +53,10 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         CheckMenuItemBuilder::with_id("rebuild_cache_on_startup", t("rebuildCacheOnStartup"))
             .checked(config.rebuild_cache_on_startup)
             .build(app)?;
+    let show_memo_after_backup =
+        CheckMenuItemBuilder::with_id("show_memo_after_backup", t("showMemoAfterBackup"))
+            .checked(config.show_memo_after_backup)
+            .build(app)?;
     let advanced_settings_title = MenuItem::with_id(
         app,
         "advanced_settings",
@@ -87,6 +91,7 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .item(&tray_mode)
         .item(&use_same_dir_for_temp)
         .item(&rebuild_cache_on_startup)
+        .item(&show_memo_after_backup)
         .item(&lang_en)
         .item(&lang_ja)
         .item(&advanced_settings_title)
