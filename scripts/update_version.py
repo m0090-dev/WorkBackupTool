@@ -38,7 +38,7 @@ def update_version():
             print("Cargo.toml version already matches. No change.")
 
     # 3. AppConfig.json のパス（既存のまま）
-    config_path = 'src/assets/AppConfig.json'
+    config_path = 'src/assets/i18n.json'
    
     if not os.path.exists(config_path):
         print(f"Error: {config_path} not found.")
