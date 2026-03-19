@@ -8,6 +8,7 @@ use std::sync::Mutex;
 pub struct AppState {
     pub config: Mutex<AppConfig>,
     pub config_path: PathBuf,
+    pub i18n: HashMap<String, HashMap<String, String>>,
 }
 
 impl AppState {

@@ -65,6 +65,9 @@ export async function GetRebuildCacheOnStartup() {
 export async function GetStartupCacheLimit() {
   return await invoke("get_startup_cache_limit");
 }
+export async function GetShowMemoAfterBackup() {
+  return await invoke("get_show_memo_after_backup");
+}
 
 /**
  * ファイル・フォルダ選択系
