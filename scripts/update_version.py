@@ -37,7 +37,7 @@ def update_version():
         else:
             print("Cargo.toml version already matches. No change.")
 
-    # 3. AppConfig.json のパス（既存のまま）
+    # 3. i18n.json のパス（既存のまま）
     config_path = 'src/assets/i18n.json'
    
     if not os.path.exists(config_path):
@@ -53,9 +53,9 @@ def update_version():
     pattern = r"WorkBackupTool [0-9.]+"
     new_text = f"WorkBackupTool {version}"
     for lang in ['ja', 'en']:
-        if lang in config_data.get('i18n', {}):
-            old_about = config_data['i18n'][lang].get('aboutText', '')
-            config_data['i18n'][lang]['aboutText'] = re.sub(pattern, new_text, old_about)
+        if lang in config_data:
+            old_about = config_data[lang].get('aboutText', '')
+            config_data[lang]['aboutText'] = re.sub(pattern, new_text, old_about)
 
     # 6. 上書き保存（既存処理そのまま）
     with open(config_path, 'w', encoding='utf-8') as f:
