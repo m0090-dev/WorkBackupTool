@@ -28,7 +28,7 @@
 }
 
 body.compact-mode .memo-dialog {
-  zoom: 0.90;
+  zoom: 0.9;
 }
 
 /* ヘッダー */
@@ -183,4 +183,3 @@ body.compact-mode .memo-dialog {
   color: white;
   border-color: #5dade2;
 }
-

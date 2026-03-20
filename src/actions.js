@@ -27,7 +27,7 @@ import {
   showFloatingMessage,
   UpdateAllUI,
 } from "./ui";
-import { showMemoDialog,parseNoteContent, serializeNote } from "./memo.js";
+import { showMemoDialog, parseNoteContent, serializeNote } from "./memo.js";
 
 // --- タブ操作ロジック ---
 export async function switchTab(id) {
@@ -161,11 +161,11 @@ export async function OnExecute() {
         const latest = data[0];
         const notePath = latest.filePath + ".note";
         const raw = await ReadTextFile(notePath).catch(() => "");
-const { text, meta } = parseNoteContent(raw);
-showMemoDialog(text, meta, async (newText, newMeta) => {
-  await WriteTextFile(notePath, serializeNote(newText, newMeta));
-  UpdateHistory();
-});
+        const { text, meta } = parseNoteContent(raw);
+        showMemoDialog(text, meta, async (newText, newMeta) => {
+          await WriteTextFile(notePath, serializeNote(newText, newMeta));
+          UpdateHistory();
+        });
       }
     }
     await UpdateAllUI();
