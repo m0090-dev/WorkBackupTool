@@ -21,7 +21,7 @@ import {
   addToRecentFiles,
 } from "./state";
 
-import { showMemoDialog } from "./memo.js";
+import { showMemoDialog,parseNoteContent } from "./memo.js";
 
 import { switchTab, removeTab, reorderTabs } from "./actions";
 
@@ -493,9 +493,8 @@ export async function UpdateHistory() {
     let isTargetArchivedGeneration = false;
     const itemsHtml = await Promise.all(
       data.map(async (item) => {
-        const note = await ReadTextFile(item.filePath + ".note").catch(
-          () => "",
-        );
+        const raw = await ReadTextFile(item.filePath + ".note").catch(() => "");
+	const { text: note, meta: noteMeta } = parseNoteContent(raw);
 
         // --- 検索フィルタリング (ファイル名 または メモ に含まれるか) ---
         if (searchTerm) {
@@ -513,6 +512,12 @@ export async function UpdateHistory() {
 
         let statusHtml = "";
         let genBadge = "";
+	const mark = noteMeta?.mark ?? 0;
+const markBadge = mark > 0 ? (() => {
+  const markColors = { 1: "#e6a817", 2: "#db741f", 3: "#c0392b" };
+  const markLabels = { 1:  i18n?.priorityLow || "Low", 2: i18n?.priorityMid || "Mid", 3: i18n?.priorityHigh || "High" };
+  return `<span style="font-size:10px; color:#fff; background:${markColors[mark]}; padding:1px 4px; border-radius:3px; margin-left:3px;">${markLabels[mark]}</span>`;
+})() : "";
 
         if (isArchive) {
           const archiveText = i18n.fullArchive || " Full Archive";
@@ -555,7 +560,11 @@ export async function UpdateHistory() {
           genBadge = `<span class="gen-selector-badge" data-dir="${itemDir}" style="${badgeStyle}">${genLabel}.${currentGen}${currentLabel}</span>`;
         }
 
-        const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>${i18n.backupMemo}:</strong> ${note}` : ""}`;
+        
+  	const markLabels = { 1:  i18n?.priorityLow || "Low", 2: i18n?.priorityMid || "Mid", 3: i18n?.priorityHigh || "High" };
+	const markText = mark > 0 ? `<br><strong>${i18n?.priorityLabel || "Priority"}:</strong> ${markLabels[mark]}` : "";
+
+	const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${markText}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>${i18n.backupMemo}:</strong> ${note}` : ""}`;
 
         // ハイライト適用済みのテキストを作成
         const displayedFileName = highlight(item.fileName, searchTerm);
@@ -567,7 +576,7 @@ export async function UpdateHistory() {
               <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px;">
               <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
                 <span class="diff-name" data-hover-content="${encodeURIComponent(popupContent)}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                  ${displayedFileName} ${genBadge} <span style="font-size:10px; color:#3B5998;">(${formatSize(item.fileSize)})</span>
+                  ${displayedFileName} ${genBadge} ${markBadge} <span style="font-size:10px; color:#3B5998;">(${formatSize(item.fileSize)})</span>
                 </span>
                 <span style="font-size:10px; color:#888;">${item.timestamp}</span>
                 ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> ${displayedNote}</div>` : ""}

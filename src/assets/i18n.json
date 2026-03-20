@@ -27,7 +27,7 @@
     "japanese": "Japanese",
     "restartRequired": "Language changes will take effect after restart.",
     "about": "About",
-    "aboutText": "WorkBackupTool 1.2.0 (2026)\n© 2025 m0090-dev.",
+    "aboutText": "WorkBackupTool 1.2.1 (2026)\n© 2025 m0090-dev.",
     "selectFileFirst": "Please select a work file first.",
     "restoreConfirm": "Restore selected versions? This will create a new file.",
     "restoreError": "Restore failed",
@@ -102,7 +102,12 @@
     "closeBtn": "Close",
     "lockMode": "Lock backup mode",
     "unlockMode": "Unlock backup mode",
-    "showMemoAfterBackup": "Show memo dialog after backup"
+    "showMemoAfterBackup": "Show memo dialog after backup",
+    "priorityLabel": "Priority",
+    "priorityNone": "None",
+    "priorityLow": "Low",
+    "priorityMid": "Mid",
+    "priorityHigh": "High"
   },
   "ja": {
     "settings": "設定",
@@ -132,7 +137,7 @@
     "japanese": "日本語",
     "restartRequired": "言語設定は再起動後に反映されます。",
     "about": "ソフト情報",
-    "aboutText": "WorkBackupTool 1.2.0 (2026)\n© 2025 m0090-dev.",
+    "aboutText": "WorkBackupTool 1.2.1 (2026)\n© 2025 m0090-dev.",
     "selectFileFirst": "先に作業ファイルを選択してください。",
     "restoreConfirm": "選択したバージョンを復元しますか？新しいファイルが生成されます。",
     "restoreError": "復元失敗",
@@ -207,6 +212,11 @@
     "closeBtn": "閉じる",
     "lockMode": "バックアップモードをロック",
     "unlockMode": "バックアップモードのロックを解除",
-    "showMemoAfterBackup": "バックアップ後にメモダイアログを表示"
+    "showMemoAfterBackup": "バックアップ後にメモダイアログを表示",
+    "priorityLabel": "重要度",
+    "priorityNone": "なし",
+    "priorityLow": "低",
+    "priorityMid": "中",
+    "priorityHigh": "高"
   }
 }

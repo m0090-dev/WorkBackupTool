@@ -9,6 +9,25 @@ import {
 } from "./state";
 import { GetConfigDir, ReadTextFile, WriteTextFile } from "./tauri_exports.js";
 
+// .noteの読み込み（JSON/テキスト両対応）
+export function parseNoteContent(raw) {
+  if (!raw) return { text: "", meta: {} };
+  try {
+    const parsed = JSON.parse(raw);
+    // JSONだった場合
+    return {
+      text: parsed.text ?? "",
+      meta: parsed.meta ?? {}
+    };
+  } catch {
+    // 素のテキストだった場合（後方互換）
+    return { text: raw, meta: {} };
+  }
+}
+// .noteの書き出し
+export function serializeNote(text, meta) {
+  return JSON.stringify({ text, meta });
+}
 // tags.json のパスを取得
 export async function getTagsFilePath() {
   const configDir = await GetConfigDir();
@@ -36,7 +55,7 @@ export async function SaveTags(tags) {
 /**
  * 再利用可能なメモ入力ダイアログを表示する
  */
-export async function showMemoDialog(initialText = "", onSave) {
+export async function showMemoDialog(initialText = "",initialMeta = {}, onSave) {
   // 既存のダイアログがあれば削除
   const old = document.getElementById("memo-dialog-overlay");
   if (old) old.remove();
@@ -58,12 +77,24 @@ export async function showMemoDialog(initialText = "", onSave) {
     save: i18n?.save || "Save",
     enterNewTag: i18n?.enterNewTag || "Enter tag content",
     delete: i18n?.delete || "Delete", // 削除ボタン用
+    markLabel: i18n?.priorityLabel || "Priority",
+markNone: i18n?.priorityNone || "None",
+markLow: i18n?.priorityLow || "Low",
+markMid: i18n?.priorityMid || "Mid",
+markHigh: i18n?.priorityHigh || "High",
   };
 
   // ダイアログのHTML構造
   overlay.innerHTML = `
         <div class="memo-dialog">
             <div class="memo-dialog-header"> ${t.backupMemo}</div>
+	    <div class="memo-mark-container">
+  <span class="memo-mark-label">${t.markLabel}</span>
+  <button class="mark-btn active" data-mark="0">${t.markNone}</button>
+  <button class="mark-btn" data-mark="1">${t.markLow}</button>
+  <button class="mark-btn" data-mark="2">${t.markMid}</button>
+  <button class="mark-btn" data-mark="3">${t.markHigh}</button>
+</div>
             <div class="memo-tag-container">
                 <div id="dialog-tag-list" style="display:inline-block;"></div>
                 <button id="dialog-tag-add-btn" class="tag-add-btn" title="${t.addTagTitle}">+</button>
@@ -150,7 +181,25 @@ export async function showMemoDialog(initialText = "", onSave) {
   };
 
   renderTags();
-
+  const initialMark = initialMeta?.mark ?? 0;
+overlay.querySelectorAll(".mark-btn").forEach(btn => {
+  btn.classList.toggle("active", parseInt(btn.dataset.mark) === initialMark);
+});
+  overlay.querySelectorAll(".mark-btn").forEach(btn => {
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    removeContextMenu();
+    overlay.querySelectorAll(".mark-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+  };
+});
+overlay.querySelector("#memo-save-btn").onclick = (e) => {
+  e.stopPropagation();
+  const mark = parseInt(overlay.querySelector(".mark-btn.active")?.dataset.mark ?? "0");
+  if (onSave) onSave(input.value.trim(), { mark });
+  removeContextMenu();
+  overlay.remove();
+};
   // --- 入力欄などのイベント保護（メニュー消去を兼ねる） ---
   input.addEventListener("contextmenu", (e) => {
     e.stopPropagation();
@@ -163,29 +212,59 @@ export async function showMemoDialog(initialText = "", onSave) {
     removeContextMenu();
   };
 
-  // --- 定型文の新規追加ボタン ---
-  overlay.querySelector("#dialog-tag-add-btn").onclick = async (e) => {
-    e.stopPropagation();
-    removeContextMenu();
-    const newTag = prompt(t.enterNewTag);
-    if (newTag && newTag.trim() !== "") {
-      const cleanTag = newTag.replace(/^#/, "").trim();
-      if (!tags.includes(cleanTag)) {
-        tags.push(cleanTag);
-        await SaveTags(tags);
-        renderTags();
-      }
+
+
+overlay.querySelector("#dialog-tag-add-btn").onclick = async (e) => {
+  e.stopPropagation();
+  removeContextMenu();
+
+  // 既存のインライン入力があれば削除
+  const existingInput = overlay.querySelector("#tag-inline-input-container");
+  if (existingInput) {
+    existingInput.remove();
+    return;
+  }
+
+  // インライン入力欄を生成
+  const container = document.createElement("div");
+  container.id = "tag-inline-input-container";
+  container.style.cssText = "display:flex; gap:4px; margin-top:6px;";
+
+  const tagInput = document.createElement("input");
+  tagInput.type = "text";
+  tagInput.placeholder = t.enterNewTag;
+  tagInput.style.cssText = "flex:1; background:#252526; border:1px solid #444; color:#eee; padding:4px 8px; border-radius:4px; font-size:11px; outline:none;";
+
+  const confirmBtn = document.createElement("button");
+  confirmBtn.textContent = "✓";
+  confirmBtn.style.cssText = "background:#3498db; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;";
+
+  container.appendChild(tagInput);
+  container.appendChild(confirmBtn);
+
+  // タグリストの下に挿入
+  const tagContainer = overlay.querySelector(".memo-tag-container");
+  tagContainer.after(container);
+  tagInput.focus();
+
+  const addTag = async () => {
+    const val = tagInput.value.replace(/^#/, "").trim();
+    if (val && !tags.includes(val)) {
+      tags.push(val);
+      await SaveTags(tags);
+      renderTags();
     }
+    container.remove();
   };
+
+  confirmBtn.onclick = (ev) => { ev.stopPropagation(); addTag(); };
+  tagInput.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter") { ev.preventDefault(); addTag(); }
+    if (ev.key === "Escape") container.remove();
+  });
+};
 
   // --- ダイアログのボタン操作 ---
-  overlay.querySelector("#memo-save-btn").onclick = (e) => {
-    e.stopPropagation();
-    if (onSave) onSave(input.value.trim());
-    removeContextMenu();
-    overlay.remove();
-  };
-
   overlay.querySelector("#memo-cancel-btn").onclick = (e) => {
     e.stopPropagation();
     removeContextMenu();
