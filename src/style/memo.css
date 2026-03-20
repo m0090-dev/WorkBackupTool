@@ -24,6 +24,11 @@
   padding: 16px;
   color: #eee;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+}
+
+body.compact-mode .memo-dialog {
+  zoom: 0.90;
 }
 
 /* ヘッダー */
@@ -143,3 +148,39 @@
   -ms-user-select: text !important; /* IE/Old Edge用 */
   pointer-events: auto !important;
 }
+
+.memo-mark-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.memo-mark-label {
+  font-size: 11px;
+  color: #999;
+  margin-right: 4px;
+}
+
+.mark-btn {
+  background: #2c3e50;
+  color: #999;
+  border: 1px solid #34495e;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mark-btn:hover {
+  background: #3498db;
+  color: white;
+}
+
+.mark-btn.active {
+  background: #3498db;
+  color: white;
+  border-color: #5dade2;
+}
+
