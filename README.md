@@ -48,7 +48,7 @@ The following is the current progress of features and planned updates.
 
 ## 🛠 For Developers
 
-This application is built using [Tauri](https://v2.tauri.app/ja/).
+This application is built using [Tauri](https://github.com/tauri-apps/tauri).
 
 ### Prerequisites
 
