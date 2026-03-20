@@ -37,7 +37,7 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 
-import { showMemoDialog,parseNoteContent, serializeNote } from "./memo.js";
+import { showMemoDialog, parseNoteContent, serializeNote } from "./memo.js";
 
 // --- ドラッグアンドドロップの基本防止設定 ---
 const preventDefault = (e) => {
@@ -117,17 +117,17 @@ export async function setupGlobalEvents() {
       const notePath = path + ".note";
 
       const raw = await ReadTextFile(notePath).catch(() => "");
-const { text, meta } = parseNoteContent(raw);
-showMemoDialog(text, meta, async (newText, newMeta) => {
-  try {
-    await WriteTextFile(notePath, serializeNote(newText, newMeta));
-    showFloatingMessage(i18n.memoSaved);
-    UpdateHistory();
-  } catch (err) {
-    console.error(err);
-    showFloatingError(i18n.memoSaveError);
-  }
-});
+      const { text, meta } = parseNoteContent(raw);
+      showMemoDialog(text, meta, async (newText, newMeta) => {
+        try {
+          await WriteTextFile(notePath, serializeNote(newText, newMeta));
+          showFloatingMessage(i18n.memoSaved);
+          UpdateHistory();
+        } catch (err) {
+          console.error(err);
+          showFloatingError(i18n.memoSaveError);
+        }
+      });
       return;
     }
     // 最近使ったファイル (.recent-item) のクリック

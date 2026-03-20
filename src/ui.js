@@ -21,7 +21,7 @@ import {
   addToRecentFiles,
 } from "./state";
 
-import { showMemoDialog,parseNoteContent } from "./memo.js";
+import { showMemoDialog, parseNoteContent } from "./memo.js";
 
 import { switchTab, removeTab, reorderTabs } from "./actions";
 
@@ -494,7 +494,7 @@ export async function UpdateHistory() {
     const itemsHtml = await Promise.all(
       data.map(async (item) => {
         const raw = await ReadTextFile(item.filePath + ".note").catch(() => "");
-	const { text: note, meta: noteMeta } = parseNoteContent(raw);
+        const { text: note, meta: noteMeta } = parseNoteContent(raw);
 
         // --- 検索フィルタリング (ファイル名 または メモ に含まれるか) ---
         if (searchTerm) {
@@ -512,12 +512,19 @@ export async function UpdateHistory() {
 
         let statusHtml = "";
         let genBadge = "";
-	const mark = noteMeta?.mark ?? 0;
-const markBadge = mark > 0 ? (() => {
-  const markColors = { 1: "#e6a817", 2: "#db741f", 3: "#c0392b" };
-  const markLabels = { 1:  i18n?.priorityLow || "Low", 2: i18n?.priorityMid || "Mid", 3: i18n?.priorityHigh || "High" };
-  return `<span style="font-size:10px; color:#fff; background:${markColors[mark]}; padding:1px 4px; border-radius:3px; margin-left:3px;">${markLabels[mark]}</span>`;
-})() : "";
+        const mark = noteMeta?.mark ?? 0;
+        const markBadge =
+          mark > 0
+            ? (() => {
+                const markColors = { 1: "#e6a817", 2: "#db741f", 3: "#c0392b" };
+                const markLabels = {
+                  1: i18n?.priorityLow || "Low",
+                  2: i18n?.priorityMid || "Mid",
+                  3: i18n?.priorityHigh || "High",
+                };
+                return `<span style="font-size:10px; color:#fff; background:${markColors[mark]}; padding:1px 4px; border-radius:3px; margin-left:3px;">${markLabels[mark]}</span>`;
+              })()
+            : "";
 
         if (isArchive) {
           const archiveText = i18n.fullArchive || " Full Archive";
@@ -560,11 +567,17 @@ const markBadge = mark > 0 ? (() => {
           genBadge = `<span class="gen-selector-badge" data-dir="${itemDir}" style="${badgeStyle}">${genLabel}.${currentGen}${currentLabel}</span>`;
         }
 
-        
-  	const markLabels = { 1:  i18n?.priorityLow || "Low", 2: i18n?.priorityMid || "Mid", 3: i18n?.priorityHigh || "High" };
-	const markText = mark > 0 ? `<br><strong>${i18n?.priorityLabel || "Priority"}:</strong> ${markLabels[mark]}` : "";
+        const markLabels = {
+          1: i18n?.priorityLow || "Low",
+          2: i18n?.priorityMid || "Mid",
+          3: i18n?.priorityHigh || "High",
+        };
+        const markText =
+          mark > 0
+            ? `<br><strong>${i18n?.priorityLabel || "Priority"}:</strong> ${markLabels[mark]}`
+            : "";
 
-	const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${markText}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>${i18n.backupMemo}:</strong> ${note}` : ""}`;
+        const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${markText}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>${i18n.backupMemo}:</strong> ${note}` : ""}`;
 
         // ハイライト適用済みのテキストを作成
         const displayedFileName = highlight(item.fileName, searchTerm);
