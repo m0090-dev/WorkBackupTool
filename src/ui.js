@@ -25,6 +25,8 @@ import { showMemoDialog, parseNoteContent } from "./memo.js";
 
 import { switchTab, removeTab, reorderTabs } from "./actions";
 
+import { settingsSchema, categoryLabels } from "./settings-schema.js";
+
 let isExecuting = false;
 
 // UI描画・メッセージ系（通常版）
@@ -704,22 +706,139 @@ export async function showArchiveModal() {
 /**
  * 詳細設定モーダルのUIを更新して表示する
  */
+/*export async function showSettingsModal() {*/
+/*const modal = document.getElementById("settings-modal");*/
+/*if (!modal || !i18n) return;*/
+/*try {*/
+/*// 2. 最新の設定値をRust側から取得*/
+/*const config = await GetConfig();*/
+
+/*// 3. フォームに値をセット*/
+/*const cacheInput = document.getElementById("input-cache-limit");*/
+/*const thresholdInput = document.getElementById("input-threshold");*/
+
+/*if (cacheInput) cacheInput.value = config.startupCacheLimit;*/
+/*if (thresholdInput)*/
+/*thresholdInput.value = config.autoBaseGenerationThreshold;*/
+
+/*// 4. モーダルを表示*/
+/*modal.classList.remove("hidden");*/
+/*} catch (err) {*/
+/*console.error("Failed to load settings:", err);*/
+/*showFloatingError(i18n.errorLoadingHistory || "Failed to load settings");*/
+/*}*/
+/*}*/
+
 export async function showSettingsModal() {
   const modal = document.getElementById("settings-modal");
   if (!modal || !i18n) return;
   try {
-    // 2. 最新の設定値をRust側から取得
     const config = await GetConfig();
+    const lang = i18n.language || "ja";
 
-    // 3. フォームに値をセット
-    const cacheInput = document.getElementById("input-cache-limit");
-    const thresholdInput = document.getElementById("input-threshold");
+    // カテゴリ一覧を抽出（重複なし、順序維持）
+    const categories = [
+      ...new Set(settingsSchema.map((item) => item.category)),
+    ];
 
-    if (cacheInput) cacheInput.value = config.startupCacheLimit;
-    if (thresholdInput)
-      thresholdInput.value = config.autoBaseGenerationThreshold;
+    // モーダルの中身を動的生成
+    const modalContent = modal.querySelector(".modal-content");
+    if (!modalContent) return;
 
-    // 4. モーダルを表示
+    // タブHTMLを生成
+    const tabsHtml = categories
+      .map((cat, idx) => {
+        const label = categoryLabels[cat]?.[lang] || cat;
+        return `<button class="settings-tab-btn ${idx === 0 ? "active" : ""}" data-category="${cat}">${label}</button>`;
+      })
+      .join("");
+
+    // 各カテゴリのコンテンツを生成
+    const pagesHtml = categories
+      .map((cat, idx) => {
+        const items = settingsSchema.filter((item) => item.category === cat);
+        const itemsHtml = items
+          .map((item) => {
+            const labelText = i18n[item.label] || item.label;
+            const hintText = item.hint ? i18n[item.hint] || "" : "";
+            const currentValue = config[item.key];
+
+            if (item.type === "boolean") {
+              return `
+            <div class="settings-item">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" class="settings-input" data-key="${item.key}" ${currentValue ? "checked" : ""}>
+                <span>${labelText}</span>
+              </label>
+              ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
+            </div>`;
+            } else if (item.type === "number") {
+              return `
+            <div class="settings-item">
+              <label>${labelText}</label>
+              <input type="number" class="settings-input" data-key="${item.key}"
+                value="${currentValue}"
+                ${item.min !== null ? `min="${item.min}"` : ""}
+                ${item.max !== null ? `max="${item.max}"` : ""}
+                step="${item.step || 1}"
+                style="width:80px; background:#252526; border:1px solid #444; color:#eee; padding:4px 8px; border-radius:4px;">
+              ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
+            </div>`;
+            }
+          })
+          .join("");
+
+        return `<div class="settings-page ${idx === 0 ? "" : "hidden"}" data-category="${cat}">${itemsHtml}</div>`;
+      })
+      .join("");
+
+    modalContent.innerHTML = `
+      <h3>${i18n.advancedSettingsTitle || "Advanced Settings"}</h3>
+      <div class="settings-tabs">${tabsHtml}</div>
+      <div class="settings-pages">${pagesHtml}</div>
+      <div class="modal-buttons">
+        <button id="settings-close-btn" class="modal-btn cancel">${i18n.closeBtn || "Close"}</button>
+      </div>
+    `;
+
+    // タブ切り替えイベント
+    modalContent.querySelectorAll(".settings-tab-btn").forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        modalContent
+          .querySelectorAll(".settings-tab-btn")
+          .forEach((b) => b.classList.remove("active"));
+        modalContent
+          .querySelectorAll(".settings-page")
+          .forEach((p) => p.classList.add("hidden"));
+        btn.classList.add("active");
+        modalContent
+          .querySelector(
+            `.settings-page[data-category="${btn.dataset.category}"]`,
+          )
+          ?.classList.remove("hidden");
+      };
+    });
+
+    // 設定変更イベント
+    modalContent.querySelectorAll(".settings-input").forEach((input) => {
+      const handler = async () => {
+        const key = input.dataset.key;
+        const schema = settingsSchema.find((s) => s.key === key);
+        if (!schema) return;
+        const value =
+          schema.type === "boolean" ? input.checked : parseFloat(input.value);
+        if (schema.type === "number" && isNaN(value)) return;
+        if (schema.min !== null && value < schema.min) return;
+        if (schema.max !== null && value > schema.max) return;
+        await handleSettingChange(key, value);
+      };
+      input.addEventListener(
+        input.type === "checkbox" ? "change" : "change",
+        handler,
+      );
+    });
+
     modal.classList.remove("hidden");
   } catch (err) {
     console.error("Failed to load settings:", err);

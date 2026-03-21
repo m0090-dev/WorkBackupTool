@@ -9,5 +9,6 @@
   "trayBackupMode": "diff",
   "rebuildCacheOnStartup": true,
   "startupCacheLimit": 5,
-  "showMemoAfterBackup": true
+  "showMemoAfterBackup": true,
+  "strictFileNameMatch": true
 }

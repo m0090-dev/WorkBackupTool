@@ -46,6 +46,9 @@ pub async fn update_config_value(
         "autoBaseGenerationThreshold" => {
             cfg.auto_base_generation_threshold = value.as_f64().unwrap_or(0.6);
         }
+        "strictFileNameMatch" => {
+            cfg.strict_file_name_match = value.as_bool().unwrap_or(true);
+        }
         _ => return Err(format!("Unknown numeric config key: {}", key)),
     }
 
@@ -584,7 +587,7 @@ pub fn get_backup_list(
     let mut list = Vec::new();
     let state = app.state::<AppState>();
     let config = state.config.lock().unwrap();
-
+    let strict = config.strict_file_name_match;
     // --- 1. ルートディレクトリの決定 ---
     let root = if backup_dir.is_empty() {
         utils::default_backup_dir(&work_file)
@@ -638,7 +641,7 @@ pub fn get_backup_list(
             let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
             let f_name_lower = file_name.to_lowercase();
             let base_lower = base_name_only.to_lowercase();
-            if f_name_lower.contains(&base_lower) && is_valid_ext(file_name) {
+            if (!strict || f_name_lower.contains(&base_lower)) && is_valid_ext(file_name) {
                 if let Ok(metadata) = fs::metadata(&path) {
                     // 通常のルート直下ファイルはアーカイブフラグ false
                     list.push(create_backup_item(file_name, &path, &metadata, 0, false));
@@ -690,7 +693,9 @@ pub fn get_backup_list(
                             }
                             let f_name_lower = f_name.to_lowercase();
                             let base_lower = base_name_only.to_lowercase();
-                            if f_name_lower.contains(&base_lower) && is_valid_ext(f_name) {
+                            if (!strict || f_name_lower.contains(&base_lower))
+                                && is_valid_ext(f_name)
+                            {
                                 if let Ok(metadata) = fs::metadata(&gen_path) {
                                     let pure_name = gen_path
                                         .file_name()

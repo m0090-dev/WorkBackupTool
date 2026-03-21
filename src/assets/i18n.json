@@ -27,7 +27,7 @@
     "japanese": "Japanese",
     "restartRequired": "Language changes will take effect after restart.",
     "about": "About",
-    "aboutText": "WorkBackupTool 1.2.1 (2026)\n© 2025 m0090-dev.",
+    "aboutText": "WorkBackupTool 1.2.2 (2026)\n© 2025 m0090-dev.",
     "selectFileFirst": "Please select a work file first.",
     "restoreConfirm": "Restore selected versions? This will create a new file.",
     "restoreError": "Restore failed",
@@ -107,7 +107,9 @@
     "priorityNone": "None",
     "priorityLow": "Low",
     "priorityMid": "Mid",
-    "priorityHigh": "High"
+    "priorityHigh": "High",
+    "filterHistoryByFilename": "Filter history by filename",
+    "filterHistoryByFilenameHint": "Show only files matching the work file name in history"
   },
   "ja": {
     "settings": "設定",
@@ -137,7 +139,7 @@
     "japanese": "日本語",
     "restartRequired": "言語設定は再起動後に反映されます。",
     "about": "ソフト情報",
-    "aboutText": "WorkBackupTool 1.2.1 (2026)\n© 2025 m0090-dev.",
+    "aboutText": "WorkBackupTool 1.2.2 (2026)\n© 2025 m0090-dev.",
     "selectFileFirst": "先に作業ファイルを選択してください。",
     "restoreConfirm": "選択したバージョンを復元しますか？新しいファイルが生成されます。",
     "restoreError": "復元失敗",
@@ -217,6 +219,8 @@
     "priorityNone": "なし",
     "priorityLow": "低",
     "priorityMid": "中",
-    "priorityHigh": "高"
+    "priorityHigh": "高",
+    "filterHistoryByFilename": "履歴をファイル名でフィルタ",
+    "filterHistoryByFilenameHint": "履歴に作業ファイル名と一致するファイルのみ表示する"
   }
 }
