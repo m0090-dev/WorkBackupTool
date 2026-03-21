@@ -703,32 +703,6 @@ export async function showArchiveModal() {
   }
 }
 
-/**
- * 詳細設定モーダルのUIを更新して表示する
- */
-/*export async function showSettingsModal() {*/
-/*const modal = document.getElementById("settings-modal");*/
-/*if (!modal || !i18n) return;*/
-/*try {*/
-/*// 2. 最新の設定値をRust側から取得*/
-/*const config = await GetConfig();*/
-
-/*// 3. フォームに値をセット*/
-/*const cacheInput = document.getElementById("input-cache-limit");*/
-/*const thresholdInput = document.getElementById("input-threshold");*/
-
-/*if (cacheInput) cacheInput.value = config.startupCacheLimit;*/
-/*if (thresholdInput)*/
-/*thresholdInput.value = config.autoBaseGenerationThreshold;*/
-
-/*// 4. モーダルを表示*/
-/*modal.classList.remove("hidden");*/
-/*} catch (err) {*/
-/*console.error("Failed to load settings:", err);*/
-/*showFloatingError(i18n.errorLoadingHistory || "Failed to load settings");*/
-/*}*/
-/*}*/
-
 export async function showSettingsModal() {
   const modal = document.getElementById("settings-modal");
   if (!modal || !i18n) return;
