@@ -20,6 +20,7 @@ pub struct AppConfig {
     pub rebuild_cache_on_startup: bool,
     pub startup_cache_limit: usize,
     pub show_memo_after_backup: bool,
+    pub strict_file_name_match: bool,
 }
 
 // 差分ファイル情報

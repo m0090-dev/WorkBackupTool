@@ -335,21 +335,6 @@ export async function setupGlobalEvents() {
       const checks = document.querySelectorAll(".archive-gen-check");
       checks.forEach((c) => (c.checked = e.target.checked));
     }
-    if (id === "input-cache-limit") {
-      const val = parseInt(value, 10);
-      if (!isNaN(val) && val >= 0) {
-        handleSettingChange("startupCacheLimit", val);
-      }
-    }
-    if (id === "input-threshold") {
-      const val = parseFloat(value);
-      if (!isNaN(val)) {
-        // 0.1 ～ 1.0 にクランプ
-        const clamped = Math.min(Math.max(val, 0.1), 1.0);
-        e.target.value = clamped; // UI上の表示も補正
-        handleSettingChange("autoBaseGenerationThreshold", clamped);
-      }
-    }
   });
   window.addEventListener("contextmenu", (e) => {
     // 最近使った項目 (.recent-item) の上での右クリックか判定
