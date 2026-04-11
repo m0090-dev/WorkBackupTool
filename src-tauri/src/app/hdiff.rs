@@ -1,21 +1,15 @@
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 
-/// hdiffz を呼び出して差分を作成する (圧縮設定対応)
-pub async fn create_hdiff(
-    app: tauri::AppHandle,
-    old_file: &str,
-    new_file: &str,
-    diff_file: &str,
-    compress_algo: &str, // "zstd", "lzma2", "none" 等
-) -> Result<(), String> {
-    // 1. 基本となる引数をベクトルで作成
-    // -f: 強制上書き, -s: ストリーミング/高速化
+/// hdiffz 用の引数リストを生成するロジック
+pub fn build_hdiffz_args<'a>(
+    old_file: &'a str,
+    new_file: &'a str,
+    diff_file: &'a str,
+    compress_algo: &'a str,
+) -> Vec<&'a str> {
     let mut args = vec!["-f", "-s"];
 
-    // 2. 圧縮アルゴリズムに応じたフラグを追加
-    // compress_algo が "none" の場合はフラグを vec に追加しないことで
-    // hdiffz のデフォルト動作（uncompress）を呼び出す
     match compress_algo {
         "zstd" => args.push("-c-zstd"),
         "lzma2" => args.push("-c-lzma2"),
@@ -24,29 +18,43 @@ pub async fn create_hdiff(
         "ldef" => args.push("-c-ldef"),
         "pbzip2" => args.push("-c-pbzip2"),
         "bzip2" => args.push("-c-bzip2"),
-        "none" => {
-            // 何も追加しない（uncompress）
-        }
-        _ => {
-            // 未知の指定があればデフォルトとして zstd を追加
-            args.push("-c-zstd");
-        }
+        "none" => {}               // uncompress
+        _ => args.push("-c-zstd"), // default
     };
 
-    // 3. 最後にパス情報を追加
     args.push(old_file);
     args.push(new_file);
     args.push(diff_file);
+    args
+}
 
-    // 4. Sidecar "hdiffz" を呼び出し
-    let sidecar_command = app
+/// hpatchz 用の引数リストを生成するロジック
+pub fn build_hpatchz_args<'a>(
+    base_full: &'a str,
+    diff_file: &'a str,
+    out_path: &'a str,
+) -> Vec<&'a str> {
+    vec!["-f", "-s", base_full, diff_file, out_path]
+}
+
+/// hdiffz を呼び出して差分を作成する
+pub async fn create_hdiff(
+    app: AppHandle,
+    old_file: &str,
+    new_file: &str,
+    diff_file: &str,
+    compress_algo: &str,
+) -> Result<(), String> {
+    let args = build_hdiffz_args(old_file, new_file, diff_file, compress_algo);
+
+    let output = app
         .shell()
         .sidecar("hdiffz")
         .map_err(|e| e.to_string())?
-        .args(&args); // 動的に構築した args リストを渡す
-
-    // Windowsでのウィンドウ非表示等は Tauri が内部で処理
-    let output = sidecar_command.output().await.map_err(|e| e.to_string())?;
+        .args(&args)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
 
     if output.status.success() {
         Ok(())
@@ -58,19 +66,21 @@ pub async fn create_hdiff(
 
 /// hpatchz を呼び出してパッチを適用（復元）する
 pub async fn apply_hdiff(
-    app: tauri::AppHandle,
+    app: AppHandle,
     base_full: &str,
     diff_file: &str,
     out_path: &str,
 ) -> Result<(), String> {
-    // Sidecar "hpatchz" を呼び出し
-    let sidecar_command = app
+    let args = build_hpatchz_args(base_full, diff_file, out_path);
+
+    let output = app
         .shell()
         .sidecar("hpatchz")
         .map_err(|e| e.to_string())?
-        .args(["-f", "-s", base_full, diff_file, out_path]);
-
-    let output = sidecar_command.output().await.map_err(|e| e.to_string())?;
+        .args(&args)
+        .output()
+        .await
+        .map_err(|e| e.to_string())?;
 
     if output.status.success() {
         Ok(())
