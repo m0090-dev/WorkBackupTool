@@ -1,4 +1,4 @@
-mod app;
+pub mod app;
 use crate::app::commands::*;
 use crate::app::config::*;
 use crate::app::state::AppState;

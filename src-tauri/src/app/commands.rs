@@ -105,24 +105,7 @@ pub fn get_startup_cache_limit(state: State<'_, AppState>) -> usize {
 
 #[tauri::command]
 pub fn get_language_text(state: State<'_, AppState>, key: &str) -> Result<String, String> {
-    let lang = {
-        let cfg = state.config.lock().unwrap();
-        if cfg.language.is_empty() {
-            "ja".to_string()
-        } else {
-            cfg.language.clone()
-        }
-    };
-
-    // i18n -> lang -> key を安全に辿る
-    Ok(
-        state
-            .i18n
-            .get(&lang)
-            .and_then(|dict| dict.get(key))
-            .cloned()
-            .unwrap_or_else(|| key.to_string()), // 見つからなければキー名をそのまま返す
-    )
+    state.translate(&key)
 }
 
 /// 現在の言語設定に基づいた辞書をまるごと返す (Goの GetI18N 相当)

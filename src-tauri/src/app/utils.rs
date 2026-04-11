@@ -200,10 +200,7 @@ pub fn tar_backup_file(src: &str, backup_dir: &Path) -> Result<(), String> {
 
 /// Readerの内容をターゲットファイルに書き出す (Goの saveToWorkFile 相当)
 /// Rustでは io::Read トレイトを持つものを引数に取ります
-pub fn save_to_work_file<R_type: Read>(
-    mut reader: R_type,
-    target_file: &str,
-) -> Result<(), String> {
+pub fn save_to_work_file<R: Read>(mut reader: R, target_file: &str) -> Result<(), String> {
     // 1. ファイルの作成
     let mut out = File::create(target_file)
         .map_err(|e| format!("Failed to create file {}: {}", target_file, e))?;
