@@ -4,7 +4,8 @@ use crate::core::utils;
 use chrono::Local;
 use std::fs;
 use std::path::{Path, PathBuf};
-
+use tauri::AppHandle;
+use tauri_plugin_shell::ShellExt;
 /// hdiffz を呼び出して差分を作成する
 pub async fn create_hdiff(
     app: AppHandle,
