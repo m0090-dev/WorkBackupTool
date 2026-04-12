@@ -1,4 +1,4 @@
-use crate::app::config::*;
+use crate::core::config::assets::*;
 use crate::core::types::AppConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

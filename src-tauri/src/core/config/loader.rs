@@ -1,3 +1,5 @@
+use super::assets::DEFAULT_CONFIG_JSON;
+use super::assets::DEFAULT_I18N_JSON;
 use crate::core::types::AppConfig;
 use std::collections::HashMap;
 use std::fs;
@@ -11,9 +13,6 @@ pub fn default_i18n() -> HashMap<String, HashMap<String, String>> {
     serde_json::from_str(DEFAULT_I18N_JSON).unwrap_or_default()
 }
 
-
-
-
 pub fn load_app_config(config_path: PathBuf) -> Result<AppConfig, String> {
     // 1. 親ディレクトリ（AppConfigDir）がなければ作成
     if let Some(parent) = config_path.parent() {
@@ -26,8 +25,8 @@ pub fn load_app_config(config_path: PathBuf) -> Result<AppConfig, String> {
     let data = if config_path.exists() {
         fs::read_to_string(&config_path).map_err(|e| e.to_string())?
     } else {
-        fs::write(&config_path, super::DEFAULT_CONFIG_JSON).map_err(|e| e.to_string())?;
-        crate::core::config::DEFAULT_CONFIG_JSON.to_string()
+        fs::write(&config_path, DEFAULT_CONFIG_JSON).map_err(|e| e.to_string())?;
+        DEFAULT_CONFIG_JSON.to_string()
     };
 
     // 3. デシリアライズ
@@ -35,5 +34,3 @@ pub fn load_app_config(config_path: PathBuf) -> Result<AppConfig, String> {
 
     Ok(cfg)
 }
-
-

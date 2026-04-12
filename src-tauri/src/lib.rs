@@ -1,7 +1,8 @@
 pub mod app;
+pub mod core;
 use crate::app::commands::*;
-use crate::app::config::*;
 use crate::app::state::AppState;
+use crate::core::config::loader::*;
 use crate::core::types::AppConfig;
 use crate::core::utils;
 use app::menu::*;

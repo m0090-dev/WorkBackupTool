@@ -43,12 +43,6 @@ pub fn build_hpatchz_args<'a>(
     vec!["-f", "-s", base_full, diff_file, out_path]
 }
 
-
-
-
-
-
-
 // 1. GetHdiffList の移植
 pub fn get_hdiff_list(
     work_file: &str,
@@ -85,11 +79,10 @@ pub fn get_hdiff_list(
     Ok(list)
 }
 
-
 /// BackupOrHdiff のロジック部分
 /// 戻り値: Ok(Some((base, work, diff))) => Sidecar実行が必要
 ///        Ok(None) => .baseコピーのみで終了
-pub fn prepare_backup_paths(
+pub fn prepare_hdiff_paths(
     work_file: &str,
     target_dir: PathBuf,
 ) -> Result<Option<(String, String, String)>, String> {
@@ -125,8 +118,11 @@ pub fn resolve_apply_paths(
 ) -> Result<(String, String), String> {
     let diff_path = Path::new(diff_file);
     let backup_dir = diff_path.parent().ok_or("Invalid diff path")?;
-    let diff_name = diff_path.file_name().ok_or("Invalid diff name")?.to_string_lossy();
-    
+    let diff_name = diff_path
+        .file_name()
+        .ok_or("Invalid diff name")?
+        .to_string_lossy();
+
     let original_full_name = diff_name.split(".20").next().unwrap_or(&diff_name);
     let original_ext = Path::new(original_full_name)
         .extension()
@@ -139,7 +135,10 @@ pub fn resolve_apply_paths(
     if !base_full.exists() {
         let work_base_name = format!(
             "{}.base",
-            Path::new(work_file).file_name().ok_or("Invalid work file")?.to_string_lossy()
+            Path::new(work_file)
+                .file_name()
+                .ok_or("Invalid work file")?
+                .to_string_lossy()
         );
         base_full = backup_dir.join(work_base_name);
     }
