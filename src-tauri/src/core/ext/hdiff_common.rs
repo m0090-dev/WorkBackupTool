@@ -4,9 +4,6 @@ use chrono::Local;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use tauri::AppHandle;
-use tauri_plugin_shell::ShellExt;
-
 /// hdiffz 用の引数リストを生成するロジック
 pub fn build_hdiffz_args<'a>(
     old_file: &'a str,
