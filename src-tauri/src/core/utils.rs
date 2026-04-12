@@ -1,6 +1,6 @@
 use crate::app::commands::get_language_text;
 use crate::app::state::AppState;
-use crate::app::types::AppConfig;
+use crate::core::types::AppConfig;
 use chrono::Local;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;

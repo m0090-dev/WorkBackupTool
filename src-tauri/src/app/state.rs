@@ -1,5 +1,5 @@
 use crate::app::config::*;
-use crate::app::types::AppConfig;
+use crate::core::types::AppConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;

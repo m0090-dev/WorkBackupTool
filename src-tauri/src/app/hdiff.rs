@@ -1,47 +1,9 @@
-use crate::app::types::DiffFileInfo;
-use crate::app::utils;
+use crate::core::ext::hdiff_common::*;
+use crate::core::types::DiffFileInfo;
+use crate::core::utils;
 use chrono::Local;
 use std::fs;
 use std::path::{Path, PathBuf};
-
-use tauri::AppHandle;
-use tauri_plugin_shell::ShellExt;
-
-/// hdiffz 用の引数リストを生成するロジック
-pub fn build_hdiffz_args<'a>(
-    old_file: &'a str,
-    new_file: &'a str,
-    diff_file: &'a str,
-    compress_algo: &'a str,
-) -> Vec<&'a str> {
-    let mut args = vec!["-f", "-s"];
-
-    match compress_algo {
-        "zstd" => args.push("-c-zstd"),
-        "lzma2" => args.push("-c-lzma2"),
-        "lzma" => args.push("-c-lzma"),
-        "zlib" => args.push("-c-zlib"),
-        "ldef" => args.push("-c-ldef"),
-        "pbzip2" => args.push("-c-pbzip2"),
-        "bzip2" => args.push("-c-bzip2"),
-        "none" => {}               // uncompress
-        _ => args.push("-c-zstd"), // default
-    };
-
-    args.push(old_file);
-    args.push(new_file);
-    args.push(diff_file);
-    args
-}
-
-/// hpatchz 用の引数リストを生成するロジック
-pub fn build_hpatchz_args<'a>(
-    base_full: &'a str,
-    diff_file: &'a str,
-    out_path: &'a str,
-) -> Vec<&'a str> {
-    vec!["-f", "-s", base_full, diff_file, out_path]
-}
 
 /// hdiffz を呼び出して差分を作成する
 pub async fn create_hdiff(
@@ -96,6 +58,18 @@ pub async fn apply_hdiff(
     }
 }
 
+pub async fn apply_hdiff_wrapper(
+    app: tauri::AppHandle,
+    work_file: &str,
+    diff_file: &str,
+) -> Result<(), String> {
+    // 1. 仮の出力先パスを生成
+    let temp_out = utils::auto_output_path(work_file);
 
+    // 2. 共通モジュール(hdiff_common.rs)を使用してパスを確定させる
+    // ここで .20 分割、.base 探索、拡張子復元が「従来通り」行われます
+    let (base_full, out_path) = resolve_apply_paths(work_file, diff_file, temp_out)?;
 
-
+    // 3. Sidecar (hpatchz) の実行を既存の apply_hdiff 関数に投げる
+    crate::app::hdiff::apply_hdiff(app, &base_full, diff_file, &out_path).await
+}

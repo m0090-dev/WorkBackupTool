@@ -1,8 +1,53 @@
-use crate::app::types::DiffFileInfo;
-use crate::app::utils;
+use crate::core::types::DiffFileInfo;
+use crate::core::utils;
 use chrono::Local;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+use tauri::AppHandle;
+use tauri_plugin_shell::ShellExt;
+
+/// hdiffz 用の引数リストを生成するロジック
+pub fn build_hdiffz_args<'a>(
+    old_file: &'a str,
+    new_file: &'a str,
+    diff_file: &'a str,
+    compress_algo: &'a str,
+) -> Vec<&'a str> {
+    let mut args = vec!["-f", "-s"];
+
+    match compress_algo {
+        "zstd" => args.push("-c-zstd"),
+        "lzma2" => args.push("-c-lzma2"),
+        "lzma" => args.push("-c-lzma"),
+        "zlib" => args.push("-c-zlib"),
+        "ldef" => args.push("-c-ldef"),
+        "pbzip2" => args.push("-c-pbzip2"),
+        "bzip2" => args.push("-c-bzip2"),
+        "none" => {}               // uncompress
+        _ => args.push("-c-zstd"), // default
+    };
+
+    args.push(old_file);
+    args.push(new_file);
+    args.push(diff_file);
+    args
+}
+
+/// hpatchz 用の引数リストを生成するロジック
+pub fn build_hpatchz_args<'a>(
+    base_full: &'a str,
+    diff_file: &'a str,
+    out_path: &'a str,
+) -> Vec<&'a str> {
+    vec!["-f", "-s", base_full, diff_file, out_path]
+}
+
+
+
+
+
+
 
 // 1. GetHdiffList の移植
 pub fn get_hdiff_list(
@@ -40,76 +85,69 @@ pub fn get_hdiff_list(
     Ok(list)
 }
 
-// 2. BackupOrHdiff の移植
-pub async fn backup_or_hdiff(
-    app: tauri::AppHandle,
-    work_file: &str,
-    custom_dir: Option<String>,
-    compress: String,
-) -> Result<(), String> {
-    let target_dir = match custom_dir {
-        Some(dir) if !dir.is_empty() => PathBuf::from(dir),
-        _ => utils::default_backup_dir(work_file),
-    };
 
+/// BackupOrHdiff のロジック部分
+/// 戻り値: Ok(Some((base, work, diff))) => Sidecar実行が必要
+///        Ok(None) => .baseコピーのみで終了
+pub fn prepare_backup_paths(
+    work_file: &str,
+    target_dir: PathBuf,
+) -> Result<Option<(String, String, String)>, String> {
     fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
 
-    let base_name = Path::new(work_file).file_name().unwrap().to_string_lossy();
+    let base_name = Path::new(work_file)
+        .file_name()
+        .ok_or("Invalid work file name")?
+        .to_string_lossy();
     let base_full = target_dir.join(format!("{}.base", base_name));
 
     if !base_full.exists() {
-        // baseがなければコピーして終了
         fs::copy(work_file, &base_full).map_err(|e| e.to_string())?;
-        return Ok(());
+        return Ok(None);
     }
 
-    // タイムスタンプ生成 (Goの 20060102_150405 相当)
     let ts = Local::now().format("%Y%m%d_%H%M%S").to_string();
     let diff_path = target_dir.join(format!("{}.{}.diff", base_name, ts));
 
-    // hdiffz（Sidecar）を呼び出す
-    crate::app::hdiff::create_hdiff(
-        app,
-        &base_full.to_string_lossy(),
-        work_file,
-        &diff_path.to_string_lossy(),
-        &compress,
-    )
-    .await
+    Ok(Some((
+        base_full.to_string_lossy().into_owned(),
+        work_file.to_string(),
+        diff_path.to_string_lossy().into_owned(),
+    )))
 }
 
-// 3. ApplyHdiffWrapper の移植
-pub async fn apply_hdiff_wrapper(
-    app: tauri::AppHandle,
+/// ApplyHdiffWrapper のロジック部分
+/// 戻り値: (base_path, out_path)
+pub fn resolve_apply_paths(
     work_file: &str,
     diff_file: &str,
-) -> Result<(), String> {
+    temp_out_path: String, // app::utils::auto_output_path の結果をもらう
+) -> Result<(String, String), String> {
     let diff_path = Path::new(diff_file);
-    let backup_dir = diff_path.parent().unwrap();
-    let diff_name = diff_path.file_name().unwrap().to_string_lossy();
+    let backup_dir = diff_path.parent().ok_or("Invalid diff path")?;
+    let diff_name = diff_path.file_name().ok_or("Invalid diff name")?.to_string_lossy();
+    
     let original_full_name = diff_name.split(".20").next().unwrap_or(&diff_name);
     let original_ext = Path::new(original_full_name)
         .extension()
         .and_then(|s| s.to_str())
-        .unwrap_or("bin"); // 拡張子がない場合のフォールバック
-                           // 文字列操作で .base 名を特定
-    let file_name = diff_path.file_name().unwrap().to_string_lossy();
-    let mut base_name = format!("{}.base", file_name.split(".20").next().unwrap());
+        .unwrap_or("bin");
+
+    let mut base_name = format!("{}.base", diff_name.split(".20").next().unwrap());
     let mut base_full = backup_dir.join(&base_name);
 
     if !base_full.exists() {
         let work_base_name = format!(
             "{}.base",
-            Path::new(work_file).file_name().unwrap().to_string_lossy()
+            Path::new(work_file).file_name().ok_or("Invalid work file")?.to_string_lossy()
         );
         base_full = backup_dir.join(work_base_name);
     }
-    let temp_out_path = utils::auto_output_path(work_file);
+
     let out_path = Path::new(&temp_out_path)
         .with_extension(original_ext)
         .to_string_lossy()
         .to_string();
 
-    // hpatchz (Sidecar) を呼び出す
-    crate::app::hdiff::apply_hdiff(app, &base_full.to_string_lossy(), diff_file, &out_path).await
+    Ok((base_full.to_string_lossy().into_owned(), out_path))
 }
