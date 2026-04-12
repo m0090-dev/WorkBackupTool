@@ -1,8 +1,8 @@
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
-//use crate::app::types::R;
-use crate::app::types::BackupGenInfo;
+//use crate::core::types::R;
+use crate::core::types::BackupGenInfo;
 
 /// 最新の baseN_... フォルダを特定する
 /// Go版の FindLatestBaseDir / GetLatestGeneration とロジックを完全同期

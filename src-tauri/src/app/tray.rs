@@ -1,7 +1,7 @@
 use crate::app::commands::get_language_text;
 use crate::app::state::AppState;
-use crate::app::types::AppConfig;
-use crate::app::utils;
+use crate::core::types::AppConfig;
+use crate::core::utils;
 use tauri::{AppHandle, Emitter, Manager, Runtime, State, Wry};
 
 #[cfg(desktop)]

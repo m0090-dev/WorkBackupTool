@@ -1,6 +1,6 @@
 use crate::app::commands::get_language_text; // 既存のコマンドをインポート
 use crate::app::state::AppState;
-use crate::app::types::AppConfig;
+use crate::core::types::AppConfig;
 use tauri::State;
 use tauri::{AppHandle, Manager, Runtime};
 
