@@ -9,10 +9,14 @@ use tauri::AppHandle;
 
 // 内部モジュール (自作)
 use crate::app::hdiff::*;
+use crate::app::state::AppState;
+use crate::core::backup::workflow;
 use crate::core::{backup::auto_generation, utils};
 use flate2::read::GzDecoder;
+use regex::Regex;
 use std::fs::File;
 use tar::Archive;
+use tauri::Manager;
 use zip::ZipArchive;
 
 #[tauri::command]
@@ -23,138 +27,59 @@ pub async fn backup_or_diff(
     algo: String,
     compress: String,
 ) -> Result<(), String> {
-    use crate::app::state::AppState;
-    use regex::Regex;
-    use std::fs;
-    use std::path::{Path, PathBuf};
-    use tauri::Manager;
+    let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
 
-    // --- 1. ディレクトリの決定 ---
+    // 1. ディレクトリ解決
     let initial_path = if custom_dir.is_empty() {
         utils::default_backup_dir(&work_file)
     } else {
         PathBuf::from(custom_dir.trim_end_matches(|c| c == '/' || c == '\\'))
     };
+    let target = workflow::resolve_backup_target(initial_path, &work_file)?;
 
-    let target_dir: PathBuf;
-    let mut current_idx: i32 = 0;
-    let project_root: PathBuf;
-
-    let folder_name = initial_path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("");
-
-    // --- 1a. 手動選択された世代フォルダか、親フォルダかの判定 ---
-    if folder_name.starts_with("base") {
-        target_dir = initial_path.clone();
-        project_root = initial_path
-            .parent()
-            .map(|p| p.to_path_buf())
-            .unwrap_or_else(|| initial_path.clone());
-
-        let re_idx = Regex::new(r"base(\d+)").unwrap();
-        if let Some(caps) = re_idx.captures(folder_name) {
-            current_idx = caps[1].parse().unwrap_or(0);
-        }
-    } else {
-        project_root = initial_path.clone();
-        let (resolved_path, idx) =
-            auto_generation::resolve_generation_dir(&project_root, &work_file)?;
-        target_dir = resolved_path;
-        current_idx = idx;
+    if !target.target_dir.exists() {
+        fs::create_dir_all(&target.target_dir).map_err(|e| e.to_string())?;
     }
 
-    // フォルダの存在保証
-    if !target_dir.exists() {
-        fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-    }
-
-    let file_name = Path::new(&work_file)
-        .file_name()
-        .ok_or("Invalid work file name")?
-        .to_string_lossy();
-
-    // --- 2. 既存の .base 同期と一時差分作成 ---
-    // ここで一旦、現在の target_dir に対して core の準備ロジックを走らせる
-    let plan = crate::core::ext::hdiff_common::prepare_hdiff_paths(&work_file, target_dir.clone())?;
-
-    let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let temp_diff = std::env::temp_dir().join(format!("{}.{}.tmp", file_name, ts));
-
-    // Sidecar実行 (一時ファイルへ)
-    if let Some((base_path, work, _)) = plan {
+    // 2. フェーズ1: 最初の作成
+    if let Some((base, work, temp)) = workflow::prepare_initial_plan(&work_file, &target, &ts)? {
         crate::app::hdiff::create_hdiff(
             app.clone(),
-            &base_path,
-            &work,
-            &temp_diff.to_string_lossy(),
+            &base.to_string_lossy(),
+            &work.to_string_lossy(),
+            &temp.to_string_lossy(),
             &compress,
-        )
-        .await?;
-    } else {
-        // .baseが新規作成（コピー）されただけの場合はここで終了
-        return Ok(());
-    }
-    // --- 3. サイズ・閾値判定 ---
-    let work_size = fs::metadata(&work_file).map_err(|e| e.to_string())?.len();
-    let diff_size = fs::metadata(&temp_diff).map_err(|e| e.to_string())?.len();
+        ).await?;
 
-    let threshold = {
-        let state = app.state::<AppState>();
-        let cfg = state.config.lock().unwrap();
-        if cfg.auto_base_generation_threshold <= 0.0 {
-            0.8
-        } else {
-            cfg.auto_base_generation_threshold
-        }
-    };
-
-    let mut should_next_gen = false;
-    if work_size > 100 * 1024 && (diff_size as f64) > (work_size as f64) * threshold {
-        should_next_gen = true;
-    }
-
-    if should_next_gen {
-        // --- 4a. 【世代交代】 ---
-        let _ = fs::remove_file(&temp_diff);
-
-        let (new_gen_dir, _) = match auto_generation::get_latest_generation(&project_root)? {
-            Some(info) if info.base_idx > current_idx => (info.dir_path, info.base_idx),
-            _ => {
-                let next_idx = current_idx + 1;
-                let path =
-                    auto_generation::create_new_generation(&project_root, next_idx, &work_file)?;
-                (path, next_idx)
-            }
+        // 3. 判定用の閾値取得
+        let threshold = {
+            let state = app.state::<AppState>();
+            let cfg = state.config.lock().unwrap();
+            if cfg.auto_base_generation_threshold <= 0.0 { 0.8 } else { cfg.auto_base_generation_threshold }
         };
 
-        // 新しい世代に対して再度準備と実行
-        let new_plan =
-            crate::core::ext::hdiff_common::prepare_hdiff_paths(&work_file, new_gen_dir.clone())?;
-        if let Some((base, work, _)) = new_plan {
-            let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
+        // 4. フェーズ2: 判定と後始末（世代交代が必要なら次を実行）
+        if let Some((new_base, new_work, final_dest)) = workflow::finalize_or_next_plan(
+            &work_file,
+            temp,
+            &target,
+            threshold,
+            &algo,
+            &ts,
+        )? {
             crate::app::hdiff::create_hdiff(
                 app,
-                &base,
-                &work,
-                &final_path.to_string_lossy(),
+                &new_base.to_string_lossy(),
+                &new_work.to_string_lossy(),
+                &final_dest.to_string_lossy(),
                 &compress,
-            )
-            .await?;
+            ).await?;
         }
-        Ok(())
-    } else {
-        // --- 4b. 【維持】 一時ファイルを正規の場所に移動 ---
-        let final_path = target_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
-        if let Err(e) = fs::rename(&temp_diff, &final_path) {
-            // クロスデバイス（WSL等の制限）対応のコピーフォールバック
-            fs::copy(&temp_diff, &final_path).map_err(|e| e.to_string())?;
-            fs::remove_file(&temp_diff).ok();
-        }
-        Ok(())
     }
+
+    Ok(())
 }
+
 
 #[tauri::command]
 pub async fn apply_multi_diff(
@@ -163,28 +88,20 @@ pub async fn apply_multi_diff(
     diff_paths: Vec<String>,
 ) -> Result<(), String> {
     for dp in diff_paths {
-        let diff_name = Path::new(&dp)
-            .file_name()
-            .ok_or("Invalid path")?
-            .to_string_lossy();
+        let algo = workflow::detect_diff_algo(&dp);
 
-        let result = if diff_name.contains(".bsdiff.") {
-            return Err(String::from("`bsdiff` is not supported."));
-        } else if diff_name.contains(".hdiff.") {
-            apply_hdiff_wrapper(app.clone(), work_file.as_str(), dp.as_str()).await
-        } else {
-            // 古いファイルのリトライ戦略
-            match apply_hdiff_wrapper(app.clone(), work_file.as_str(), dp.as_str()).await {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    // bsdiffリトライの枠だけ
-                    Err(format!("recovery failed for old format: {}", e))
-                }
+        let result = match algo {
+            workflow::DiffAlgo::HDiff => {
+                apply_hdiff_wrapper(app.clone(), &work_file, &dp).await
             }
+            workflow::DiffAlgo::BsDiff => {
+                return Err("`bsdiff` is not supported currently.".into());
+            }
+            _ => Err("Unknown format".into()),
         };
 
         if let Err(e) = result {
-            return Err(format!("復元失敗 ({}): {}", diff_name, e));
+            return Err(format!("復元失敗 ({}): {}", dp, e));
         }
     }
     Ok(())
