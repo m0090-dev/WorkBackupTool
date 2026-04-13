@@ -1,17 +1,12 @@
 // 標準ライブラリ
-use std::fs;
-use std::path::{Path, PathBuf};
 
 // 外部クレート
-use chrono::{DateTime, Local};
-use tauri::{AppHandle, Manager};
+use tauri::Manager;
 
 // Tauriプラグイン
 
 // 内部モジュール (自作)
-use crate::app::state::AppState;
 use crate::core::types::BackupItem;
-use crate::core::{backup::auto_generation, utils};
 
 #[tauri::command]
 pub fn get_backup_list(

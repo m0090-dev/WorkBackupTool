@@ -1,19 +1,10 @@
 use chrono::Local;
-use flate2::read::GzDecoder;
-use flate2::write::GzEncoder;
-use flate2::Compression;
 use std::collections::hash_map::DefaultHasher;
 use std::fs;
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
-use tar::Archive;
-use tar::Builder;
-use zip::write::SimpleFileOptions;
-use zip::ZipArchive;
-use zip::ZipWriter;
-use zip::{AesMode, CompressionMethod};
 
 /// ファイルを安全に移動させる。
 /// デバイスを跨ぐ移動（リネーム失敗）時は、コピー＆削除でフォールバックする。
