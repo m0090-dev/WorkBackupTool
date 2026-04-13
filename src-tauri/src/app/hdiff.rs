@@ -20,7 +20,6 @@ pub async fn create_hdiff(
         .output()
         .await
         .map_err(|e| e.to_string())?;
-
     if output.status.success() {
         Ok(())
     } else {
