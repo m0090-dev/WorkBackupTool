@@ -96,7 +96,6 @@ pub async fn backup_or_diff(
         // .baseが新規作成（コピー）されただけの場合はここで終了
         return Ok(());
     }
-
     // --- 3. サイズ・閾値判定 ---
     let work_size = fs::metadata(&work_file).map_err(|e| e.to_string())?.len();
     let diff_size = fs::metadata(&temp_diff).map_err(|e| e.to_string())?.len();
