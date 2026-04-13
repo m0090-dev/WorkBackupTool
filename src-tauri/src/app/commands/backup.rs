@@ -1,6 +1,6 @@
 // 標準ライブラリ
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // 外部クレート
 use tauri::AppHandle;
@@ -9,13 +9,8 @@ use tauri::AppHandle;
 use crate::app::hdiff::*;
 use crate::app::state::AppState;
 use crate::core::backup::workflow;
-use crate::core::{backup::archive, backup::auto_generation, utils};
-use flate2::read::GzDecoder;
-use regex::Regex;
-use std::fs::File;
-use tar::Archive;
+use crate::core::{backup::archive, utils};
 use tauri::Manager;
-use zip::ZipArchive;
 
 #[tauri::command]
 pub async fn backup_or_diff(

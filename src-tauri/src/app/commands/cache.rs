@@ -10,7 +10,6 @@ use tauri::{AppHandle, Manager};
 // 内部モジュール (自作)
 use crate::app::state::AppState;
 use crate::core::utils;
-use std::fs::File;
 
 #[tauri::command]
 pub fn clear_all_caches(
