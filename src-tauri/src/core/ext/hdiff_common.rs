@@ -126,7 +126,7 @@ pub fn resolve_apply_paths(
         .and_then(|s| s.to_str())
         .unwrap_or("bin");
 
-    let mut base_name = format!("{}.base", diff_name.split(".20").next().unwrap());
+    let base_name = format!("{}.base", diff_name.split(".20").next().unwrap());
     let mut base_full = backup_dir.join(&base_name);
 
     if !base_full.exists() {

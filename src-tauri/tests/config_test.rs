@@ -1,9 +1,9 @@
-use app_lib::app::config;
+use work_backup_tool::core::config::loader;
 
 #[test]
 fn test_default_config_loading() {
     // 埋め込まれた AppConfig.json が正常にパースできるか
-    let cfg = config::default_config();
+    let cfg = loader::default_config();
 
     // 基本的なフィールドがデフォルト値を持っているか
     // (types.rs の AppConfig 定義に基づき確認)
@@ -12,7 +12,7 @@ fn test_default_config_loading() {
 
 #[test]
 fn test_i18n_integrity() {
-    let i18n = config::default_i18n();
+    let i18n = loader::default_i18n();
 
     // JSONに合わせて "en" と "ja" をチェック
     assert!(i18n.contains_key("ja"), "i18n should contain ja");

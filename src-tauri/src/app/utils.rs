@@ -1,27 +1,9 @@
 use crate::app::commands::get_language_text;
 use crate::app::state::AppState;
 use crate::core::types::AppConfig;
-use chrono::Local;
-use flate2::read::GzDecoder;
-use flate2::write::GzEncoder;
-use flate2::Compression;
-use std::collections::hash_map::DefaultHasher;
-use std::fs;
-use std::fs::File;
-use std::hash::{Hash, Hasher};
-use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
-use tar::Archive;
-use tar::Builder;
 use tauri::WebviewWindow;
 use tauri::{AppHandle, Manager};
-use tauri::{LogicalSize, Size, Window};
-use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_shell::ShellExt;
-use zip::write::SimpleFileOptions;
-use zip::ZipArchive;
-use zip::ZipWriter;
-use zip::{AesMode, CompressionMethod};
+use tauri::{LogicalSize, Size};
 
 pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Result<()> {
     // 1. まず「何でもあり」の状態にする (制約の完全解除)
