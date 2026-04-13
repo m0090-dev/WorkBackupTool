@@ -15,6 +15,26 @@ use zip::ZipArchive;
 use zip::ZipWriter;
 use zip::{AesMode, CompressionMethod};
 
+
+
+/// ファイルを安全に移動させる。
+/// デバイスを跨ぐ移動（リネーム失敗）時は、コピー＆削除でフォールバックする。
+pub fn move_file_safe<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> Result<(), String> {
+    let src = src.as_ref();
+    let dst = dst.as_ref();
+
+    if let Err(_) = fs::rename(src, dst) {
+        // renameが失敗した場合（異なるファイルシステム間など）、コピーして元のファイルを消す
+        fs::copy(src, dst).map_err(|e| format!("ファイルのコピーに失敗しました: {}", e))?;
+        fs::remove_file(src).map_err(|e| format!("元ファイルの削除に失敗しました: {}", e))?;
+    }
+    
+    Ok(())
+}
+
+
+
+
 /// ファイル名からタイムスタンプを抽出する (Go版のロジック通り)
 pub fn extract_timestamp_from_backup(path: &str) -> Result<String, String> {
     let base = Path::new(path)
