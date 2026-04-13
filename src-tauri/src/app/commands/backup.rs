@@ -5,13 +5,11 @@ use std::path::{Path, PathBuf};
 // 外部クレート
 use tauri::AppHandle;
 
-// Tauriプラグイン
-
 // 内部モジュール (自作)
 use crate::app::hdiff::*;
 use crate::app::state::AppState;
 use crate::core::backup::workflow;
-use crate::core::{backup::auto_generation, utils};
+use crate::core::{backup::archive, backup::auto_generation, utils};
 use flate2::read::GzDecoder;
 use regex::Regex;
 use std::fs::File;
@@ -49,37 +47,37 @@ pub async fn backup_or_diff(
             &work.to_string_lossy(),
             &temp.to_string_lossy(),
             &compress,
-        ).await?;
+        )
+        .await?;
 
         // 3. 判定用の閾値取得
         let threshold = {
             let state = app.state::<AppState>();
             let cfg = state.config.lock().unwrap();
-            if cfg.auto_base_generation_threshold <= 0.0 { 0.8 } else { cfg.auto_base_generation_threshold }
+            if cfg.auto_base_generation_threshold <= 0.0 {
+                0.8
+            } else {
+                cfg.auto_base_generation_threshold
+            }
         };
 
         // 4. フェーズ2: 判定と後始末（世代交代が必要なら次を実行）
-        if let Some((new_base, new_work, final_dest)) = workflow::finalize_or_next_plan(
-            &work_file,
-            temp,
-            &target,
-            threshold,
-            &algo,
-            &ts,
-        )? {
+        if let Some((new_base, new_work, final_dest)) =
+            workflow::finalize_or_next_plan(&work_file, temp, &target, threshold, &algo, &ts)?
+        {
             crate::app::hdiff::create_hdiff(
                 app,
                 &new_base.to_string_lossy(),
                 &new_work.to_string_lossy(),
                 &final_dest.to_string_lossy(),
                 &compress,
-            ).await?;
+            )
+            .await?;
         }
     }
 
     Ok(())
 }
-
 
 #[tauri::command]
 pub async fn apply_multi_diff(
@@ -91,9 +89,7 @@ pub async fn apply_multi_diff(
         let algo = workflow::detect_diff_algo(&dp);
 
         let result = match algo {
-            workflow::DiffAlgo::HDiff => {
-                apply_hdiff_wrapper(app.clone(), &work_file, &dp).await
-            }
+            workflow::DiffAlgo::HDiff => apply_hdiff_wrapper(app.clone(), &work_file, &dp).await,
             workflow::DiffAlgo::BsDiff => {
                 return Err("`bsdiff` is not supported currently.".into());
             }
@@ -110,33 +106,15 @@ pub async fn apply_multi_diff(
 /// ファイルをそのままコピーしてバックアップする (Go版の CopyBackupFile 相当)
 #[tauri::command]
 pub fn copy_backup_file(src: String, backup_dir: String) -> Result<String, String> {
-    // 1. バックアップ先ディレクトリの決定
-    // backup_dir が空ならソースファイルに基づいたデフォルトディレクトリを作成
-    let target_dir = if backup_dir.is_empty() {
-        utils::default_backup_dir(&src)
+    // 1. 引数の加工 (app層の仕事)
+    let dir_opt = if backup_dir.is_empty() {
+        None
     } else {
-        PathBuf::from(backup_dir)
+        Some(PathBuf::from(backup_dir))
     };
 
-    // 2. ディレクトリの作成 (MkdirAll 0755 相当)
-    // utils::copy_file 内部でも作成していますが、Go版の構造に合わせここで明示的に作成
-    if !target_dir.exists() {
-        fs::create_dir_all(&target_dir)
-            .map_err(|e| format!("バックアップ先フォルダの作成に失敗しました: {}", e))?;
-    }
-
-    // 3. タイムスタンプ付きファイル名の生成 (例: filename_20260111_120000.ext)
-    let new_filename = utils::timestamped_name(&src);
-
-    // 4. 保存先のフルパスを組み立て
-    let dest_path = target_dir.join(new_filename);
-    let dest_str = dest_path.to_string_lossy();
-
-    // 5. utils::copy_file (Sync処理付き) を実行
-    utils::copy_file(&src, &dest_str).map_err(|e| e.to_string())?;
-
-    // 6. 成功したら保存先のパスを返す (JS側での表示用)
-    Ok(dest_str.into_owned())
+    // 2. 実行 (ロジックはすべてcoreへ)
+    workflow::execute_copy_backup(&src, dir_opt)
 }
 
 #[tauri::command]
@@ -146,25 +124,15 @@ pub async fn archive_backup_file(
     format: String,
     password: String,
 ) -> Result<String, String> {
-    // 1. バックアップ先の決定
-    let target_dir = if backup_dir.is_empty() {
-        utils::default_backup_dir(&src)
+    // 1. 引数の正規化
+    let dir_opt = if backup_dir.is_empty() {
+        None
     } else {
-        std::path::PathBuf::from(backup_dir)
+        Some(PathBuf::from(backup_dir))
     };
 
-    if !target_dir.exists() {
-        fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-    }
-
-    // 2. フォーマットによる分岐
-    if format == "zip" {
-        utils::zip_backup_file(&src, &target_dir, &password).map_err(|e| e.to_string())?;
-    } else {
-        utils::tar_backup_file(&src, &target_dir).map_err(|e| e.to_string())?;
-    }
-
-    Ok("Archive created successfully".to_string())
+    // 2. coreのワークフローを呼び出す
+    crate::core::backup::archive::execute_archive_backup(&src, dir_opt, &format, &password)
 }
 
 #[tauri::command]
@@ -175,38 +143,22 @@ pub async fn restore_backup(
 ) -> Result<(), String> {
     let lower_path = path.to_lowercase();
 
-    // 1. 差分パッチ (.diff)
+    // 1. 差分パッチの場合のみSidecar（async/app層）が必要
     if lower_path.ends_with(".diff") {
         return apply_multi_diff(app, work_file, vec![path]).await;
     }
 
-    // 復元先のパスを「別名」として自動生成
+    // 出力パスの自動生成
     let restored_path = utils::auto_output_path(&work_file);
 
-    // 2. ZIPアーカイブ
-    if lower_path.ends_with(".zip") {
-        let file = File::open(&path).map_err(|e| e.to_string())?;
-        let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
-        if archive.len() > 0 {
-            let mut file_in_zip = archive.by_index(0).map_err(|e| e.to_string())?;
-            return utils::save_to_work_file(&mut file_in_zip, &restored_path);
-        }
+    if lower_path.ends_with(".zip") || lower_path.ends_with(".tar.gz") {
+        // 2 & 3. アーカイブ展開 (core::backup::archive に丸投げ)
+        archive::restore_archive(&path, &restored_path)
+    } else {
+        // 4. フルコピー (core::utils)
+        utils::copy_file(&path, &restored_path)?;
+        Ok(())
     }
-
-    // 3. TARアーカイブ (.tar.gz)
-    if lower_path.ends_with(".tar.gz") {
-        let file = File::open(&path).map_err(|e| e.to_string())?;
-        let tar_gz = GzDecoder::new(file);
-        let mut archive = Archive::new(tar_gz);
-        if let Some(Ok(mut entry)) = archive.entries().map_err(|e| e.to_string())?.next() {
-            return utils::save_to_work_file(&mut entry, &restored_path);
-        }
-    }
-
-    // 4. フルコピー (.clip / .psd 等)
-    // 既存の utils::copy_file を使用
-    utils::copy_file(&path, &restored_path)?;
-    Ok(())
 }
 
 #[tauri::command]
@@ -217,61 +169,14 @@ pub async fn archive_generation(
     backup_dir: String,
     password: Option<String>,
 ) -> Result<(), String> {
-    let backup_path = if backup_dir.is_empty() {
-        utils::default_backup_dir(&work_file)
-    } else {
-        PathBuf::from(&backup_dir)
-    };
     let pwd = password.unwrap_or_default();
 
-    // 1. 対象となる世代フォルダ (baseN_timestamp) を特定
-    // backup_dir 直下を走査し、"baseN_" で始まるディレクトリを探す
-    let entries = fs::read_dir(&backup_path)
-        .map_err(|e| format!("バックアップディレクトリにアクセスできません: {}", e))?;
-
-    let prefix = format!("base{}_", target_n);
-    let mut target_folder_path = None;
-
-    for entry in entries.flatten() {
-        if let Ok(file_type) = entry.file_type() {
-            if file_type.is_dir() {
-                let name = entry.file_name().to_string_lossy().into_owned();
-                if name.starts_with(&prefix) {
-                    target_folder_path = Some(entry.path());
-                    break;
-                }
-            }
-        }
-    }
-
-    let src_path = target_folder_path.ok_or_else(|| {
-        format!(
-            "世代 {} のフォルダが見つかりません (接頭辞: {})",
-            target_n, prefix
-        )
-    })?;
-
-    // 2. 出力ファイル名の決定 (元フォルダ名に拡張子を付与)
-    let folder_name = src_path.file_name().unwrap().to_string_lossy();
-    let ext = if format == "tar" { "tar.gz" } else { "zip" };
-    let archive_filename = format!("{}.{}", folder_name, ext);
-    let dst_path = backup_path.join(&archive_filename);
-
-    // 3. 圧縮実行
-    if format == "tar" {
-        utils::compress_dir_tar(&src_path, &dst_path)?;
-    } else {
-        utils::compress_dir_zip(&src_path, &dst_path, &pwd)?;
-    }
-
-    // 4. 安全策: 成功確認（ファイル存在とサイズ）後に元フォルダを削除
-    if dst_path.exists() && fs::metadata(&dst_path).map(|m| m.len()).unwrap_or(0) > 0 {
-        fs::remove_dir_all(&src_path).map_err(|e| format!("フォルダ削除に失敗しました: {}", e))?;
-    } else {
-        return Err(
-            "アーカイブ作成に失敗した可能性があるため、元データの削除を中止しました".to_string(),
-        );
-    }
-
-    Ok(())
+    // core 側のワークフローに丸投げ
+    crate::core::backup::archive::execute_generation_archive(
+        target_n,
+        &format,
+        &work_file,
+        &backup_dir,
+        &pwd,
+    )
 }

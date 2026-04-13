@@ -15,8 +15,6 @@ use zip::ZipArchive;
 use zip::ZipWriter;
 use zip::{AesMode, CompressionMethod};
 
-
-
 /// ファイルを安全に移動させる。
 /// デバイスを跨ぐ移動（リネーム失敗）時は、コピー＆削除でフォールバックする。
 pub fn move_file_safe<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> Result<(), String> {
@@ -28,12 +26,9 @@ pub fn move_file_safe<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> Result<
         fs::copy(src, dst).map_err(|e| format!("ファイルのコピーに失敗しました: {}", e))?;
         fs::remove_file(src).map_err(|e| format!("元ファイルの削除に失敗しました: {}", e))?;
     }
-    
+
     Ok(())
 }
-
-
-
 
 /// ファイル名からタイムスタンプを抽出する (Go版のロジック通り)
 pub fn extract_timestamp_from_backup(path: &str) -> Result<String, String> {
@@ -147,69 +142,6 @@ pub fn copy_file(src: &str, dst: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn zip_backup_file(src: &str, backup_dir: &Path, password: &str) -> Result<(), String> {
-    // 1. 保存先の決定 (既存ロジック維持)
-    let stem = Path::new(src)
-        .file_stem()
-        .ok_or("Invalid source path")?
-        .to_string_lossy();
-    let zip_filename = timestamped_name(&format!("{}.zip", stem));
-    let zip_path = backup_dir.join(zip_filename);
-
-    let file = File::create(&zip_path).map_err(|e| e.to_string())?;
-    let mut zip = ZipWriter::new(file);
-
-    // 2. オプション構築 (パスワードとAES暗号化を追加)
-    // password引数を使用してAES256モードで暗号化を設定します
-    let options = SimpleFileOptions::default()
-        .compression_method(CompressionMethod::Deflated)
-        .unix_permissions(0o644)
-        .with_aes_encryption(AesMode::Aes256, password);
-
-    // 3. アーカイブ内にファイルエントリー作成
-    let file_name = Path::new(src)
-        .file_name()
-        .ok_or("Invalid file name")?
-        .to_string_lossy();
-    zip.start_file(file_name.to_string(), options)
-        .map_err(|e| e.to_string())?;
-
-    // 4. 内容のコピー
-    let mut f = File::open(src).map_err(|e| e.to_string())?;
-    io::copy(&mut f, &mut zip).map_err(|e| e.to_string())?;
-
-    // 5. 書き込み確定
-    zip.finish().map_err(|e| e.to_string())?;
-
-    Ok(())
-}
-
-pub fn tar_backup_file(src: &str, backup_dir: &Path) -> Result<(), String> {
-    let stem = Path::new(src).file_stem().unwrap().to_string_lossy();
-    let tar_filename = timestamped_name(&format!("{}.tar.gz", stem));
-    let tar_path = backup_dir.join(tar_filename);
-
-    let file = File::create(&tar_path).map_err(|e| e.to_string())?;
-    let enc = GzEncoder::new(file, Compression::default());
-    let mut tar = Builder::new(enc);
-
-    let mut f = File::open(src).map_err(|e| e.to_string())?;
-
-    // 修正ポイント: file_name を String に変換することで AsRef<Path> を満たすようにする
-    let file_name = Path::new(src)
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .into_owned(); // ここで String (owned data) に変換
-
-    // tar.append_file は &String なら AsRef<Path> として受け取れるようになります
-    tar.append_file(&file_name, &mut f)
-        .map_err(|e| e.to_string())?;
-
-    tar.finish().map_err(|e| e.to_string())?;
-    Ok(())
-}
-
 /// Readerの内容をターゲットファイルに書き出す (Goの saveToWorkFile 相当)
 /// Rustでは io::Read トレイトを持つものを引数に取ります
 pub fn save_to_work_file<R: Read>(mut reader: R, target_file: &str) -> Result<(), String> {
@@ -224,88 +156,6 @@ pub fn save_to_work_file<R: Read>(mut reader: R, target_file: &str) -> Result<()
     out.sync_all()
         .map_err(|e| format!("Failed to sync file: {}", e))?;
 
-    Ok(())
-}
-
-pub fn restore_archive(archive_path: &str, work_file: &str) -> Result<(), String> {
-    let path = Path::new(archive_path);
-    let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
-
-    if file_name.ends_with(".zip") {
-        let file = File::open(archive_path).map_err(|e| e.to_string())?;
-        let mut archive = ZipArchive::new(file).map_err(|e| e.to_string())?;
-
-        if archive.len() > 0 {
-            let mut file_in_zip = archive.by_index(0).map_err(|e| e.to_string())?;
-            // 既存の utils 関数を呼び出し
-            save_to_work_file(&mut file_in_zip, work_file)?;
-            return Ok(());
-        }
-    } else if file_name.ends_with(".tar.gz") {
-        let file = File::open(archive_path).map_err(|e| e.to_string())?;
-        let tar_gz = GzDecoder::new(file);
-        let mut archive = Archive::new(tar_gz);
-
-        if let Some(Ok(mut entry)) = archive.entries().map_err(|e| e.to_string())?.next() {
-            // 既存の utils 関数を呼び出し
-            save_to_work_file(&mut entry, work_file)?;
-            return Ok(());
-        }
-    }
-
-    Err(format!(
-        "サポートされていない形式、またはアーカイブが空です"
-    ))
-}
-
-/// フォルダをZIP圧縮する内部関数
-pub fn compress_dir_zip(src_dir: &Path, dst_file: &Path, password: &str) -> Result<(), String> {
-    let file = File::create(dst_file).map_err(|e| e.to_string())?;
-    let mut zip = zip::ZipWriter::new(file);
-
-    // パスワードがある場合のみAESを有効化
-    let mut options = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated)
-        .unix_permissions(0o644);
-
-    if !password.is_empty() {
-        options = options.with_aes_encryption(zip::AesMode::Aes256, password);
-    }
-
-    let walk = walkdir::WalkDir::new(src_dir);
-    for entry in walk.into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        // パス計算（src_dirの親からの相対にすると展開時にフォルダごと戻る）
-        let name = path
-            .strip_prefix(src_dir.parent().unwrap())
-            .map_err(|e| e.to_string())?;
-        let name_str = name.to_string_lossy().to_string();
-
-        if path.is_file() {
-            zip.start_file(name_str, options)
-                .map_err(|e| e.to_string())?;
-            let mut f = File::open(path).map_err(|e| e.to_string())?;
-            std::io::copy(&mut f, &mut zip).map_err(|e| e.to_string())?;
-        } else if !name.as_os_str().is_empty() {
-            zip.add_directory(name_str, options)
-                .map_err(|e| e.to_string())?;
-        }
-    }
-    zip.finish().map_err(|e| e.to_string())?;
-    Ok(())
-}
-/// フォルダをTAR.GZ圧縮する内部関数
-pub fn compress_dir_tar(src_dir: &Path, dst_file: &Path) -> Result<(), String> {
-    let file = File::create(dst_file).map_err(|e| e.to_string())?;
-    let enc = GzEncoder::new(file, Compression::default());
-    let mut tar = Builder::new(enc);
-
-    // src_dir の終端（フォルダ名）をアーカイブ内のルートにする
-    let folder_name = src_dir.file_name().ok_or("Invalid folder name")?;
-    tar.append_dir_all(folder_name, src_dir)
-        .map_err(|e| format!("TAR追加失敗: {}", e))?;
-
-    tar.finish().map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -331,4 +181,48 @@ pub fn get_cache_root(use_same_dir: bool, backup_dir: &str, work_file: &str) -> 
         // 例: temp/wbt_cache_myart_a1b2c3d4
         std::env::temp_dir().join(format!("wbt_cache_{}_{}", file_stem, &hash_val[..8]))
     }
+}
+
+/// ファイルのサイズを取得する
+pub fn get_file_size(path: &str) -> Result<i64, String> {
+    if path.is_empty() {
+        return Err("path is empty".to_string());
+    }
+    let p = Path::new(path);
+    let metadata = fs::metadata(p).map_err(|e| e.to_string())?;
+
+    if metadata.is_dir() {
+        return Err("path is a directory".to_string());
+    }
+    Ok(metadata.len() as i64)
+}
+
+/// テキストファイルを読み込む
+pub fn read_text_file(path: &str) -> Result<String, String> {
+    let p = Path::new(path);
+    if !p.exists() {
+        return Ok("".to_string());
+    }
+    fs::read_to_string(p).map_err(|e| format!("Failed to read file: {}", e))
+}
+
+/// テキストファイルを書き込む (親ディレクトリがなければ作成)
+pub fn write_text_file(path: &str, content: &str) -> Result<(), String> {
+    let p = Path::new(path);
+    if let Some(parent) = p.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
+        }
+    }
+    fs::write(p, content).map_err(|e| format!("Failed to write text file: {}", e))
+}
+
+/// ディレクトリが存在するかチェック
+pub fn dir_exists(path: &str) -> bool {
+    Path::new(path).is_dir()
+}
+
+/// ファイルが存在するかチェック
+pub fn file_exists(path: &str) -> bool {
+    Path::new(path).is_file()
 }
