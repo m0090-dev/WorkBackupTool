@@ -1,21 +1,6 @@
 pub mod app;
 pub mod core;
 use crate::app::commands::*;
-use crate::app::state::AppState;
-use std::fs;
-use std::sync::Mutex;
-use tauri::AppHandle;
-use tauri::{Emitter, Manager};
-use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-use tauri_plugin_notification::NotificationExt;
-
-#[cfg(desktop)]
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
-
-#[cfg(desktop)]
-use tauri::menu::MenuEvent;
-#[cfg(desktop)]
-use tauri_plugin_positioner::{Position, WindowExt};
 
 use crate::app::setup;
 

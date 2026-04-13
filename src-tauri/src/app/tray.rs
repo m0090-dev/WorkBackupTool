@@ -2,15 +2,14 @@ use crate::app::commands::get_language_text;
 use crate::app::state::AppState;
 use crate::app::utils;
 use crate::core::types::AppConfig;
-use tauri::{AppHandle, Emitter, Manager, Runtime, State, Wry};
+use tauri::{AppHandle, Emitter, Manager, State, Wry};
 
 #[cfg(desktop)]
 use tauri_plugin_positioner::{Position, WindowExt};
 
 #[cfg(desktop)]
 use tauri::menu::{
-    CheckMenuItemBuilder, Menu, MenuBuilder, MenuItem, MenuItemBuilder, PredefinedMenuItem,
-    SubmenuBuilder,
+    CheckMenuItemBuilder, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder,
 };
 
 #[cfg(desktop)]

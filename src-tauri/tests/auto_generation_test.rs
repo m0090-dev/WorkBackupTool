@@ -1,6 +1,6 @@
-use app_lib::app::auto_generation;
 use std::fs;
 use tempfile::tempdir;
+use work_backup_tool::core::backup::auto_generation;
 
 #[test]
 fn test_get_latest_generation_logic() {

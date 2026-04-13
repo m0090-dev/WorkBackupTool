@@ -1,9 +1,5 @@
 use crate::core::ext::hdiff_common::*;
-use crate::core::types::DiffFileInfo;
 use crate::core::utils;
-use chrono::Local;
-use std::fs;
-use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 /// hdiffz を呼び出して差分を作成する

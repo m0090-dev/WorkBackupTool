@@ -4,26 +4,16 @@ use crate::app::state::AppState;
 use crate::app::tray::*;
 use crate::app::utils;
 use crate::core::config::loader::*;
-use crate::core::types::AppConfig;
 use std::fs;
 use std::sync::Mutex;
 use tauri::App;
-use tauri::AppHandle;
-use tauri::{Emitter, Manager};
-use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-use tauri_plugin_notification::NotificationExt;
+use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
 
 #[cfg(desktop)]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
-#[cfg(desktop)]
-use crate::app::utils::create_tray_menu;
-#[cfg(desktop)]
-use tauri::menu::MenuEvent;
-#[cfg(desktop)]
-use tauri_plugin_positioner::{Position, WindowExt};
-
-use crate::app::{events, setup};
+use crate::app::events;
 
 pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let window = app.get_webview_window("main").unwrap();

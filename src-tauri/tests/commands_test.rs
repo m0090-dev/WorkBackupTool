@@ -1,8 +1,6 @@
-use app_lib::app::commands;
-use app_lib::app::state::AppState;
 use std::fs;
-use std::sync::Arc;
 use tempfile::tempdir;
+use work_backup_tool::app::state::AppState;
 
 #[test]
 fn test_get_backup_list_logic() {

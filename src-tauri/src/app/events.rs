@@ -1,19 +1,9 @@
 use crate::app::commands::*;
 use crate::app::menu::*;
 use crate::app::state::AppState;
-use crate::app::tray::*;
 use crate::app::utils;
-use crate::core::config::loader::*;
-use crate::core::types::AppConfig;
-use std::fs;
-use std::sync::Mutex;
-use tauri::AppHandle;
 use tauri::{Emitter, Manager};
-use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
-use tauri_plugin_notification::NotificationExt;
-
-#[cfg(desktop)]
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_dialog::DialogExt;
 
 #[cfg(desktop)]
 use crate::app::utils::create_tray_menu;

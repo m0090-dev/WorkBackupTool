@@ -5,9 +5,7 @@ use tauri::State;
 use tauri::{AppHandle, Manager, Runtime};
 
 #[cfg(desktop)]
-use tauri::menu::{
-    CheckMenuItemBuilder, Menu, MenuBuilder, MenuItem, MenuItemBuilder, SubmenuBuilder,
-};
+use tauri::menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuItem, SubmenuBuilder};
 
 #[cfg(desktop)]
 pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::Result<Menu<R>> {
