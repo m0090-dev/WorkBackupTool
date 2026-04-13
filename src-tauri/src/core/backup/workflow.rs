@@ -1,8 +1,8 @@
-use std::fs;
 use crate::core::backup::auto_generation;
-use regex::Regex;
-use std::path::{Path, PathBuf};
 use crate::core::utils;
+use regex::Regex;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 pub struct BackupTargetInfo {
     pub target_dir: PathBuf,
@@ -14,7 +14,6 @@ pub enum DiffAlgo {
     BsDiff, // 将来用
     Unknown,
 }
-
 
 pub fn resolve_backup_target(
     initial_path: PathBuf,
@@ -66,8 +65,9 @@ pub fn prepare_initial_plan(
     target: &BackupTargetInfo,
     ts: &str,
 ) -> Result<Option<(PathBuf, PathBuf, PathBuf)>, String> {
-    let plan = crate::core::ext::hdiff_common::prepare_hdiff_paths(work_file, target.target_dir.clone())?;
-    
+    let plan =
+        crate::core::ext::hdiff_common::prepare_hdiff_paths(work_file, target.target_dir.clone())?;
+
     if let Some((base, work, _)) = plan {
         let file_name = Path::new(work_file).file_name().unwrap().to_string_lossy();
         let temp_diff = std::env::temp_dir().join(format!("{}.{}.tmp", file_name, ts));
@@ -98,30 +98,39 @@ pub fn finalize_or_next_plan(
             Some(info) if info.base_idx > target.current_idx => (info.dir_path, info.base_idx),
             _ => {
                 let next_idx = target.current_idx + 1;
-                let path = auto_generation::create_new_generation(&target.project_root, next_idx, work_file)?;
+                let path = auto_generation::create_new_generation(
+                    &target.project_root,
+                    next_idx,
+                    work_file,
+                )?;
                 (path, next_idx)
             }
         };
 
-        let plan = crate::core::ext::hdiff_common::prepare_hdiff_paths(work_file, new_gen_dir.clone())?;
+        let plan =
+            crate::core::ext::hdiff_common::prepare_hdiff_paths(work_file, new_gen_dir.clone())?;
         if let Some((base, work, _)) = plan {
             let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
             return Ok(Some((base.into(), work.into(), final_path)));
         }
     } else {
         // --- 維持（一時ファイルを本番パスへ移動） ---
-        let final_path = target.target_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
-        
+        let final_path = target
+            .target_dir
+            .join(format!("{}.{}.{}.diff", file_name, ts, algo));
+
         // クロスデバイス対応の移動ロジック
         utils::move_file_safe(&temp_diff, &final_path)?;
     }
-    
+
     Ok(None)
 }
 
-
 pub fn detect_diff_algo(path: &str) -> DiffAlgo {
-    let name = Path::new(path).file_name().and_then(|n| n.to_str()).unwrap_or("");
+    let name = Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("");
     if name.contains(".hdiff.") {
         DiffAlgo::HDiff
     } else if name.contains(".bsdiff.") {
@@ -130,4 +139,30 @@ pub fn detect_diff_algo(path: &str) -> DiffAlgo {
         // 拡張子が含まれない古い形式などは、とりあえずHDiffで試す等の戦略
         DiffAlgo::Unknown
     }
+}
+
+/// シンプルなコピーバックアップのための準備と実行
+/// 保存先のパスを返す
+pub fn execute_copy_backup(src: &str, backup_dir: Option<PathBuf>) -> Result<String, String> {
+    // 1. ターゲットディレクトリの決定
+    let target_dir = match backup_dir {
+        Some(dir) => dir,
+        None => utils::default_backup_dir(src),
+    };
+
+    // 2. ディレクトリ作成
+    if !target_dir.exists() {
+        fs::create_dir_all(&target_dir)
+            .map_err(|e| format!("バックアップ先フォルダの作成に失敗しました: {}", e))?;
+    }
+
+    // 3. 命名規則 (core::utils にある想定)
+    let new_filename = utils::timestamped_name(src);
+    let dest_path = target_dir.join(new_filename);
+    let dest_str = dest_path.to_string_lossy().into_owned();
+
+    // 4. 実行 (core::utils::copy_file)
+    utils::copy_file(src, &dest_str).map_err(|e| e.to_string())?;
+
+    Ok(dest_str)
 }
