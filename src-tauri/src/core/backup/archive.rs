@@ -29,10 +29,12 @@ pub fn zip_backup_file(src: &str, backup_dir: &Path, password: &str) -> Result<(
 
     // 2. オプション構築 (パスワードとAES暗号化を追加)
     // password引数を使用してAES256モードで暗号化を設定します
-    let options = SimpleFileOptions::default()
+    let mut options = SimpleFileOptions::default()
         .compression_method(CompressionMethod::Deflated)
-        .unix_permissions(0o644)
-        .with_aes_encryption(AesMode::Aes256, password);
+        .unix_permissions(0o644);
+    if !password.is_empty() {
+        options = options.with_aes_encryption(AesMode::Aes256, password);
+    }
 
     // 3. アーカイブ内にファイルエントリー作成
     let file_name = Path::new(src)
