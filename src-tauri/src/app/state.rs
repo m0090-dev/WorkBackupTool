@@ -1,6 +1,5 @@
-use crate::app::config::*;
-use crate::app::types::AppConfig;
-use serde::{Deserialize, Serialize};
+use crate::core::config::assets::*;
+use crate::core::types::AppConfig;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;

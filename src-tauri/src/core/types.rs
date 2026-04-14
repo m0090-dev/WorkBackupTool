@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::fs;
 use std::path::PathBuf;
-use std::sync::Mutex;
 
 // 設定ファイル情報
 #[derive(Debug, Serialize, Deserialize, Clone)]
