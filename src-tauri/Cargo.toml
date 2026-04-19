@@ -1,6 +1,6 @@
 [package]
 name = "work_backup_tool"
-version = "1.2.3"
+version = "1.2.4"
 description = "WorkBackupTool"
 authors = ["m0090-dev"]
 license = "MIT"

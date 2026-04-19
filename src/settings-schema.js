@@ -21,13 +21,6 @@ export const settingsSchema = [
     hint: "thresholdHint",
   },
   {
-    key: "showMemoAfterBackup",
-    type: "boolean",
-    category: "memo",
-    label: "showMemoAfterBackup",
-    hint: null,
-  },
-  {
     key: "strictFileNameMatch",
     type: "boolean",
     category: "history",
@@ -39,6 +32,5 @@ export const settingsSchema = [
 export const categoryLabels = {
   backup: { en: "Backup", ja: "バックアップ" },
   cache: { en: "Cache", ja: "キャッシュ" },
-  memo: { en: "Memo", ja: "メモ" },
   history: { en: "History", ja: "履歴" },
 };
