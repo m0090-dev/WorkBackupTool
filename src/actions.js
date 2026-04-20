@@ -107,10 +107,10 @@ export async function OnExecute() {
   toggleProgress(true, i18n.processingMsg);
   try {
     let successText = "";
-
+    let newFilePath = null;
     // --- A. 単純コピーモード ---
     if (mode === "copy") {
-      await CopyBackupFile(tab.workFile, tab.backupDir);
+      newFilePath = await CopyBackupFile(tab.workFile, tab.backupDir);
       successText = i18n.copyBackupSuccess;
     }
     // --- B. アーカイブモード ---
@@ -118,7 +118,12 @@ export async function OnExecute() {
       let fmt = archiveFormat;
       let pwd = fmt === "zip-pass" ? pwdValue : "";
       if (fmt === "zip-pass") fmt = "zip";
-      await ArchiveBackupFile(tab.workFile, tab.backupDir, fmt, pwd);
+      newFilePath = await ArchiveBackupFile(
+        tab.workFile,
+        tab.backupDir,
+        fmt,
+        pwd,
+      );
       successText = i18n.archiveBackupSuccess.replace(
         "{format}",
         fmt.toUpperCase(),
@@ -144,8 +149,12 @@ export async function OnExecute() {
 
       // Rust側(またはGo側)の関数を呼び出し
       // 引数に新しく compress を追加。algoがbsdiffの場合は内部で無視される設計
-      await BackupOrDiff(tab.workFile, targetPath, algo, compress);
-
+      newFilePath = await BackupOrDiff(
+        tab.workFile,
+        targetPath,
+        algo,
+        compress,
+      );
       successText = `${i18n.diffBackupSuccess} (${algo.toUpperCase()}${algo === "hdiff" ? ":" + compress : ""})`;
     }
 
@@ -154,19 +163,12 @@ export async function OnExecute() {
 
     // メモダイアログをオプションで表示
     const showMemo = await GetShowMemoAfterBackup();
-    if (showMemo) {
-      const data = await GetBackupList(tab.workFile, tab.backupDir);
-      if (data && data.length > 0) {
-        data.sort((a, b) => b.fileName.localeCompare(a.fileName));
-        const latest = data[0];
-        const notePath = latest.filePath + ".note";
-        const raw = await ReadTextFile(notePath).catch(() => "");
-        const { text, meta } = parseNoteContent(raw);
-        showMemoDialog(text, meta, async (newText, newMeta) => {
-          await WriteTextFile(notePath, serializeNote(newText, newMeta));
-          UpdateHistory();
-        });
-      }
+    if (showMemo && newFilePath) {
+      const notePath = newFilePath + ".note";
+      showMemoDialog("", { mark: 0 }, async (newText, newMeta) => {
+        await WriteTextFile(notePath, serializeNote(newText, newMeta));
+        UpdateHistory();
+      });
     }
     await UpdateAllUI();
     return successText;

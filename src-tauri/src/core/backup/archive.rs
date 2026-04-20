@@ -15,7 +15,7 @@ use zip::ZipArchive;
 use zip::ZipWriter;
 use zip::{AesMode, CompressionMethod};
 
-pub fn zip_backup_file(src: &str, backup_dir: &Path, password: &str) -> Result<(), String> {
+pub fn zip_backup_file(src: &str, backup_dir: &Path, password: &str) -> Result<String, String> {
     // 1. 保存先の決定 (既存ロジック維持)
     let stem = Path::new(src)
         .file_stem()
@@ -51,10 +51,10 @@ pub fn zip_backup_file(src: &str, backup_dir: &Path, password: &str) -> Result<(
     // 5. 書き込み確定
     zip.finish().map_err(|e| e.to_string())?;
 
-    Ok(())
+    Ok(zip_path.to_string_lossy().into_owned())
 }
 
-pub fn tar_backup_file(src: &str, backup_dir: &Path) -> Result<(), String> {
+pub fn tar_backup_file(src: &str, backup_dir: &Path) -> Result<String, String> {
     let stem = Path::new(src).file_stem().unwrap().to_string_lossy();
     let tar_filename = timestamped_name(&format!("{}.tar.gz", stem));
     let tar_path = backup_dir.join(tar_filename);
@@ -77,7 +77,7 @@ pub fn tar_backup_file(src: &str, backup_dir: &Path) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
 
     tar.finish().map_err(|e| e.to_string())?;
-    Ok(())
+    Ok(tar_path.to_string_lossy().into_owned())
 }
 
 pub fn restore_archive(archive_path: &str, work_file: &str) -> Result<(), String> {
@@ -180,13 +180,13 @@ pub fn execute_archive_backup(
     }
 
     // 3. フォーマットに応じて圧縮実行
-    if format == "zip" {
-        zip_backup_file(src, &target_dir, password)?;
+    let dest_str = if format == "zip" {
+        zip_backup_file(src, &target_dir, password)?
     } else {
-        tar_backup_file(src, &target_dir)?;
-    }
+        tar_backup_file(src, &target_dir)?
+    };
 
-    Ok("Archive created successfully".to_string())
+    Ok(dest_str)
 }
 
 pub fn execute_generation_archive(

@@ -208,6 +208,7 @@ export async function showMemoDialog(
     removeContextMenu();
     overlay.remove();
   };
+
   // --- 入力欄などのイベント保護（メニュー消去を兼ねる） ---
   input.addEventListener("contextmenu", (e) => {
     e.stopPropagation();
