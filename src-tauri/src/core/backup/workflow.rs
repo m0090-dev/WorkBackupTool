@@ -85,7 +85,7 @@ pub fn finalize_or_next_plan(
     threshold: f64,
     algo: &str,
     ts: &str,
-) -> Result<Option<(PathBuf, PathBuf, PathBuf)>, String> {
+) -> Result<(String, Option<(PathBuf, PathBuf, PathBuf)>), String> {
     let work_size = fs::metadata(work_file).map_err(|e| e.to_string())?.len();
     let diff_size = fs::metadata(&temp_diff).map_err(|e| e.to_string())?.len();
     let file_name = Path::new(work_file).file_name().unwrap().to_string_lossy();
@@ -111,19 +111,22 @@ pub fn finalize_or_next_plan(
             crate::core::ext::hdiff_common::prepare_hdiff_paths(work_file, new_gen_dir.clone())?;
         if let Some((base, work, _)) = plan {
             let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
-            return Ok(Some((base.into(), work.into(), final_path)));
+            let final_str = final_path.to_string_lossy().into_owned();
+
+            return Ok((final_str, Some((base.into(), work.into(), final_path))));
         }
     } else {
         // --- 維持（一時ファイルを本番パスへ移動） ---
         let final_path = target
             .target_dir
             .join(format!("{}.{}.{}.diff", file_name, ts, algo));
-
+        let final_str = final_path.to_string_lossy().into_owned();
         // クロスデバイス対応の移動ロジック
         utils::move_file_safe(&temp_diff, &final_path)?;
+        return Ok((final_str, None));
     }
 
-    Ok(None)
+    Err("予期しないワークフローエラーが発生しました".to_string())
 }
 
 pub fn detect_diff_algo(path: &str) -> DiffAlgo {
