@@ -121,7 +121,6 @@ export async function setupGlobalEvents() {
       showMemoDialog(text, meta, async (newText, newMeta) => {
         try {
           const finalMeta = {
-            ...meta,
             ...newMeta,
             target: path, // 紐付け対象のバックアップファイルパス
           };
