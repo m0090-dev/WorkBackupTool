@@ -120,7 +120,12 @@ export async function setupGlobalEvents() {
       const { text, meta } = parseNoteContent(raw);
       showMemoDialog(text, meta, async (newText, newMeta) => {
         try {
-          await WriteTextFile(notePath, serializeNote(newText, newMeta));
+          const finalMeta = {
+            ...meta,
+            ...newMeta,
+            target: path, // 紐付け対象のバックアップファイルパス
+          };
+          await WriteTextFile(notePath, serializeNote(newText, finalMeta));
           showFloatingMessage(i18n.memoSaved);
           UpdateHistory();
         } catch (err) {
