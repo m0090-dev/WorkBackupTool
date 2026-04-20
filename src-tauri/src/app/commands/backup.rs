@@ -19,7 +19,7 @@ pub async fn backup_or_diff(
     custom_dir: String,
     algo: String,
     compress: String,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
 
     // 1. ディレクトリ解決
@@ -33,7 +33,7 @@ pub async fn backup_or_diff(
     if !target.target_dir.exists() {
         fs::create_dir_all(&target.target_dir).map_err(|e| e.to_string())?;
     }
-
+    let mut final_path_str = String::new();
     // 2. フェーズ1: 最初の作成
     if let Some((base, work, temp)) = workflow::prepare_initial_plan(&work_file, &target, &ts)? {
         crate::app::hdiff::create_hdiff(
@@ -55,11 +55,12 @@ pub async fn backup_or_diff(
                 cfg.auto_base_generation_threshold
             }
         };
+        let (path_str, next_plan) =
+            workflow::finalize_or_next_plan(&work_file, temp, &target, threshold, &algo, &ts)?;
 
+        final_path_str = path_str;
         // 4. フェーズ2: 判定と後始末（世代交代が必要なら次を実行）
-        if let Some((new_base, new_work, final_dest)) =
-            workflow::finalize_or_next_plan(&work_file, temp, &target, threshold, &algo, &ts)?
-        {
+        if let Some((new_base, new_work, final_dest)) = next_plan {
             crate::app::hdiff::create_hdiff(
                 app,
                 &new_base.to_string_lossy(),
@@ -71,7 +72,7 @@ pub async fn backup_or_diff(
         }
     }
 
-    Ok(())
+    Ok(final_path_str)
 }
 
 #[tauri::command]

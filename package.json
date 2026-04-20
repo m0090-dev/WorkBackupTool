@@ -12,7 +12,9 @@
     "tauri:build": "tauri build",
     "android:dev": "tauri android dev",
     "android:build": "tauri android build",
-    "format": "prettier --write ./src/**/*"
+    "format:js": "prettier --write ./src/**/*",
+    "format:rs": "cd src-tauri && cargo fmt",
+    "format": "npm run format:js && npm run format:rs"
   },
   "devDependencies": {
     "@tauri-apps/api": "^2.9.1",
