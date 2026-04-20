@@ -116,22 +116,42 @@ export async function setupGlobalEvents() {
       const path = historyNoteBtn.getAttribute("data-path");
       const notePath = path + ".note";
 
-      const raw = await ReadTextFile(notePath).catch(() => "");
-      const { text, meta } = parseNoteContent(raw);
-      showMemoDialog(text, meta, async (newText, newMeta) => {
-        try {
-          const finalMeta = {
-            ...newMeta,
-            target: path, // 紐付け対象のバックアップファイルパス
-          };
-          await WriteTextFile(notePath, serializeNote(newText, finalMeta));
-          showFloatingMessage(i18n.memoSaved);
-          UpdateHistory();
-        } catch (err) {
-          console.error(err);
-          showFloatingError(i18n.memoSaveError);
+      /*  const raw = await ReadTextFile(notePath).catch(() => "");*/
+      /*const { text, meta } = parseNoteContent(raw);*/
+      let currentText = "";
+      let currentMeta = { mark: 0 }; // 初期値
+
+      try {
+        const raw = await ReadTextFile(notePath);
+        if (raw) {
+          const parsed = parseNoteContent(raw);
+          currentText = parsed.text;
+          currentMeta = parsed.meta;
         }
-      });
+      } catch (err) {
+        // ファイルがない（＝新規アーカイブ直後など）場合は、
+        // ここで確実に currentText と currentMeta を空にする
+        currentText = "";
+        currentMeta = { mark: 0 };
+      }
+      showMemoDialog(
+        currentText,
+        { ...currentMeta },
+        async (newText, newMeta) => {
+          try {
+            const finalMeta = {
+              ...newMeta,
+              target: path, // 紐付け対象のバックアップファイルパス
+            };
+            await WriteTextFile(notePath, serializeNote(newText, finalMeta));
+            showFloatingMessage(i18n.memoSaved);
+            UpdateHistory();
+          } catch (err) {
+            console.error(err);
+            showFloatingError(i18n.memoSaveError);
+          }
+        },
+      );
       return;
     }
     // 最近使ったファイル (.recent-item) のクリック
