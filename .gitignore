@@ -23,7 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# Rust binaries
+# Rust binaries 
 src-tauri/binaries/*
 !src-tauri/binaries/android/
 !src-tauri/binaries/.gitkeep
