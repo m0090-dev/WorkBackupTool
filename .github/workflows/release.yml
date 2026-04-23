@@ -1,9 +1,10 @@
 name: "Release"
+env:
+  HDIFF_VERSION: "v4.12.0"
 on:
   push:
     branches:
       - main # mainブランチにpushした時に動く
-
 jobs:
   publish:
     permissions:
@@ -41,6 +42,12 @@ jobs:
         run: npm install
       - name: sync version to config
         run: python scripts/update_version.py
+      - name: Setup HDiffPatch binaries
+        run: python scripts/setup_hdiff.py
+        env:
+          HDIFF_VERSION: ${{ env.HDIFF_VERSION }}
+          PLATFORM: ${{ matrix.platform }}
+          TARGET: ${{ matrix.target }}
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
