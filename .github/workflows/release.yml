@@ -9,7 +9,7 @@ jobs:
   publish:
     permissions:
       contents: write
-   strategy:
+    strategy:
       fail-fast: false
       matrix:
         include:
