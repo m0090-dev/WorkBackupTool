@@ -9,11 +9,16 @@ jobs:
   publish:
     permissions:
       contents: write
-    strategy:
+   strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-22.04, windows-latest] # Macもビルド可能！
-
+        include:
+          - platform: "windows-latest"
+            target: "x86_64-pc-windows-msvc"
+          - platform: "macos-latest"
+            target: "aarch64-apple-darwin"
+          - platform: "ubuntu-22.04"
+            target: "x86_64-unknown-linux-gnu"
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
