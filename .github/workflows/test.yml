@@ -13,8 +13,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 開発環境に合わせてOSを選択
-        platform: [windows-latest, macos-latest, ubuntu-22.04]
+        # matrix.target を追加して Tauri が期待する名前にリネームできるようにする
+        include:
+          - platform: "windows-latest"
+            target: "x86_64-pc-windows-msvc"
+          - platform: "macos-latest"
+            target: "aarch64-apple-darwin"
+          - platform: "ubuntu-22.04"
+            target: "x86_64-unknown-linux-gnu"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -44,6 +50,13 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
+      - name: Setup HDiffPatch binaries
+        run: python scripts/setup_hdiff.py
+        env:
+          # release.yml と同じ HDIFF_VERSION を使う
+          HDIFF_VERSION: "v4.12.0" 
+          PLATFORM: ${{ matrix.platform }}
+          TARGET: ${{ matrix.target }}
       - name: install frontend dependencies
         # フロントエンドのビルドが必要なテスト（tauriコマンド等）がある場合に備えて
         run: npm install
