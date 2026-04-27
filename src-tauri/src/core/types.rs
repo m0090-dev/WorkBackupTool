@@ -40,6 +40,7 @@ pub struct BackupItem {
     pub file_size: i64,
     pub generation: i32,
     pub is_archived: bool,
+    pub is_folder: bool,
 }
 
 // 世代管理を司る構造体 (JSに送らない場合は Serialize 不要ですが、一応付与)

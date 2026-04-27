@@ -21,6 +21,13 @@ export const settingsSchema = [
     hint: "thresholdHint",
   },
   {
+    key: "hdiffStrictHashCheck",
+    type: "boolean",
+    category: "backup",
+    label: "hdiffStrictHashCheckLabel",
+    hint: "hdiffStrictHashCheckHint",
+  },
+  {
     key: "strictFileNameMatch",
     type: "boolean",
     category: "history",
