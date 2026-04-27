@@ -33,14 +33,9 @@ let isExecuting = false;
 export function showFloatingMessage(text) {
   const msgArea = document.getElementById("message-area");
   if (!msgArea) return;
-
-  // --- 追加：前回の「赤」が残っていたら消す ---
   msgArea.classList.remove("error");
-
   msgArea.textContent = text;
   msgArea.classList.remove("hidden");
-
-  // 既存のタイマーと競合しないよう、単純に3秒後に隠す
   setTimeout(() => msgArea.classList.add("hidden"), 3000);
 }
 
@@ -48,17 +43,12 @@ export function showFloatingMessage(text) {
 export function showFloatingError(text) {
   const msgArea = document.getElementById("message-area");
   if (!msgArea) return;
-
-  // 一旦リセットしてから赤を付ける
   msgArea.classList.add("error");
   msgArea.textContent = text;
   msgArea.classList.remove("hidden");
-
   setTimeout(() => {
     msgArea.classList.add("hidden");
-    // 完全に隠れてから色を戻す
     setTimeout(() => {
-      // まだ hidden 状態のときだけクラスを消す（連打対策）
       if (msgArea.classList.contains("hidden")) {
         msgArea.classList.remove("error");
       }
@@ -68,7 +58,6 @@ export function showFloatingError(text) {
 
 export function renderRecentFiles() {
   const list = document.getElementById("recent-list");
-  const section = document.getElementById("recent-files-section");
   if (!list) return;
 
   if (recentFiles.length === 0) {
@@ -78,7 +67,7 @@ export function renderRecentFiles() {
   list.innerHTML = recentFiles
     .map((path) => {
       const fileName = path.split(/[\\/]/).pop();
-      return `<div class="recent-item" title="${path}" data-path="${path}"><i></i> ${fileName}</div>`;
+      return `<div class="recent-item" title="${path}" data-path="${path}"><i></i> ${fileName}</div>`;
     })
     .join("");
 }
@@ -88,7 +77,6 @@ export function renderTabs() {
   const list = document.getElementById("tabs-list");
   if (!list) return;
 
-  // 初期化
   list.innerHTML = "";
 
   const clearGlobals = () => {
@@ -98,8 +86,6 @@ export function renderTabs() {
     existingTooltips.forEach((t) => t.remove());
   };
   clearGlobals();
-
-  let tooltip = null;
 
   tabs.forEach((tab, index) => {
     const el = document.createElement("div");
@@ -142,7 +128,6 @@ export function renderTabs() {
       await switchTab(tab.id);
     };
 
-    // --- 右クリックメニュー（空表示防止版） ---
     el.oncontextmenu = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -151,7 +136,6 @@ export function renderTabs() {
       const existingMenu = document.querySelector(".tab-context-menu");
       if (existingMenu) existingMenu.remove();
 
-      // 1. まずは一時的なフラグメントや配列で項目を準備する
       const menuItems = [];
 
       if (index > 0) {
@@ -194,10 +178,8 @@ export function renderTabs() {
         menuItems.push(del);
       }
 
-      // 2. 項目が一つもなければメニュー自体を作らない
       if (menuItems.length === 0) return;
 
-      // 3. 項目がある場合のみメニューを構築
       const menu = document.createElement("div");
       menu.className = "tab-context-menu";
       menuItems.forEach((item) => menu.appendChild(item));
@@ -226,15 +208,9 @@ export function renderTabs() {
   });
 }
 
-/**
- * タブ専用のツールチップをセットアップします
- * @param {HTMLElement} el - 対象のタブ要素
- * @param {Object} tab - state.js のタブオブジェクト
- */
 function setupTabTooltip(el, tab) {
   if (!el || !tab || !i18n) return;
 
-  // ツールチップ実体への参照を管理するためのクロージャ用変数
   let tooltip = null;
 
   const removeTooltip = () => {
@@ -245,7 +221,6 @@ function setupTabTooltip(el, tab) {
   };
 
   el.addEventListener("mouseenter", () => {
-    // コンテキストメニューが表示されている時は出さない
     if (document.querySelector(".tab-context-menu")) return;
 
     removeTooltip();
@@ -272,24 +247,20 @@ function setupTabTooltip(el, tab) {
 
     document.body.appendChild(tooltip);
 
-    // 位置計算
     const rect = el.getBoundingClientRect();
     tooltip.style.left = `${rect.left}px`;
     tooltip.style.top = `${rect.bottom + 5}px`;
   });
 
-  // 各種イベントで確実に消す
   el.addEventListener("mouseleave", removeTooltip);
   el.addEventListener("mousedown", removeTooltip);
 
-  // ドラッグ開始時などにも消えるように el に関数を保持させておくと便利
   el._removeTooltip = removeTooltip;
 }
 
 function setupPathTooltip(el, fullPath) {
   if (!el || !fullPath) return;
 
-  // 既存のセットアップ済みチェック
   if (el._pathTooltipSetup) {
     el._tooltipPath = fullPath;
     return;
@@ -299,11 +270,8 @@ function setupPathTooltip(el, fullPath) {
   el._tooltipPath = fullPath;
 
   el.addEventListener("mouseenter", () => {
-    // 【修正】幅の判定を削除し、常に表示するように変更
     const tooltip = document.createElement("div");
     tooltip.className = "tab-tooltip";
-
-    // 改行コード (\n) を <br> に変換して表示できるようにする
     const displayPath = el._tooltipPath.replace(/\n/g, "<br>");
     tooltip.innerHTML = `<code>${displayPath}</code>`;
 
@@ -324,13 +292,17 @@ function setupPathTooltip(el, fullPath) {
 
 // 全体のUI更新
 export async function UpdateDisplay() {
-  let fileExists = true;
+  let workTargetExists = false;
   let dirExists = true;
   const tab = getActiveTab();
   if (!i18n || !tab) return;
 
   if (tab.workFile) {
-    fileExists = await FileExists(tab.workFile);
+    const isFile = await FileExists(tab.workFile);
+    const isDir = await DirExists(tab.workFile);
+    workTargetExists = isFile || isDir;
+  } else {
+    workTargetExists = true;
   }
   if (tab.backupDir) {
     dirExists = await DirExists(tab.backupDir);
@@ -355,12 +327,11 @@ export async function UpdateDisplay() {
       ? tab.workFile.split(/[\\/]/).pop()
       : i18n.selectedWorkFile;
     const sizeText = tab.workFile ? ` [${formatSize(tab.workFileSize)}]` : "";
-    if (!fileExists && tab.workFile) {
-      // 存在しない場合：赤文字で (Not Found) を付加
+    if (!workTargetExists && tab.workFile) {
       fileEl.innerHTML = `<span style="color: #ff4d4d; font-weight: bold;">${baseName} (Not Found)</span>`;
     } else {
       fileEl.textContent = `${baseName}${sizeText}`;
-      fileEl.style.color = ""; // リセット
+      fileEl.style.color = "";
     }
   }
   if (dirEl) {
@@ -368,11 +339,10 @@ export async function UpdateDisplay() {
       ? tab.backupDir.split(/[\\/]/).pop()
       : i18n.selectedBackupDir;
     if (!dirExists && tab.backupDir) {
-      // 存在しない場合：赤文字で (Not Found) を付加
       dirEl.innerHTML = `<span style="color: #ff4d4d; font-weight: bold;">${baseName} (Not Found)</span>`;
     } else {
       dirEl.textContent = baseName;
-      dirEl.style.color = ""; // リセット
+      dirEl.style.color = "";
     }
   }
 
@@ -383,10 +353,8 @@ export async function UpdateDisplay() {
   const compactModeSel = document.getElementById("compact-mode-select");
   if (compactModeSel) compactModeSel.value = tab.backupMode;
 
-  // --- 各要素の同期 ---
   const locked = tab.isLocked || false;
 
-  // ラジオボタン
   document.querySelectorAll('input[name="backupMode"]').forEach((r) => {
     r.disabled = locked;
   });
@@ -422,7 +390,6 @@ export async function UpdateDisplay() {
     pwdArea.style.opacity = isPass ? "1" : "0.3";
     document.getElementById("archive-password").disabled = !isPass;
   }
-  // Compact同期
   const cFileEl = document.getElementById("compact-selected-file");
   if (cFileEl)
     cFileEl.textContent = tab.workFile
@@ -447,7 +414,6 @@ export async function UpdateHistory() {
       searchInput.value = tab.searchQuery || "";
     }
   }
-  // --- 検索クリアボタンの表示制御 ---
   if (clearBtn) {
     if (searchTerm.length > 0) {
       clearBtn.classList.add("visible");
@@ -467,22 +433,18 @@ export async function UpdateHistory() {
       return;
     }
 
-    // --- ファイル名の降順でソート ---
     data.sort((a, b) => b.fileName.localeCompare(a.fileName));
 
-    // 1. 本来の最新世代を取得
     const latestGenNumber = Math.max(
       ...data.map((item) => item.generation || 0),
     );
 
-    // 2. 表示用のパスを決定する
     let activeDirPath = tab.selectedTargetDir;
     if (!activeDirPath) {
       const first = data[0];
       activeDirPath = first.filePath.replace(/[\\/][^\\/]+$/, "");
     }
 
-    // --- ハイライト用のヘルパー関数 ---
     const highlight = (text, term) => {
       if (!term) return text;
       const regex = new RegExp(`(${term})`, "gi");
@@ -498,11 +460,10 @@ export async function UpdateHistory() {
         const raw = await ReadTextFile(item.filePath + ".note").catch(() => "");
         const { text: note, meta: noteMeta } = parseNoteContent(raw);
 
-        // --- 検索フィルタリング (ファイル名 または メモ に含まれるか) ---
         if (searchTerm) {
           const inFileName = item.fileName.toLowerCase().includes(searchTerm);
           const inNote = note.toLowerCase().includes(searchTerm);
-          if (!inFileName && !inNote) return null; // ヒットしない場合はスキップ
+          if (!inFileName && !inNote) return null;
         }
 
         const isDiffFile = item.fileName.toLowerCase().endsWith(".diff");
@@ -529,7 +490,7 @@ export async function UpdateHistory() {
             : "";
 
         if (isArchive) {
-          const archiveText = i18n.fullArchive || " Full Archive";
+          const archiveText = i18n.fullArchive || " Full Archive";
           statusHtml = `<div style="color:#2f8f5b; font-weight:bold;">${archiveText}</div>`;
           genBadge = `<span style="font-size:10px; color:#fff; background:#2f8f5b; padding:1px 4px; border-radius:3px; margin-left:5px;">Archive</span>`;
         } else {
@@ -544,7 +505,7 @@ export async function UpdateHistory() {
               ? ` <span style="font-size:9px; opacity:0.9;">(Target)</span>`
               : "";
           let statusColor = isTarget ? "#2f8f5b" : "#3B5998";
-          let statusIcon = isTarget ? "✅" : "";
+          let statusIcon = isTarget ? "✅" : "";
           let statusText = isTarget
             ? i18n.compatible || "書き込み先 (Active)"
             : i18n.genMismatch || "別世代 (クリックで切替)";
@@ -581,7 +542,6 @@ export async function UpdateHistory() {
 
         const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${markText}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>${i18n.backupMemo}:</strong> ${note}` : ""}`;
 
-        // ハイライト適用済みのテキストを作成
         const displayedFileName = highlight(item.fileName, searchTerm);
         const displayedNote = highlight(note, searchTerm);
 
@@ -594,15 +554,14 @@ export async function UpdateHistory() {
                   ${displayedFileName} ${genBadge} ${markBadge} <span style="font-size:10px; color:#3B5998;">(${formatSize(item.fileSize)})</span>
                 </span>
                 <span style="font-size:10px; color:#888;">${item.timestamp}</span>
-                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> ${displayedNote}</div>` : ""}
+                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> ${displayedNote}</div>` : ""}
               </div>
             </label>
-            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;"></button>
+            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;"></button>
           </div>
         </div>`;
       }),
     );
-    // フィルタで null になった要素を除外して結合
     list.innerHTML = itemsHtml.filter((html) => html !== null).join("");
 
     if (executeBtn) {
@@ -626,10 +585,6 @@ export async function UpdateHistory() {
   }
 }
 
-/**
- * 世代アーカイブ用モーダルのUIを更新して表示する
- * 専用の GetGenerationFolders を使用して、正確な世代フォルダリストを表示します。
- */
 export async function showArchiveModal() {
   const tab = getActiveTab();
   const modal = document.getElementById("archive-modal");
@@ -637,7 +592,6 @@ export async function showArchiveModal() {
 
   if (!tab || !modal || !listContainer || !i18n) return;
 
-  // i18nテキストの適用（タイトルやラベルの更新）
   document.getElementById("title-gen-archive").textContent =
     i18n.generationArchive || "Generation Archive";
   document.getElementById("label-archive-desc").textContent =
@@ -651,26 +605,20 @@ export async function showArchiveModal() {
     i18n.executeBtn || "Execute";
 
   try {
-    // 1. 専用コマンドでアーカイブ候補（baseN_ フォルダ）を直接取得
-    // ※ Rust側で「最新世代」は除外済みのリストが返ってきます
     const archiveCandidates = await GetGenerationFolders(
       tab.workFile,
       tab.backupDir,
     );
 
-    // 2. 世代番号でソート（新しい順に表示）
     archiveCandidates.sort((a, b) => b.generation - a.generation);
 
     if (archiveCandidates.length === 0) {
-      // 候補がない場合
       listContainer.innerHTML = `
         <div style="font-size:11px; color:#888; text-align:center; padding:15px;">
           ${i18n.noArchiveCandidates || "No folders available to archive."}
         </div>`;
       document.getElementById("archive-execute-btn").disabled = true;
     } else {
-      // 3. リストの構築
-      // data-gen 属性を付与して、実行時に Rust へ渡す targetN を特定しやすくします
       listContainer.innerHTML = archiveCandidates
         .map(
           (c) => `
@@ -689,11 +637,9 @@ export async function showArchiveModal() {
       document.getElementById("archive-execute-btn").disabled = false;
     }
 
-    // 4. 全選択チェックボックスのリセット
     const selectAll = document.getElementById("archive-select-all-check");
     if (selectAll) selectAll.checked = false;
 
-    // 5. モーダルを表示
     modal.classList.remove("hidden");
   } catch (err) {
     console.error("Failed to load archive candidates:", err);
@@ -710,16 +656,13 @@ export async function showSettingsModal() {
     const config = await GetConfig();
     const lang = i18n.language || "ja";
 
-    // カテゴリ一覧を抽出（重複なし、順序維持）
     const categories = [
       ...new Set(settingsSchema.map((item) => item.category)),
     ];
 
-    // モーダルの中身を動的生成
     const modalContent = modal.querySelector(".modal-content");
     if (!modalContent) return;
 
-    // タブHTMLを生成
     const tabsHtml = categories
       .map((cat, idx) => {
         const label = categoryLabels[cat]?.[lang] || cat;
@@ -727,7 +670,6 @@ export async function showSettingsModal() {
       })
       .join("");
 
-    // 各カテゴリのコンテンツを生成
     const pagesHtml = categories
       .map((cat, idx) => {
         const items = settingsSchema.filter((item) => item.category === cat);
@@ -775,7 +717,6 @@ export async function showSettingsModal() {
       </div>
     `;
 
-    // タブ切り替えイベント
     modalContent.querySelectorAll(".settings-tab-btn").forEach((btn) => {
       btn.onclick = (e) => {
         e.stopPropagation();
@@ -794,23 +735,28 @@ export async function showSettingsModal() {
       };
     });
 
-    // 設定変更イベント
+    // ---- [FIX #28] 設定変更ハンドラ ----
+    // boolean / number を型に応じて正しく処理する
     modalContent.querySelectorAll(".settings-input").forEach((input) => {
       const handler = async () => {
         const key = input.dataset.key;
         const schema = settingsSchema.find((s) => s.key === key);
         if (!schema) return;
-        const value =
-          schema.type === "boolean" ? input.checked : parseFloat(input.value);
-        if (schema.type === "number" && isNaN(value)) return;
-        if (schema.min !== null && value < schema.min) return;
-        if (schema.max !== null && value > schema.max) return;
+
+        let value;
+        if (schema.type === "boolean") {
+          // boolean はチェック状態をそのまま使う（数値バリデーションは不要）
+          value = input.checked;
+        } else {
+          value = parseFloat(input.value);
+          if (isNaN(value)) return;
+          if (schema.min !== null && value < schema.min) return;
+          if (schema.max !== null && value > schema.max) return;
+        }
+
         await handleSettingChange(key, value);
       };
-      input.addEventListener(
-        input.type === "checkbox" ? "change" : "change",
-        handler,
-      );
+      input.addEventListener("change", handler);
     });
 
     modal.classList.remove("hidden");
@@ -826,12 +772,11 @@ export async function handleSettingChange(key, value) {
     showFloatingMessage(i18n.settingsSaved || "Settings saved");
   } catch (err) {
     console.error(`Failed to update ${key}:`, err);
-    showFloatingError(i18n.memoSaveError || "Save failed");
+    showFloatingError(i18n.settingsError || "Save failed");
   }
 }
 
 function setupHistoryPopups() {
-  // IDを history-tooltip に変更
   const tooltip =
     document.getElementById("history-tooltip") || createTooltipElement();
   const targets = document.querySelectorAll(".diff-name");
@@ -844,22 +789,18 @@ function setupHistoryPopups() {
       tooltip.innerHTML = content;
       tooltip.classList.remove("hidden");
 
-      // 位置計算（ロジックは維持）
       const rect = target.getBoundingClientRect();
       tooltip.style.left = `${rect.left}px`;
       tooltip.style.top = `${rect.bottom + 5}px`;
 
-      // 1. 高さと画面端をチェックするための変数を追加
       const tooltipHeight = tooltip.offsetHeight;
       const windowHeight = window.innerHeight;
 
-      // 2. 位置計算を「入り切らないなら上」という条件分岐に変更
       let topPosition = rect.bottom + 2;
       if (topPosition + tooltipHeight > windowHeight) {
         topPosition = rect.top - tooltipHeight - 2;
       }
 
-      // 3. 計算した値を代入
       tooltip.style.top = `${topPosition}px`;
     };
 
@@ -871,7 +812,6 @@ function setupHistoryPopups() {
 
 function createTooltipElement() {
   const el = document.createElement("div");
-  // IDとクラス名を history-tooltip に変更
   el.id = "history-tooltip";
   el.className = "history-tooltip hidden";
   document.body.appendChild(el);
@@ -916,51 +856,35 @@ export function toggleProgress(show, text = "") {
   }
 }
 
-/**
- * 起動時の全画面オーバーレイを表示
- */
 export function showStartupOverlay() {
   const overlay = document.getElementById("startup-overlay");
   if (!overlay) return;
 
-  // i18nからテキストを取得して反映
   const titleEl = document.getElementById("loader-title");
   const subEl = document.getElementById("loader-sub");
 
   if (titleEl) titleEl.textContent = i18n.loadingTitle || "Initializing...";
   if (subEl) subEl.textContent = i18n.pleaseWait || "Please wait...";
 
-  // 初期状態をセット
   overlay.style.display = "flex";
   overlay.style.opacity = "1";
 }
 
-/**
- * キャッシュ生成などの進捗状況を更新する
- * @param {number} current - 現在の処理数
- * @param {number} total - 総数
- */
 export function updateStartupProgress(current, total) {
   const statusEl = document.getElementById("loader-status");
   if (!statusEl || !i18n.loadingStatus) return;
 
-  // i18nの "アーカイブキャッシュを処理しています... ({current}/{total})" を置換
   statusEl.textContent = i18n.loadingStatus
     .replace("{current}", current)
     .replace("{total}", total);
 }
 
-/**
- * 起動時のオーバーレイをフェードアウトさせて非表示にする
- */
 export function hideStartupOverlay() {
   const overlay = document.getElementById("startup-overlay");
   if (!overlay) return;
 
-  // フェードアウト
   overlay.style.opacity = "0";
 
-  // アニメーションが終わるのを待ってから完全に消す（CSSのtransition時間に合わせる）
   setTimeout(() => {
     overlay.style.display = "none";
   }, 400);

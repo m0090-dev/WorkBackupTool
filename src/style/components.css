@@ -18,6 +18,19 @@
   background: var(--primary-blue);
 }
 
+/* プルダウン専用：mini-btnのスタイルを継承しつつ不具合を直す */
+.mini-select-header {
+  /* mini-btn と同じ基本スタイル */
+  padding: 0 4px;
+  font-size: 10px;
+  height: 20px;
+  background: #4a5a71;
+  border: 1px solid transparent; /* フォーカス時に色を出すための土台 */
+  color: white;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
 .execute-btn {
   width: 100%;
   height: 38px;
@@ -115,7 +128,7 @@
   position: absolute;
   top: 100%;
   right: 0;
-  z-index: 1000;
+  z-index: 50 !important;
   width: 240px;
   margin-top: 4px; /* わずかに隙間をあけて視認性アップ */
   padding: 10px;
@@ -124,8 +137,10 @@
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   display: none;
-  pointer-events: none;
+  pointer-events: auto !important;
   animation: tabTooltipFadeIn 0.15s ease-out; /* 他のポップアップと共通の動き */
+  overflow: visible;
+  padding: 8px;
 }
 
 /* --- タブ操作専用 コンテキストメニュー --- */

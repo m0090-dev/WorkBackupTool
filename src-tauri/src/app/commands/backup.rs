@@ -21,11 +21,6 @@ pub async fn backup_or_diff(
     compress: String,
 ) -> Result<String, String> {
     let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
-    let hdiff_strict_hash_check = {
-        let cfg = state.config.lock().unwrap();
-        cfg.hdiff_strict_hash_check
-    };
-
     // 1. ディレクトリ解決
     let initial_path = if custom_dir.is_empty() {
         utils::default_backup_dir(&work_file)
@@ -46,7 +41,6 @@ pub async fn backup_or_diff(
             &work.to_string_lossy(),
             &temp.to_string_lossy(),
             &compress,
-            &hdiff_strict_hash_check,
         )
         .await?;
 
@@ -72,7 +66,6 @@ pub async fn backup_or_diff(
                 &new_work.to_string_lossy(),
                 &final_dest.to_string_lossy(),
                 &compress,
-                &hdiff_strict_hash_check,
             )
             .await?;
         }
@@ -88,6 +81,7 @@ pub async fn apply_multi_diff(
     diff_paths: Vec<String>,
 ) -> Result<(), String> {
     let hdiff_strict_hash_check = {
+        let state = app.state::<AppState>();
         let cfg = state.config.lock().unwrap();
         cfg.hdiff_strict_hash_check
     };
@@ -97,7 +91,7 @@ pub async fn apply_multi_diff(
 
         let result = match algo {
             workflow::DiffAlgo::HDiff => {
-                apply_hdiff_wrapper(app.clone(), &work_file, &dp, &hdiff_strict_hash_check).await
+                apply_hdiff_wrapper(app.clone(), &work_file, &dp, hdiff_strict_hash_check).await
             }
             workflow::DiffAlgo::BsDiff => {
                 return Err("`bsdiff` is not supported currently.".into());

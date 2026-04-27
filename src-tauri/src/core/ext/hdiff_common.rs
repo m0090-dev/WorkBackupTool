@@ -3,7 +3,7 @@ use crate::core::utils;
 use chrono::Local;
 use std::fs;
 use std::path::{Path, PathBuf};
-
+use fs_extra::dir;
 /// hdiffz 用の引数リストを生成するロジック
 pub fn build_hdiffz_args<'a>(
     old_file: &'a str,
@@ -84,15 +84,28 @@ pub fn prepare_hdiff_paths(
     target_dir: PathBuf,
 ) -> Result<Option<(String, String, String)>, String> {
     fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-
+        let path = Path::new(work_file);
     let base_name = Path::new(work_file)
         .file_name()
         .ok_or("Invalid work file name")?
         .to_string_lossy();
     let base_full = target_dir.join(format!("{}.base", base_name));
 
+    
     if !base_full.exists() {
-        fs::copy(work_file, &base_full).map_err(|e| e.to_string())?;
+        let metadata = fs::metadata(path).map_err(|e| e.to_string())?;
+
+        if metadata.is_dir() {
+            let mut options = dir::CopyOptions::new();
+            options.copy_inside = true;
+            options.content_only = false;
+
+            dir::copy(path, &base_full, &options)
+                .map_err(|e| e.to_string())?;
+        } else {
+            fs::copy(path, &base_full).map_err(|e| e.to_string())?;
+        }
+
         return Ok(None);
     }
 
@@ -121,11 +134,7 @@ pub fn resolve_apply_paths(
         .to_string_lossy();
 
     let original_full_name = diff_name.split(".20").next().unwrap_or(&diff_name);
-    let original_ext = Path::new(original_full_name)
-        .extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or("bin");
-
+  
     let base_name = format!("{}.base", diff_name.split(".20").next().unwrap());
     let mut base_full = backup_dir.join(&base_name);
 
@@ -140,10 +149,19 @@ pub fn resolve_apply_paths(
         base_full = backup_dir.join(work_base_name);
     }
 
-    let out_path = Path::new(&temp_out_path)
-        .with_extension(original_ext)
+let work_path = Path::new(work_file);
+    let out_path = if let Some(ext) = work_path.extension() {
+    // 【ファイルの場合】
+    // 元の拡張子（.clipなど）を維持して出力
+    Path::new(&temp_out_path)
+        .with_extension(ext)
         .to_string_lossy()
-        .to_string();
+        .into_owned()
+} else {
+    // 【フォルダの場合】
+    // 拡張子がないので、テンポラリパスをそのまま（拡張子なしで）使う
+    temp_out_path
+};
 
     Ok((base_full.to_string_lossy().into_owned(), out_path))
 }
