@@ -76,8 +76,8 @@ export async function SelectAnyFile(title, filters) {
   return await invoke("select_any_file", { title, filters });
 }
 
-export async function SelectBackupFolder() {
-  return await invoke("select_backup_folder");
+export async function SelectAnyFolder(title) {
+  return await invoke("select_any_folder", { title });
 }
 
 /**

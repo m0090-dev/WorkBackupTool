@@ -5,6 +5,7 @@ import {
   RebuildArchiveCaches,
   GetRebuildCacheOnStartup,
   GetStartupCacheLimit,
+  DirExists,
 } from "./tauri_exports";
 
 import {
@@ -89,6 +90,11 @@ async function performStartupCacheRebuild() {
 }
 
 function setupInitialUI() {
+  const setTitle = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.title = text || "";
+  };
+
   const setText = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text || "";
@@ -155,8 +161,27 @@ function setupInitialUI() {
   setText("label-threshold", i18n.thresholdLabel);
   setText("hint-threshold", i18n.thresholdHint);
   setText("settings-close-btn", i18n.closeBtn);
+  setTitle("add-tab-btn", i18n.addTabBtn || "Add New Tab");
+
+  // --- ここに追記 ---
+  const typeSelect = document.getElementById("work-target-type-select");
+  if (typeSelect) {
+    if (typeSelect.options[0])
+      typeSelect.options[0].textContent = i18n.workTargetTypeFile || "File";
+    if (typeSelect.options[1])
+      typeSelect.options[1].textContent = i18n.workTargetTypeFolder || "Folder";
+  }
 
   // Compact用テキスト
+  const typeCompactSelect = document.getElementById("compact-work-type-select");
+  if (typeCompactSelect) {
+    if (typeCompactSelect.options[0])
+      typeCompactSelect.options[0].textContent =
+        i18n.workTargetTypeFile || "File";
+    if (typeCompactSelect.options[1])
+      typeCompactSelect.options[1].textContent =
+        i18n.workTargetTypeFolder || "Folder";
+  }
 
   setQueryText(".compact-title-text", i18n.compactMode || "Compact");
 
@@ -213,30 +238,13 @@ function setupDragAndDrop() {
     const pathText = document.getElementById("drop-modal-path");
 
     (async () => {
-      let isDir = false;
-
-      try {
-        const size = await GetFileSize(droppedPath);
-
-        if (size === undefined || size < 0) isDir = true;
-      } catch (e) {
-        isDir = true;
-      }
+      const isDir = await DirExists(droppedPath).catch(() => false);
 
       pathText.textContent = droppedPath;
 
       modal.classList.remove("hidden");
 
       document.getElementById("drop-set-workfile").onclick = async () => {
-        if (isDir) {
-          showFloatingError(
-            i18n.dropErrorFolderAsFile ||
-              "フォルダはファイルとして設定できません",
-          );
-
-          return;
-        }
-
         const tab = getActiveTab();
 
         tab.workFile = droppedPath;
@@ -252,17 +260,14 @@ function setupDragAndDrop() {
       };
 
       document.getElementById("drop-set-backupdir").onclick = () => {
+        const tab = getActiveTab();
         if (!isDir) {
           showFloatingError(
             i18n.dropErrorFileAsFolder ||
               "ファイルはフォルダとして設定できません",
           );
-
           return;
         }
-
-        const tab = getActiveTab();
-
         tab.backupDir = droppedPath;
 
         finishDrop(i18n.updatedBackupDir);

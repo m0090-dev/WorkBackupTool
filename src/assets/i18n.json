@@ -114,7 +114,10 @@
     "hdiffStrictHashCheckHint": "Enables full hash verification (-C-all). Note: this may increase diff file size.",
     "workTargetTypeLabel": "Work Target Type",
     "workTargetTypeFile": "File",
-    "workTargetTypeFolder": "Folder"
+    "workTargetTypeFolder": "Folder",
+    "addTabBtn": "Add New Tab",
+    "settingsSaved": "Settings saved.",
+    "settingsError": "Failed to save settings."
   },
   "ja": {
     "settings": "設定",
@@ -227,10 +230,13 @@
     "priorityHigh": "高",
     "filterHistoryByFilename": "履歴をファイル名でフィルタ",
     "filterHistoryByFilenameHint": "履歴に作業ファイル名と一致するファイルのみ表示する",
-    "hdiffStrictHashCheckLabel": "差分（hdiff）の厳密なハッシュ値チェック",
-    "hdiffStrictHashCheckHint": "全ファイルのハッシュ値チェックを行います（-C-all）。\n※ 差分ファイルのサイズが大きくなる場合があります。",
+    "hdiffStrictHashCheckLabel": "差分（hdiff）の復元時の厳密なハッシュ値チェック",
+    "hdiffStrictHashCheckHint": "全ファイルのハッシュ値チェックを行います（-C-all）。\n※ 負荷の増加や速度低下の可能性があります。",
     "workTargetTypeLabel": "作業対象の種別",
     "workTargetTypeFile": "ファイル",
-    "workTargetTypeFolder": "フォルダ"
+    "workTargetTypeFolder": "フォルダ",
+    "addTabBtn": "新しいタブを追加",
+    "settingsSaved": "設定を保存しました。",
+    "settingsError": "設定の保存に失敗しました。"
   }
 }

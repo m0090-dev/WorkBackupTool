@@ -11,13 +11,8 @@ pub async fn create_hdiff(
     new_file: &str,
     diff_file: &str,
     compress_algo: &str,
-    strict_hash_check: bool,
 ) -> Result<(), String> {
     let mut args = build_hdiffz_args(old_file, new_file, diff_file, compress_algo);
-    if strict_hash_check {
-        args.push("-C-all".to_string());
-    }
-
     let output = app
         .shell()
         .sidecar("hdiffz")
@@ -45,7 +40,7 @@ pub async fn apply_hdiff(
 ) -> Result<(), String> {
     let mut args = build_hpatchz_args(base_full, diff_file, out_path);
     if strict_hash_check {
-        args.push("-C-all".to_string());
+        args.push("-C-all");
     }
 
     let output = app

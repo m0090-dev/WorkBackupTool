@@ -32,7 +32,7 @@ pub fn run() {
             restore_backup,
             get_file_size,
             select_any_file,
-            select_backup_folder,
+            select_any_folder,
             open_directory,
             toggle_compact_mode,
             write_text_file,

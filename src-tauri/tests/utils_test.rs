@@ -253,10 +253,12 @@ fn test_get_file_size_empty_path() {
     assert!(utils::get_file_size("").is_err());
 }
 
+
 #[test]
 fn test_get_file_size_directory() {
     let dir = tempdir().unwrap();
-    assert!(utils::get_file_size(&dir.path().to_string_lossy()).is_err());
+    let size = utils::get_file_size(&dir.path().to_string_lossy()).unwrap();
+    assert_eq!(size, 0);
 }
 
 #[test]

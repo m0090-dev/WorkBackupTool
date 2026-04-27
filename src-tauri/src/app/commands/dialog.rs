@@ -54,7 +54,7 @@ pub async fn select_any_file(app: AppHandle, title: String) -> Result<Option<Str
 
 /// フォルダ選択ダイアログを表示する
 #[tauri::command]
-pub async fn select_backup_folder(app: AppHandle) -> Result<Option<String>, String> {
+pub async fn select_any_folder(app: AppHandle,title: String) -> Result<Option<String>, String> {
     // 1. メインウィンドウとAppStateを取得
     let window = app
         .get_webview_window("main")
@@ -81,7 +81,7 @@ pub async fn select_backup_folder(app: AppHandle) -> Result<Option<String>, Stri
             window
                 .dialog()
                 .file()
-                .set_title("Folder Select")
+                .set_title(&title)
                 .blocking_pick_folder()
         }
         #[cfg(mobile)]
