@@ -2,15 +2,21 @@ use crate::core::ext::hdiff_common::*;
 use crate::core::utils;
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
+
 /// hdiffz を呼び出して差分を作成する
+/// strict_hash_check: true のとき -C-all を付与して全ファイルのハッシュ検証を行う
 pub async fn create_hdiff(
     app: AppHandle,
     old_file: &str,
     new_file: &str,
     diff_file: &str,
     compress_algo: &str,
+    strict_hash_check: bool,
 ) -> Result<(), String> {
-    let args = build_hdiffz_args(old_file, new_file, diff_file, compress_algo);
+    let mut args = build_hdiffz_args(old_file, new_file, diff_file, compress_algo);
+    if strict_hash_check {
+        args.push("-C-all".to_string());
+    }
 
     let output = app
         .shell()
@@ -29,13 +35,18 @@ pub async fn create_hdiff(
 }
 
 /// hpatchz を呼び出してパッチを適用（復元）する
+/// strict_hash_check: true のとき -C-all を付与して全ファイルのハッシュ検証を行う
 pub async fn apply_hdiff(
     app: AppHandle,
     base_full: &str,
     diff_file: &str,
     out_path: &str,
+    strict_hash_check: bool,
 ) -> Result<(), String> {
-    let args = build_hpatchz_args(base_full, diff_file, out_path);
+    let mut args = build_hpatchz_args(base_full, diff_file, out_path);
+    if strict_hash_check {
+        args.push("-C-all".to_string());
+    }
 
     let output = app
         .shell()
@@ -58,14 +69,14 @@ pub async fn apply_hdiff_wrapper(
     app: tauri::AppHandle,
     work_file: &str,
     diff_file: &str,
+    strict_hash_check: bool,
 ) -> Result<(), String> {
     // 1. 仮の出力先パスを生成
     let temp_out = utils::auto_output_path(work_file);
 
     // 2. 共通モジュール(hdiff_common.rs)を使用してパスを確定させる
-    // ここで .20 分割、.base 探索、拡張子復元が「従来通り」行われます
     let (base_full, out_path) = resolve_apply_paths(work_file, diff_file, temp_out)?;
 
-    // 3. Sidecar (hpatchz) の実行を既存の apply_hdiff 関数に投げる
-    crate::app::hdiff::apply_hdiff(app, &base_full, diff_file, &out_path).await
+    // 3. Sidecar (hpatchz) の実行
+    crate::app::hdiff::apply_hdiff(app, &base_full, diff_file, &out_path, strict_hash_check).await
 }
