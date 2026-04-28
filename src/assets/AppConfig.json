@@ -10,5 +10,6 @@
   "rebuildCacheOnStartup": true,
   "startupCacheLimit": 5,
   "showMemoAfterBackup": true,
-  "strictFileNameMatch": true
+  "strictFileNameMatch": true,
+  "hdiffStrictHashCheck": false
 }

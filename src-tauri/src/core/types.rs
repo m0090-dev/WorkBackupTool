@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+
 // 設定ファイル情報
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +19,7 @@ pub struct AppConfig {
     pub startup_cache_limit: usize,
     pub show_memo_after_backup: bool,
     pub strict_file_name_match: bool,
+    pub hdiff_strict_hash_check: bool
 }
 
 // 差分ファイル情報
@@ -40,6 +42,7 @@ pub struct BackupItem {
     pub file_size: i64,
     pub generation: i32,
     pub is_archived: bool,
+    pub is_folder: bool,
 }
 
 // 世代管理を司る構造体 (JSに送らない場合は Serialize 不要ですが、一応付与)
