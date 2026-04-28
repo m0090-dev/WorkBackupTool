@@ -1,11 +1,12 @@
 import {
   SelectAnyFile,
-  SelectBackupFolder,
+  SelectAnyFolder,
   GetFileSize,
   WriteTextFile,
   ReadTextFile,
   RestoreBackup,
   EventsOn,
+  OnFileDrop,
   ArchiveGeneration,
 } from "./tauri_exports";
 
@@ -23,6 +24,7 @@ import {
   UpdateHistory,
   toggleProgress,
   showFloatingMessage,
+  showFloatingError,
   renderRecentFiles,
   showArchiveModal,
   showSettingsModal,
@@ -39,27 +41,35 @@ import {
 
 import { showMemoDialog, parseNoteContent, serializeNote } from "./memo.js";
 
-// --- ドラッグアンドドロップの基本防止設定 ---
 const preventDefault = (e) => {
   e.preventDefault();
   e.stopPropagation();
 };
 
 export async function setupGlobalEvents() {
-  // Only this
   window.addEventListener("dragenter", preventDefault, true);
 
-  // --- ヘルパー関数: 共通ロジックの定義 ---
-
-  // 作業ファイル選択ロジック
+  // ---- 作業ファイル/フォルダ選択 ----
   const handleSelectWorkFile = async () => {
     const tab = getActiveTab();
-    const res = await SelectAnyFile(i18n.workFileBtn, [
-      { DisplayName: "Work file", Pattern: "*.*" },
-    ]);
+    const isCompact = document.body.classList.contains("compact-mode");
+    const targetId = isCompact
+      ? "compact-work-type-select"
+      : "work-target-type-select";
+    const sel = document.getElementById(targetId);
+    const targetType = sel ? sel.value : "file";
+
+    let res;
+    if (targetType === "folder") {
+      res = await SelectAnyFolder(i18n.workFileBtn);
+    } else {
+      res = await SelectAnyFile(i18n.workFileBtn, [
+        { DisplayName: "Work file", Pattern: "*.*" },
+      ]);
+    }
     if (res) {
       tab.workFile = res;
-      tab.workFileSize = await GetFileSize(res);
+      tab.workFileSize = await GetFileSize(res).catch(() => 0);
       tab.backupDir = "";
       tab.selectedTargetDir = "";
       addToRecentFiles(res);
@@ -71,16 +81,44 @@ export async function setupGlobalEvents() {
     }
   };
 
-  // バックアップ先フォルダ選択ロジック
+  // バックアップ先フォルダ選択
   const handleSelectBackupDir = async () => {
     const tab = getActiveTab();
-    const res = await SelectBackupFolder();
+    const res = await SelectAnyFolder(i18n.backupDirBtn);
     if (res) {
       tab.backupDir = res;
       await UpdateDisplay();
       UpdateHistory();
       saveCurrentSession();
       showFloatingMessage(i18n.updatedBackupDir);
+    }
+  };
+
+  // ---- [FIX #1] recent-item 選択ロジックを独立関数に ----
+  // GetFileSize の失敗を catch し、プルダウンの pointer-events 干渉も回避する
+  const handleSelectRecentItem = async (path) => {
+    const tab = getActiveTab();
+    try {
+      tab.workFile = path;
+      tab.workFileSize = await GetFileSize(path).catch(() => 0);
+      tab.backupDir = "";
+      tab.selectedTargetDir = "";
+
+      addToRecentFiles(path);
+      saveCurrentSession();
+
+      renderRecentFiles();
+      renderTabs();
+      await UpdateDisplay();
+      UpdateHistory();
+
+      showFloatingMessage(i18n.updatedWorkFile);
+    } catch (err) {
+      console.error("Failed to load recent item:", err);
+      const idx = recentFiles.indexOf(path);
+      if (idx > -1) recentFiles.splice(idx, 1);
+      localStorage.setItem("recentFiles", JSON.stringify(recentFiles));
+      renderRecentFiles();
     }
   };
 
@@ -95,9 +133,7 @@ export async function setupGlobalEvents() {
       return;
     }
 
-    // events.js 内の window.addEventListener("click", ...) の中
-
-    // 1. 世代バッジ (.gen-selector-badge) のクリック
+    // 世代バッジ
     const genBadge = e.target.closest(".gen-selector-badge");
     if (genBadge) {
       e.preventDefault();
@@ -108,7 +144,7 @@ export async function setupGlobalEvents() {
       return;
     }
 
-    // 2. 履歴のメモボタン (.diff-item 内の .note-btn) のクリック
+    // 履歴のメモボタン
     const historyNoteBtn = e.target.closest(".diff-item .note-btn");
     if (historyNoteBtn) {
       e.preventDefault();
@@ -116,10 +152,8 @@ export async function setupGlobalEvents() {
       const path = historyNoteBtn.getAttribute("data-path");
       const notePath = path + ".note";
 
-      /*  const raw = await ReadTextFile(notePath).catch(() => "");*/
-      /*const { text, meta } = parseNoteContent(raw);*/
       let currentText = "";
-      let currentMeta = { mark: 0 }; // 初期値
+      let currentMeta = { mark: 0 };
 
       try {
         const raw = await ReadTextFile(notePath);
@@ -129,8 +163,6 @@ export async function setupGlobalEvents() {
           currentMeta = parsed.meta;
         }
       } catch (err) {
-        // ファイルがない（＝新規アーカイブ直後など）場合は、
-        // ここで確実に currentText と currentMeta を空にする
         currentText = "";
         currentMeta = { mark: 0 };
       }
@@ -139,10 +171,7 @@ export async function setupGlobalEvents() {
         { ...currentMeta },
         async (newText, newMeta) => {
           try {
-            const finalMeta = {
-              ...newMeta,
-              target: path, // 紐付け対象のバックアップファイルパス
-            };
+            const finalMeta = { ...newMeta, target: path };
             await WriteTextFile(notePath, serializeNote(newText, finalMeta));
             showFloatingMessage(i18n.memoSaved);
             UpdateHistory();
@@ -154,37 +183,14 @@ export async function setupGlobalEvents() {
       );
       return;
     }
-    // 最近使ったファイル (.recent-item) のクリック
+
+    // ---- [FIX #1] recent-item: closest() で確実に捕捉、stopPropagation 追加 ----
     const recentItem = e.target.closest(".recent-item");
     if (recentItem) {
       e.preventDefault();
+      e.stopPropagation();
       const path = recentItem.getAttribute("data-path");
-      try {
-        // ファイル情報を更新
-        tab.workFile = path;
-        tab.workFileSize = await GetFileSize(path);
-        tab.backupDir = "";
-        tab.selectedTargetDir = "";
-
-        // 状態更新と保存
-        addToRecentFiles(path);
-        saveCurrentSession();
-
-        // UIの再描画
-        renderRecentFiles();
-        renderTabs();
-        await UpdateDisplay();
-        UpdateHistory();
-
-        showFloatingMessage(i18n.updatedWorkFile);
-      } catch (err) {
-        console.error("Failed to load recent file:", err);
-        // ファイルが存在しない場合はリストから削除するなどの処理
-        const idx = recentFiles.indexOf(path);
-        if (idx > -1) recentFiles.splice(idx, 1);
-        localStorage.setItem("recentFiles", JSON.stringify(recentFiles));
-        renderRecentFiles();
-      }
+      await handleSelectRecentItem(path);
       return;
     }
 
@@ -235,27 +241,21 @@ export async function setupGlobalEvents() {
       }
       return;
     }
-    if (id == "generation-archive-btn") {
-      const tab = getActiveTab();
 
+    if (id == "generation-archive-btn") {
       if (!tab || !tab.workFile) {
-        // ファイルが選択されていない場合はエラー表示して中断
         showFloatingError(
           i18n?.selectFileFirst || "Please select a work file first.",
         );
         return;
       }
-
-      // モーダルを表示してリストを更新
       showArchiveModal();
     }
 
     if (id == "archive-cancel-btn") {
       document.getElementById("archive-modal").classList.add("hidden");
     } else if (id == "archive-modal") {
-      if (e.target.id === "archive-modal") {
-        e.target.classList.add("hidden");
-      }
+      if (e.target.id === "archive-modal") e.target.classList.add("hidden");
     }
 
     if (id === "archive-execute-btn") {
@@ -268,26 +268,16 @@ export async function setupGlobalEvents() {
       }
 
       const format = document.getElementById("archive-format-select").value;
-      const tab = getActiveTab();
-
-      // 進行状況がわかるようにプログレスを表示
       toggleProgress(true, "Archiving...");
 
       try {
         for (const cb of selectedChecks) {
-          // チェックボックスの value にパスを入れているか、
-          // あるいは ID などから世代番号 (targetN) を特定する
-          // ここでは、リスト生成時に generation 番号を dataset に入れている想定
           const genNum = parseInt(cb.getAttribute("data-gen"));
-
           await ArchiveGeneration(genNum, format, tab.workFile, tab.backupDir);
         }
-
         toggleProgress(false);
         showFloatingMessage("Archiving completed.");
         document.getElementById("archive-modal").classList.add("hidden");
-
-        // 完了後に履歴リストを更新して、アーカイブされたものがリストから消える（または変わる）のを確認
         UpdateHistory();
       } catch (err) {
         toggleProgress(false);
@@ -296,20 +286,18 @@ export async function setupGlobalEvents() {
       }
       return;
     }
+
     if (id == "lock-mode-btn") {
-      const tab = getActiveTab();
       if (!tab) return;
       tab.isLocked = !tab.isLocked;
       await UpdateDisplay();
       saveCurrentSession();
     }
+
     if (id === "settings-close-btn") {
       document.getElementById("settings-modal").classList.add("hidden");
     } else if (id === "settings-modal") {
-      // モーダル外側（オーバーレイ）をクリックしたときも閉じる
-      if (e.target.id === "settings-modal") {
-        e.target.classList.add("hidden");
-      }
+      if (e.target.id === "settings-modal") e.target.classList.add("hidden");
     }
   });
 
@@ -319,6 +307,7 @@ export async function setupGlobalEvents() {
     const name = e.target.name;
     const value = e.target.value;
     const tab = getActiveTab();
+
     if (id === "compact-tab-select") {
       switchTab(Number(value));
       return;
@@ -327,7 +316,7 @@ export async function setupGlobalEvents() {
       if (tab) tab.diffAlgo = value;
     }
     if (name === "backupMode") {
-      if (tab) tab.backupMode = value; // データ側を確実に更新
+      if (tab) tab.backupMode = value;
     }
     if (id === "hdiff-compress" || id === "compact-hdiff-compress") {
       if (tab) tab.compressMode = value;
@@ -345,7 +334,6 @@ export async function setupGlobalEvents() {
       await UpdateDisplay();
       saveCurrentSession();
     }
-
     if (id === "compact-mode-select") {
       const radio = document.querySelector(
         `input[name="backupMode"][value="${value}"]`,
@@ -360,75 +348,53 @@ export async function setupGlobalEvents() {
       checks.forEach((c) => (c.checked = e.target.checked));
     }
   });
+
   window.addEventListener("contextmenu", (e) => {
-    // 最近使った項目 (.recent-item) の上での右クリックか判定
     const recentItem = e.target.closest(".recent-item");
     if (recentItem) {
       e.preventDefault();
       e.stopPropagation();
-
       const path = recentItem.getAttribute("data-path");
       const idx = recentFiles.indexOf(path);
-
       if (idx > -1) {
-        // リストから削除して保存
         recentFiles.splice(idx, 1);
         localStorage.setItem("recentFiles", JSON.stringify(recentFiles));
-
-        // 再描画
         renderRecentFiles();
         saveCurrentSession();
       }
     }
   });
 
-  // --- Rust / Tray からのイベントリスナー ---
-
+  // --- Rust / Tray イベント ---
   EventsOn("tray-execute-clicked", async () => {
     const resultMsg = await OnExecute();
     if (!resultMsg) return;
     let permissionGranted = await isPermissionGranted();
-
-    // アクセス権限が設定されていない場合はアクセス権限を要求する必要があります
     if (!permissionGranted) {
       const permission = await requestPermission();
       permissionGranted = permission === "granted";
     }
-    // アクセス権限が付与され次第、通知が送信されます
     if (permissionGranted) {
-      sendNotification({
-        title: "cg-file-backup",
-        body: resultMsg,
-      });
+      sendNotification({ title: "cg-file-backup", body: resultMsg });
     }
   });
 
   EventsOn("tray-change-work-clicked", () => {
     handleSelectWorkFile();
   });
-
   EventsOn("tray-change-backup-clicked", () => {
     handleSelectBackupDir();
   });
 
-  // 【物理同期版】トレイ：バックアップモードの同期
   EventsOn("tray-mode-change", async (newMode) => {
     const radio = document.querySelector(
       `input[name="backupMode"][value="${newMode}"]`,
     );
-
     if (radio) {
-      // ラジオボタンを物理的にチェック
       radio.checked = true;
-
-      // changeイベントを強制発火させる
       radio.dispatchEvent(new Event("change", { bubbles: true }));
-
-      // 念のため確実に内部データも更新
       const tab = getActiveTab();
       if (tab) tab.backupMode = newMode;
-
-      // 4. UI更新と通知
       await UpdateDisplay();
       saveCurrentSession();
       showFloatingMessage(`${i18n.updatedBackupMode || "Mode"}: ${newMode}`);
@@ -446,9 +412,11 @@ export async function setupGlobalEvents() {
       if (view) view.classList.add("hidden");
     }
   });
+
   EventsOn("open-advanced-settings", async () => {
     await showSettingsModal();
   });
+
   // --- 検索窓の入力監視 ---
   const searchInput = document.getElementById("history-search");
   const clearBtn = document.getElementById("search-clear-btn");
@@ -457,11 +425,9 @@ export async function setupGlobalEvents() {
     searchInput.addEventListener("input", (e) => {
       const tab = getActiveTab();
       if (tab) {
-        // 1. タブの状態に検索文字を保存
         tab.searchQuery = e.target.value;
         saveCurrentSession();
       }
-      // 2. リストを更新
       UpdateHistory();
     });
   }
@@ -473,7 +439,6 @@ export async function setupGlobalEvents() {
         tab.searchQuery = "";
         saveCurrentSession();
       }
-
       if (searchInput) {
         searchInput.value = "";
         searchInput.focus();
@@ -481,4 +446,57 @@ export async function setupGlobalEvents() {
       UpdateHistory();
     });
   }
+}
+
+/**
+ * ファイルドロップ時のモーダル操作
+ * 「作業ファイルに設定」か「バックアップ先に設定」かを選ばせる
+ */
+async function showDropModal(filePath, tab) {
+  const modal = document.getElementById("drop-modal");
+  if (!modal) return;
+
+  const pathDisplay = modal.querySelector(".path-display");
+  if (pathDisplay) pathDisplay.textContent = filePath;
+
+  const cleanup = () => modal.classList.add("hidden");
+
+  const setWorkBtn = document.getElementById("drop-set-work-btn");
+  const setBackupBtn = document.getElementById("drop-set-backup-btn");
+  const cancelBtn = document.getElementById("drop-cancel-btn");
+
+  if (setWorkBtn) {
+    setWorkBtn.onclick = async () => {
+      tab.workFile = filePath;
+      tab.workFileSize = await GetFileSize(filePath).catch(() => 0);
+      tab.backupDir = "";
+      tab.selectedTargetDir = "";
+      addToRecentFiles(filePath);
+      renderTabs();
+      await UpdateDisplay();
+      UpdateHistory();
+      saveCurrentSession();
+      showFloatingMessage(i18n.updatedWorkFile);
+      cleanup();
+    };
+  }
+
+  if (setBackupBtn) {
+    setBackupBtn.onclick = async () => {
+      // バックアップ先にはフォルダのみ設定可能なので、
+      // ファイルが渡された場合は親ディレクトリを使う
+      tab.backupDir = filePath;
+      await UpdateDisplay();
+      UpdateHistory();
+      saveCurrentSession();
+      showFloatingMessage(i18n.updatedBackupDir);
+      cleanup();
+    };
+  }
+
+  if (cancelBtn) {
+    cancelBtn.onclick = cleanup;
+  }
+
+  modal.classList.remove("hidden");
 }

@@ -36,6 +36,9 @@ pub async fn update_config_value(
         "autoBaseGenerationThreshold" => {
             cfg.auto_base_generation_threshold = value.as_f64().unwrap_or(0.6);
         }
+        "hdiffStrictHashCheck" => {
+            cfg.hdiff_strict_hash_check = value.as_bool().unwrap_or(false);
+        }
         "strictFileNameMatch" => {
             cfg.strict_file_name_match = value.as_bool().unwrap_or(true);
         }

@@ -31,7 +31,13 @@
             <strong id="label-target">Work file:</strong>
             <span id="selected-workfile">Not Selected</span>
 
-            <button id="workfile-btn" class="mini-btn">Change</button>
+            <div class="target-selection-group">
+              <select id="work-target-type-select" class="mini-select-header">
+                <option value="file">File</option>
+                <option value="folder">Folder</option>
+              </select>
+              <button id="workfile-btn" class="mini-btn">Change</button>
+            </div>
 
             <div class="recent-files-section">
               <div class="recent-title">
@@ -434,18 +440,46 @@
             >
               No File Selected
             </div>
-            <button
-              id="compact-workfile-btn"
-              class="mini-btn"
+
+            <div
               style="
-                width: 100%;
-                margin-top: 4px;
-                padding: 4px 0;
-                font-size: 11px;
+                display: flex;
+                gap: 4px;
+                margin-top: 6px;
+                align-items: center;
               "
             >
-              Change Work file
-            </button>
+              <select
+                id="compact-work-type-select"
+                class="mini-select"
+                style="
+                  flex: 0 0 auto;
+                  width: 70px;
+                  height: 26px;
+                  font-size: 11px;
+                  padding: 2px 4px;
+                "
+              >
+                <option value="file">File</option>
+                <option value="folder">Folder</option>
+              </select>
+              <button
+                id="compact-workfile-btn"
+                class="mini-btn"
+                style="
+                  flex: 1;
+                  min-width: 0;
+                  padding: 4px 6px;
+                  font-size: 11px;
+                  height: 26px;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                "
+              >
+                Change
+              </button>
+            </div>
           </div>
 
           <div class="compact-row" style="margin-bottom: 8px">

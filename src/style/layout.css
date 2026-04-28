@@ -15,6 +15,46 @@
   z-index: 100;
 }
 
+/* ---- [FIX #1] work-selection-group ----
+   プルダウン (.work-target-type-select) が recent-files-section の
+   ホバー領域に被って pointer-events を奪わないよう、
+   グループ自体は overflow: visible を保ちつつ z-index を明示する */
+.work-selection-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 8px;
+}
+/* プルダウンの親グループの z-index を下げる */
+.work-selection-group,
+.target-selection-group {
+  position: relative;
+  z-index: 5 !important; /* 低くする */
+}
+
+/* work-target-type-select はボタンと並ぶプルダウン */
+#work-target-type-select {
+  height: 20px;
+  font-size: 10px;
+  padding: 0 2px;
+  background: #4a5a71;
+  border: 1px solid transparent;
+  color: white;
+  border-radius: 3px;
+  cursor: pointer;
+  /* ---- [FIX #1] recent ポップアップの上に乗らないよう z-index を下げる ----
+     recent-files-section は z-index: var(--z-recent) = 1000 なので
+     このプルダウン自体は低く保つ */
+  z-index: 1;
+  position: relative;
+  -webkit-appearance: auto;
+}
+
+#work-target-type-select option {
+  background-color: #ffffff; /* optionはOS描画に任せて白背景に */
+  color: #000000; /* 黒文字 */
+}
+
 .info-row {
   display: flex;
   align-items: center;
@@ -152,11 +192,10 @@ h3 {
   border-bottom: 1px solid #eee;
   font-size: 11px;
   white-space: nowrap;
-  /* 修正ポイント */
   display: flex;
   align-items: center;
-  width: max-content; /* 重要：中身の幅に合わせる（100%にしない） */
-  min-width: 100%; /* 重要：中身が少ない時は親の幅いっぱいに背景色を塗る */
+  width: max-content;
+  min-width: 100%;
   box-sizing: border-box;
 }
 .diff-item:hover {
@@ -166,7 +205,7 @@ h3 {
   color: #111;
   display: flex;
   align-items: center;
-  gap: 5px; /* バッジとの間隔 */
+  gap: 5px;
 }
 
 /* 検索窓とバツボタンの親要素 */
@@ -176,10 +215,9 @@ h3 {
   align-items: center;
 }
 
-/* バツボタンの見た目 */
 .search-clear-btn {
   position: absolute;
-  right: 8px; /* 入力欄の右端からの距離 */
+  right: 8px;
   background: none;
   border: none;
   color: #999;
@@ -193,10 +231,9 @@ h3 {
 }
 
 .search-clear-btn:hover {
-  color: var(--primary-blue); /* ホバー時に青くする */
+  color: var(--primary-blue);
 }
 
-/* 検索入力がある時だけJSでこのクラスを付与する */
 .search-clear-btn.visible {
   display: block;
 }

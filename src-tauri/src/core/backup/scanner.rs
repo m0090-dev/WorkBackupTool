@@ -4,9 +4,11 @@ use crate::core::utils;
 use chrono::{DateTime, Local};
 use std::fs;
 use std::path::{Path, PathBuf};
+
 /// バックアップディレクトリとキャッシュディレクトリを走査してアイテム一覧を返す
+/// フルコピー（.diff / .zip / .tar.gz 以外）は復元操作が成立しないため返さない
 pub fn scan_backups(
-    work_file: &str,
+    work_path: &str,
     backup_dir: &str,
     strict_match: bool,
     use_same_dir_for_temp: bool,
@@ -15,7 +17,7 @@ pub fn scan_backups(
 
     // 1. ルートディレクトリとキャッシュルートの決定
     let root = if backup_dir.is_empty() {
-        utils::default_backup_dir(work_file)
+        utils::default_backup_dir(work_path)
     } else {
         PathBuf::from(backup_dir)
     };
@@ -23,34 +25,32 @@ pub fn scan_backups(
         return list;
     }
 
-    let cache_root = utils::get_cache_root(use_same_dir_for_temp, backup_dir, work_file);
+    let cache_root = utils::get_cache_root(use_same_dir_for_temp, backup_dir, work_path);
 
     // 2. 判定用データの準備
-    let file_path_obj = Path::new(work_file);
+    let file_path_obj = Path::new(work_path);
+    // フォルダの場合も file_name() でフォルダ名を取得できる
     let base_name_only = file_path_obj
         .file_stem()
         .and_then(|s| s.to_str())
-        .unwrap_or("");
+        .unwrap_or(
+            file_path_obj
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or(""),
+        );
     let base_lower = base_name_only.to_lowercase();
 
-    let mut valid_exts = vec![
-        ".diff".to_string(),
-        ".zip".to_string(),
-        ".tar.gz".to_string(),
-        ".tar".to_string(),
-        ".gz".to_string(),
-    ];
-    if let Some(ext) = file_path_obj.extension().and_then(|s| s.to_str()) {
-        valid_exts.push(format!(".{}", ext).to_lowercase());
-    }
+    // 復元可能な拡張子のみ（フルコピーは除外）
+    let restorable_exts: &[&str] = &[".diff", ".zip", ".tar.gz"];
 
-    // 拡張子判定ヘルパー
-    let is_valid_ext = |name: &str| -> bool {
+    // 拡張子判定ヘルパー（復元可能なもののみ）
+    let is_restorable = |name: &str| -> bool {
         let n = name.to_lowercase();
-        valid_exts.iter().any(|ext| n.ends_with(ext))
+        restorable_exts.iter().any(|ext| n.ends_with(ext))
     };
 
-    // 走査対象：(スキャンするディレクトリ, その中身がアーカイブ展開されたものかフラグ)
+    // 走査対象：(スキャンするディレクトリ, アーカイブ展開フラグ)
     let scan_roots = vec![(&root, false), (&cache_root, true)];
 
     for (current_root, is_archived_flag) in scan_roots {
@@ -78,13 +78,18 @@ pub fn scan_backups(
                                 let f_name =
                                     gen_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
 
-                                // フォルダや管理ファイル(.base)は除外
-                                if gen_path.is_dir() || f_name.ends_with(".base") {
+                                // .base ファイル / .base フォルダは管理用なので除外
+                                if f_name.ends_with(".base") {
+                                    continue;
+                                }
+                                // フォルダ自体は作業フォルダの .base コピー（world/ 形式）なので除外
+                                if gen_path.is_dir() {
                                     continue;
                                 }
 
+                                // 復元可能な拡張子のみ対象
                                 if (!strict_match || f_name.to_lowercase().contains(&base_lower))
-                                    && is_valid_ext(f_name)
+                                    && is_restorable(f_name)
                                 {
                                     if let Ok(metadata) = fs::metadata(&gen_path) {
                                         list.push(create_backup_item(
@@ -93,6 +98,7 @@ pub fn scan_backups(
                                             &metadata,
                                             gen_idx,
                                             is_archived_flag,
+                                            false, // diff/archive はフォルダではない
                                         ));
                                     }
                                 }
@@ -100,12 +106,15 @@ pub fn scan_backups(
                         }
                     }
                 } else {
-                    // --- ルート直下のファイルをスキャン (単体バックアップ等) ---
+                    // --- ルート直下のファイルをスキャン ---
+                    // フルコピーを含まない復元可能なものだけ
                     if (!strict_match || file_name.to_lowercase().contains(&base_lower))
-                        && is_valid_ext(file_name)
+                        && is_restorable(file_name)
                     {
                         if let Ok(metadata) = fs::metadata(&path) {
-                            list.push(create_backup_item(file_name, &path, &metadata, 0, false));
+                            list.push(create_backup_item(
+                                file_name, &path, &metadata, 0, false, false,
+                            ));
                         }
                     }
                 }
@@ -118,11 +127,11 @@ pub fn scan_backups(
 
 /// アーカイブ可能な世代フォルダ一覧を取得する
 pub fn scan_generation_folders(
-    work_file: &str,
+    work_path: &str,
     backup_dir: &str,
 ) -> Result<Vec<BackupItem>, String> {
     let root = if backup_dir.is_empty() {
-        utils::default_backup_dir(work_file)
+        utils::default_backup_dir(work_path)
     } else {
         PathBuf::from(backup_dir)
     };
@@ -158,18 +167,15 @@ pub fn scan_generation_folders(
                 let gen_idx = caps[1].parse::<i32>().unwrap_or(0);
                 let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
 
-                list.push(create_backup_item(&name, &path, &metadata, gen_idx, false));
+                list.push(create_backup_item(
+                    &name, &path, &metadata, gen_idx, false, true,
+                ));
             }
         }
     }
 
     list.sort_by(|a, b| a.generation.cmp(&b.generation));
     Ok(list)
-}
-
-// ヘルパー関数: 拡張子チェック
-fn is_valid_backup_ext(name: &str, exts: &[&str]) -> bool {
-    exts.iter().any(|&ext| name.ends_with(ext))
 }
 
 // ヘルパー関数: アイテム生成 (日付フォーマット含む)
@@ -179,6 +185,7 @@ fn create_backup_item(
     meta: &fs::Metadata,
     gen: i32,
     is_archived: bool,
+    is_folder: bool,
 ) -> BackupItem {
     let modified: DateTime<Local> = meta
         .modified()
@@ -190,6 +197,7 @@ fn create_backup_item(
         timestamp: modified.format("%Y-%m-%d %H:%M:%S").to_string(),
         file_size: meta.len() as i64,
         generation: gen,
-        is_archived: is_archived,
+        is_archived,
+        is_folder,
     }
 }

@@ -17,7 +17,7 @@ pub enum DiffAlgo {
 
 pub fn resolve_backup_target(
     initial_path: PathBuf,
-    work_file: &str,
+    work_path: &str,
 ) -> Result<BackupTargetInfo, String> {
     let folder_name = initial_path
         .file_name()
@@ -42,7 +42,7 @@ pub fn resolve_backup_target(
     } else {
         project_root = initial_path.clone();
         let (resolved_path, idx) =
-            crate::core::backup::auto_generation::resolve_generation_dir(&project_root, work_file)?;
+            crate::core::backup::auto_generation::resolve_generation_dir(&project_root, work_path)?;
         target_dir = resolved_path;
         current_idx = idx;
     }
@@ -61,16 +61,16 @@ pub fn should_transition_to_next_gen(work_size: u64, diff_size: u64, threshold: 
 /// フェーズ1-2まで差分作成用の独自ワークフロー
 /// フェーズ1: 最初の差分作成プラン（パスのセット）を計算する
 pub fn prepare_initial_plan(
-    work_file: &str,
+    work_path: &str,
     target: &BackupTargetInfo,
     ts: &str,
 ) -> Result<Option<(PathBuf, PathBuf, PathBuf)>, String> {
     let plan =
-        crate::core::ext::hdiff_common::prepare_hdiff_paths(work_file, target.target_dir.clone())?;
+        crate::core::ext::hdiff_common::prepare_hdiff_paths(work_path, target.target_dir.clone())?;
 
     if let Some((base, work, _)) = plan {
-        let file_name = Path::new(work_file).file_name().unwrap().to_string_lossy();
-        let temp_diff = std::env::temp_dir().join(format!("{}.{}.tmp", file_name, ts));
+        let entry_name = Path::new(work_path).file_name().unwrap().to_string_lossy();
+        let temp_diff = std::env::temp_dir().join(format!("{}.{}.tmp", entry_name, ts));
         Ok(Some((base.into(), work.into(), temp_diff)))
     } else {
         Ok(None)
@@ -79,16 +79,17 @@ pub fn prepare_initial_plan(
 
 /// フェーズ2: 一時ファイルの判定を行い、必要なら「次（世代交代）のプラン」を、不要なら「維持（移動）」を行う
 pub fn finalize_or_next_plan(
-    work_file: &str,
+    work_path: &str,
     temp_diff: PathBuf,
     target: &BackupTargetInfo,
     threshold: f64,
     algo: &str,
     ts: &str,
 ) -> Result<(String, Option<(PathBuf, PathBuf, PathBuf)>), String> {
-    let work_size = fs::metadata(work_file).map_err(|e| e.to_string())?.len();
+    // フォルダの場合はサイズを再帰的に合算する
+    let work_size = path_size(Path::new(work_path))?;
     let diff_size = fs::metadata(&temp_diff).map_err(|e| e.to_string())?.len();
-    let file_name = Path::new(work_file).file_name().unwrap().to_string_lossy();
+    let entry_name = Path::new(work_path).file_name().unwrap().to_string_lossy();
 
     if should_transition_to_next_gen(work_size, diff_size, threshold) {
         // --- 世代交代プランの作成 ---
@@ -101,16 +102,16 @@ pub fn finalize_or_next_plan(
                 let path = auto_generation::create_new_generation(
                     &target.project_root,
                     next_idx,
-                    work_file,
+                    work_path,
                 )?;
                 (path, next_idx)
             }
         };
 
         let plan =
-            crate::core::ext::hdiff_common::prepare_hdiff_paths(work_file, new_gen_dir.clone())?;
+            crate::core::ext::hdiff_common::prepare_hdiff_paths(work_path, new_gen_dir.clone())?;
         if let Some((base, work, _)) = plan {
-            let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", file_name, ts, algo));
+            let final_path = new_gen_dir.join(format!("{}.{}.{}.diff", entry_name, ts, algo));
             let final_str = final_path.to_string_lossy().into_owned();
 
             return Ok((final_str, Some((base.into(), work.into(), final_path))));
@@ -119,9 +120,8 @@ pub fn finalize_or_next_plan(
         // --- 維持（一時ファイルを本番パスへ移動） ---
         let final_path = target
             .target_dir
-            .join(format!("{}.{}.{}.diff", file_name, ts, algo));
+            .join(format!("{}.{}.{}.diff", entry_name, ts, algo));
         let final_str = final_path.to_string_lossy().into_owned();
-        // クロスデバイス対応の移動ロジック
         utils::move_file_safe(&temp_diff, &final_path)?;
         return Ok((final_str, None));
     }
@@ -139,14 +139,15 @@ pub fn detect_diff_algo(path: &str) -> DiffAlgo {
     } else if name.contains(".bsdiff.") {
         DiffAlgo::BsDiff
     } else {
-        // 拡張子が含まれない古い形式などは、とりあえずHDiffで試す等の戦略
         DiffAlgo::Unknown
     }
 }
 
 /// シンプルなコピーバックアップのための準備と実行
-/// 保存先のパスを返す
+/// ファイル・フォルダ両対応。保存先のパスを返す。
 pub fn execute_copy_backup(src: &str, backup_dir: Option<PathBuf>) -> Result<String, String> {
+    let src_path = Path::new(src);
+
     // 1. ターゲットディレクトリの決定
     let target_dir = match backup_dir {
         Some(dir) => dir,
@@ -159,13 +160,50 @@ pub fn execute_copy_backup(src: &str, backup_dir: Option<PathBuf>) -> Result<Str
             .map_err(|e| format!("バックアップ先フォルダの作成に失敗しました: {}", e))?;
     }
 
-    // 3. 命名規則 (core::utils にある想定)
-    let new_filename = utils::timestamped_name(src);
-    let dest_path = target_dir.join(new_filename);
-    let dest_str = dest_path.to_string_lossy().into_owned();
+    if src_path.is_dir() {
+        // --- フォルダコピー ---
+        // 命名: my_project_20251231_120000/ 形式
+        let new_dirname = utils::timestamped_name(src);
+        let dest_path = target_dir.join(new_dirname);
+        let dest_str = dest_path.to_string_lossy().into_owned();
 
-    // 4. 実行 (core::utils::copy_file)
-    utils::copy_file(src, &dest_str).map_err(|e| e.to_string())?;
+        fs_extra::dir::copy(
+            src_path,
+            &dest_path,
+            &fs_extra::dir::CopyOptions {
+                copy_inside: true,
+                ..Default::default()
+            },
+        )
+        .map_err(|e| format!("フォルダコピーに失敗しました: {}", e))?;
 
-    Ok(dest_str)
+        Ok(dest_str)
+    } else {
+        // --- ファイルコピー（既存ロジック） ---
+        let new_filename = utils::timestamped_name(src);
+        let dest_path = target_dir.join(new_filename);
+        let dest_str = dest_path.to_string_lossy().into_owned();
+        utils::copy_file(src, &dest_str).map_err(|e| e.to_string())?;
+        Ok(dest_str)
+    }
+}
+
+/// パス（ファイルまたはフォルダ）のサイズを返す
+/// フォルダの場合は配下のファイルサイズを再帰的に合算する
+fn path_size(p: &Path) -> Result<u64, String> {
+    if p.is_file() {
+        Ok(fs::metadata(p).map_err(|e| e.to_string())?.len())
+    } else if p.is_dir() {
+        let mut total = 0u64;
+        for entry in walkdir::WalkDir::new(p)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+        {
+            total += entry.metadata().map_err(|e| e.to_string())?.len();
+        }
+        Ok(total)
+    } else {
+        Err(format!("パスが存在しません: {}", p.display()))
+    }
 }

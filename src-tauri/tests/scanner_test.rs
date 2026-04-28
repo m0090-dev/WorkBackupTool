@@ -33,9 +33,9 @@ fn test_scan_backups_basic() {
 
     let items = scanner::scan_backups(&work_file, &backup_dir, false, true);
 
-    // 世代内diff x3 + ルート直下フルコピー x1 = 4
+    // 世代内diff x3
     // .base は除外されているはず
-    assert_eq!(items.len(), 4);
+    assert_eq!(items.len(), 3);
 }
 
 #[test]
@@ -54,7 +54,7 @@ fn test_scan_backups_generation_index_correct() {
 
     assert_eq!(gen1_items.len(), 2);
     assert_eq!(gen2_items.len(), 1);
-    assert_eq!(gen0_items.len(), 1); // ルート直下
+    assert_eq!(gen0_items.len(), 0);
 }
 
 #[test]
