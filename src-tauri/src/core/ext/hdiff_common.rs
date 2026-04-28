@@ -5,29 +5,37 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use fs_extra::dir;
 /// hdiffz 用の引数リストを生成するロジック
+/// ignore_list: hdiffz の -g オプションに渡す除外パターン群（タブの hdiffIgnoreList）
 pub fn build_hdiffz_args<'a>(
     old_file: &'a str,
     new_file: &'a str,
     diff_file: &'a str,
     compress_algo: &'a str,
-) -> Vec<&'a str> {
-    let mut args = vec!["-f", "-s"];
-
+    ignore_list: &'a [String],
+) -> Vec<String> {
+    let mut args: Vec<String> = vec!["-f".into(), "-s".into()];
     match compress_algo {
-        "zstd" => args.push("-c-zstd"),
-        "lzma2" => args.push("-c-lzma2"),
-        "lzma" => args.push("-c-lzma"),
-        "zlib" => args.push("-c-zlib"),
-        "ldef" => args.push("-c-ldef"),
-        "pbzip2" => args.push("-c-pbzip2"),
-        "bzip2" => args.push("-c-bzip2"),
-        "none" => {}               // uncompress
-        _ => args.push("-c-zstd"), // default
+        "zstd"   => args.push("-c-zstd".into()),
+        "lzma2"  => args.push("-c-lzma2".into()),
+        "lzma"   => args.push("-c-lzma".into()),
+        "zlib"   => args.push("-c-zlib".into()),
+        "ldef"   => args.push("-c-ldef".into()),
+        "pbzip2" => args.push("-c-pbzip2".into()),
+        "bzip2"  => args.push("-c-bzip2".into()),
+        "none"   => {}               // uncompress
+        _        => args.push("-c-zstd".into()), // default
     };
 
-    args.push(old_file);
-    args.push(new_file);
-    args.push(diff_file);
+    // -g オプション: パターンを # で連結して1引数にまとめる
+    // 例: -g#*.tmp#.DS_Store
+    if !ignore_list.is_empty() {
+        let patterns = ignore_list.join("#");
+        args.push(format!("-g#{}", patterns));
+    }
+
+    args.push(old_file.to_string());
+    args.push(new_file.to_string());
+    args.push(diff_file.to_string());
     args
 }
 
@@ -36,8 +44,13 @@ pub fn build_hpatchz_args<'a>(
     base_full: &'a str,
     diff_file: &'a str,
     out_path: &'a str,
+    strict_hash_check: bool,
 ) -> Vec<&'a str> {
-    vec!["-f", "-s", base_full, diff_file, out_path]
+    let mut args = vec!["-f", "-s", base_full, diff_file, out_path];
+    if strict_hash_check {
+        args.push("-C-all");
+    }
+    args
 }
 
 // 1. GetHdiffList の移植

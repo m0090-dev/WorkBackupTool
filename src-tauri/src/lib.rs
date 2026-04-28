@@ -47,7 +47,8 @@ pub fn run() {
             get_show_memo_after_backup,
             get_startup_cache_limit,
             get_config,
-            update_config_value
+            update_config_value,
+            update_session_tab_value
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

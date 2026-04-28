@@ -6,6 +6,7 @@ import {
   GetConfigDir,
   GetGenerationFolders,
   UpdateConfigValue,
+  UpdateSessionTabValue,
   GetConfig,
   FileExists,
   DirExists,
@@ -677,7 +678,12 @@ export async function showSettingsModal() {
           .map((item) => {
             const labelText = i18n[item.label] || item.label;
             const hintText = item.hint ? i18n[item.hint] || "" : "";
-            const currentValue = config[item.key];
+
+            // tab スコープはアクティブタブから現在値を取得
+            const currentValue =
+              item.scope === "tab"
+                ? (getActiveTab()?.[item.key] ?? [])
+                : config[item.key];
 
             if (item.type === "boolean") {
               return `
@@ -698,6 +704,26 @@ export async function showSettingsModal() {
                 ${item.max !== null ? `max="${item.max}"` : ""}
                 step="${item.step || 1}"
                 style="width:80px; background:#252526; border:1px solid #444; color:#eee; padding:4px 8px; border-radius:4px;">
+              ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
+            </div>`;
+            } else if (item.type === "taglist") {
+              // タグ（除外パターン）リストの表示。追加・削除をインタラクティブに行う。
+              const tagsHtml = (Array.isArray(currentValue) ? currentValue : [])
+                .map(
+                  (tag) =>
+                    `<span class="settings-tag" data-tag="${tag}">${tag}<button class="settings-tag-remove" data-key="${item.key}" data-tag="${tag}" title="Remove">×</button></span>`,
+                )
+                .join("");
+              return `
+            <div class="settings-item settings-taglist-item" data-key="${item.key}" data-scope="${item.scope || "config"}">
+              <label>${labelText}</label>
+              <div class="settings-tags" id="tags-${item.key}">${tagsHtml}</div>
+              <div style="display:flex; gap:6px; margin-top:4px;">
+                <input type="text" class="settings-tag-input" data-key="${item.key}"
+                  placeholder="${i18n.hdiffIgnoreListPlaceholder || "e.g. *.tmp"}"
+                  style="flex:1; background:#252526; border:1px solid #444; color:#eee; padding:4px 8px; border-radius:4px;">
+                <button class="settings-tag-add modal-btn" data-key="${item.key}" style="padding:4px 10px;">${i18n.addBtn || "Add"}</button>
+              </div>
               ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
             </div>`;
             }
@@ -759,6 +785,74 @@ export async function showSettingsModal() {
       input.addEventListener("change", handler);
     });
 
+    // ---- taglist (tab スコープ) のイベントハンドラ ----
+    // タグ追加: Add ボタン または Enter キー
+    const setupTaglistHandlers = (container) => {
+      container.querySelectorAll(".settings-tag-add").forEach((btn) => {
+        btn.onclick = async () => {
+          const key = btn.dataset.key;
+          const textInput = container.querySelector(
+            `.settings-tag-input[data-key="${key}"]`,
+          );
+          const pattern = textInput?.value.trim();
+          if (!pattern) return;
+
+          const tab = getActiveTab();
+          if (!tab) return;
+          const list = Array.isArray(tab[key]) ? [...tab[key]] : [];
+          if (list.includes(pattern)) {
+            textInput.value = "";
+            return;
+          }
+          list.push(pattern);
+          await handleTabSettingChange(tab, key, list);
+          // タグDOM更新（再描画せずにインプレースで追加）
+          const tagsContainer = container.querySelector(`#tags-${key}`);
+          if (tagsContainer) {
+            const span = document.createElement("span");
+            span.className = "settings-tag";
+            span.dataset.tag = pattern;
+            span.innerHTML = `${pattern}<button class="settings-tag-remove" data-key="${key}" data-tag="${pattern}" title="Remove">×</button>`;
+            tagsContainer.appendChild(span);
+            span.querySelector(".settings-tag-remove").onclick = (e) =>
+              removeTagHandler(e, container);
+          }
+          textInput.value = "";
+        };
+      });
+      container.querySelectorAll(".settings-tag-input").forEach((input) => {
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            container
+              .querySelector(
+                `.settings-tag-add[data-key="${input.dataset.key}"]`,
+              )
+              ?.click();
+          }
+        });
+      });
+      // 既存タグの削除ボタン
+      container.querySelectorAll(".settings-tag-remove").forEach((btn) => {
+        btn.onclick = (e) => removeTagHandler(e, container);
+      });
+    };
+
+    const removeTagHandler = async (e, container) => {
+      const btn = e.currentTarget;
+      const key = btn.dataset.key;
+      const tag = btn.dataset.tag;
+      const tab = getActiveTab();
+      if (!tab) return;
+      const list = (Array.isArray(tab[key]) ? tab[key] : []).filter(
+        (t) => t !== tag,
+      );
+      await handleTabSettingChange(tab, key, list);
+      btn.closest(".settings-tag")?.remove();
+    };
+
+    setupTaglistHandlers(modalContent);
+
     modal.classList.remove("hidden");
   } catch (err) {
     console.error("Failed to load settings:", err);
@@ -772,6 +866,20 @@ export async function handleSettingChange(key, value) {
     showFloatingMessage(i18n.settingsSaved || "Settings saved");
   } catch (err) {
     console.error(`Failed to update ${key}:`, err);
+    showFloatingError(i18n.settingsError || "Save failed");
+  }
+}
+
+/// タブスコープの設定を session.json に保存し、インメモリのタブにも反映する
+export async function handleTabSettingChange(tab, key, value) {
+  try {
+    tab[key] = value; // インメモリ更新
+    const configDir = await GetConfigDir();
+    const sessionPath = configDir + "/session.json";
+    await UpdateSessionTabValue(sessionPath, tab.id, key, value);
+    showFloatingMessage(i18n.settingsSaved || "Settings saved");
+  } catch (err) {
+    console.error(`Failed to update tab.${key}:`, err);
     showFloatingError(i18n.settingsError || "Save failed");
   }
 }

@@ -54,6 +54,9 @@ export async function GetConfig() {
 export async function UpdateConfigValue(key, value) {
   return await invoke("update_config_value", { key, value });
 }
+export async function UpdateSessionTabValue(sessionPath, tabId, key, value) {
+  invoke("update_session_tab_value", { sessionPath, tabId, key, value });
+}
 
 export async function GetRestorePreviousState() {
   return await invoke("get_restore_previous_state");
@@ -122,12 +125,19 @@ export async function ArchiveBackupFile(src, backupDir, format, password) {
   });
 }
 
-export async function BackupOrDiff(workFile, customDir, algo, compress) {
+export async function BackupOrDiff(
+  workFile,
+  customDir,
+  algo,
+  compress,
+  ignoreList,
+) {
   return await invoke("backup_or_diff", {
     workFile,
     customDir,
     algo,
     compress,
+    ignoreList,
   });
 }
 
