@@ -11,5 +11,5 @@
   "startupCacheLimit": 5,
   "showMemoAfterBackup": true,
   "strictFileNameMatch": true,
-  "hdiffStrictHashCheck": false
+  "hdiffStrictHashCheck": true
 }

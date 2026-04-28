@@ -34,10 +34,21 @@ export const settingsSchema = [
     label: "filterHistoryByFilename",
     hint: "filterHistoryByFilenameHint",
   },
+  // タブごとの設定 (session.json に保存される)
+  {
+    key: "hdiffIgnoreList",
+    type: "taglist",
+    category: "tab",
+    label: "hdiffIgnoreListLabel",
+    hint: "hdiffIgnoreListHint",
+    // scope: "tab" を明示しておくことで ui.js 側が分岐判断に使える
+    scope: "tab",
+  },
 ];
 
 export const categoryLabels = {
   backup: { en: "Backup", ja: "バックアップ" },
   cache: { en: "Cache", ja: "キャッシュ" },
   history: { en: "History", ja: "履歴" },
+  tab: { en: "Tab (Current)", ja: "タブ (現在)" },
 };

@@ -5,14 +5,16 @@ use tauri_plugin_shell::ShellExt;
 
 /// hdiffz を呼び出して差分を作成する
 /// strict_hash_check: true のとき -C-all を付与して全ファイルのハッシュ検証を行う
+/// ignore_list: タブの hdiffIgnoreList。hdiffz -g オプションに渡す除外パターン群
 pub async fn create_hdiff(
     app: AppHandle,
     old_file: &str,
     new_file: &str,
     diff_file: &str,
     compress_algo: &str,
+    ignore_list: &[String],
 ) -> Result<(), String> {
-    let mut args = build_hdiffz_args(old_file, new_file, diff_file, compress_algo);
+    let args = build_hdiffz_args(old_file, new_file, diff_file, compress_algo, ignore_list);
     let output = app
         .shell()
         .sidecar("hdiffz")
@@ -38,10 +40,8 @@ pub async fn apply_hdiff(
     out_path: &str,
     strict_hash_check: bool,
 ) -> Result<(), String> {
-    let mut args = build_hpatchz_args(base_full, diff_file, out_path);
-    if strict_hash_check {
-        args.push("-C-all");
-    }
+    let mut args = build_hpatchz_args(base_full, diff_file, out_path,strict_hash_check);
+    eprintln!("hpatchz args: {:?}", args);
 
     let output = app
         .shell()

@@ -103,6 +103,7 @@ export async function OnExecute() {
   const archiveFormat = tab.archiveFormat || "zip";
   const pwdEl = document.getElementById("archive-password");
   const pwdValue = pwdEl ? pwdEl.value : "";
+  const hdiffIgnoreList = tab.hdiffIgnoreList ?? [];
   await UpdateAllUI();
   toggleProgress(true, i18n.processingMsg);
   try {
@@ -154,6 +155,7 @@ export async function OnExecute() {
         targetPath,
         algo,
         compress,
+        hdiffIgnoreList,
       );
       successText = `${i18n.diffBackupSuccess} (${algo.toUpperCase()}${algo === "hdiff" ? ":" + compress : ""})`;
     }

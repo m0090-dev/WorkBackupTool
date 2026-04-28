@@ -45,6 +45,36 @@ pub struct BackupItem {
     pub is_folder: bool,
 }
 
+// session.json のタブ1件を表す構造体（セッション更新コマンド用）
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TabSession {
+    pub id: u64,
+    pub work_file: String,
+    #[serde(default)]
+    pub work_file_size: i64,
+    pub backup_dir: String,
+    pub active: bool,
+    pub backup_mode: String,
+    pub compress_mode: String,
+    #[serde(default)]
+    pub selected_target_dir: String,
+    #[serde(default)]
+    pub is_locked: bool,
+    /// hdiffz -g オプションに渡す除外パターンリスト（タブごと）
+    #[serde(default)]
+    pub hdiff_ignore_list: Vec<String>,
+}
+
+// session.json のルート構造体
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionData {
+    pub tabs: Vec<TabSession>,
+    #[serde(default)]
+    pub recent_files: Vec<String>,
+}
+
 // 世代管理を司る構造体 (JSに送らない場合は Serialize 不要ですが、一応付与)
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
