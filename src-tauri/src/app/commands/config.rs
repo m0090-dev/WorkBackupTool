@@ -12,6 +12,7 @@ use crate::app::state::AppState;
 use crate::app::utils;
 use crate::core::types::*;
 use std::collections::HashMap;
+use serde_json;
 
 #[tauri::command]
 pub fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
@@ -155,4 +156,50 @@ pub async fn toggle_compact_mode(window: WebviewWindow, is_compact: bool) -> Res
 #[tauri::command]
 pub async fn toggle_window_visibility(app: AppHandle, show: bool) -> Result<(), String> {
     utils::apply_window_visibility(app, show)
+}
+
+/// タブごとの session.json フィールドを更新する。
+/// 現状は hdiffIgnoreList のみ対応。必要に応じてフィールドを追加してください。
+///
+/// - `session_path`: JS 側で GetConfigDir() + "/session.json" を渡す
+/// - `tab_id`:       更新対象タブの id (number)
+/// - `key`:          更新するフィールド名 (camelCase)
+/// - `value`:        新しい値 (JSON Value)
+#[tauri::command]
+pub async fn update_session_tab_value(
+    session_path: String,
+    tab_id: u64,
+    key: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
+    // --- session.json を読み込む ---
+    let raw = fs::read_to_string(&session_path)
+        .unwrap_or_else(|_| r#"{"tabs":[],"recentFiles":[]}"#.to_string());
+    let mut session: SessionData =
+        serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+
+    // --- 対象タブを検索 ---
+    let tab = session
+        .tabs
+        .iter_mut()
+        .find(|t| t.id == tab_id)
+        .ok_or_else(|| format!("Tab {} not found", tab_id))?;
+
+    // --- フィールド更新 ---
+    match key.as_str() {
+        "hdiffIgnoreList" => {
+            tab.hdiff_ignore_list = value
+                .as_array()
+                .ok_or("hdiffIgnoreList must be an array")?
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+        }
+        _ => return Err(format!("Unknown session tab key: {}", key)),
+    }
+
+    // --- 書き戻す ---
+    let out = serde_json::to_string_pretty(&session).map_err(|e| e.to_string())?;
+    fs::write(&session_path, out).map_err(|e| e.to_string())?;
+    Ok(())
 }

@@ -21,6 +21,7 @@ export let tabs = [
     archiveFormat: "zip",
     searchQuery: "",
     isLocked: false,
+    hdiffIgnoreList: [],
   },
 ];
 export let recentFiles = JSON.parse(

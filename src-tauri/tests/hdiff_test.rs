@@ -8,53 +8,54 @@ use work_backup_tool::core::ext::hdiff_common;
 
 #[test]
 fn test_build_hdiffz_args_zstd() {
-    let args = hdiff_common::build_hdiffz_args("old.bin", "new.bin", "out.diff", "zstd");
+    let args = hdiff_common::build_hdiffz_args("old.bin", "new.bin", "out.diff", "zstd", &[]);
     assert_eq!(
         args,
         vec!["-f", "-s", "-c-zstd", "old.bin", "new.bin", "out.diff"]
+            .into_iter().map(String::from).collect::<Vec<_>>()
     );
 }
 
 #[test]
 fn test_build_hdiffz_args_lzma2() {
-    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "lzma2");
+    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "lzma2", &[]);
     assert_eq!(args[2], "-c-lzma2");
 }
 
 #[test]
 fn test_build_hdiffz_args_lzma() {
-    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "lzma");
+    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "lzma", &[]);
     assert_eq!(args[2], "-c-lzma");
 }
 
 #[test]
 fn test_build_hdiffz_args_zlib() {
-    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "zlib");
+    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "zlib", &[]);
     assert_eq!(args[2], "-c-zlib");
 }
 
 #[test]
 fn test_build_hdiffz_args_ldef() {
-    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "ldef");
+    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "ldef", &[]);
     assert_eq!(args[2], "-c-ldef");
 }
 
 #[test]
 fn test_build_hdiffz_args_bzip2() {
-    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "bzip2");
+    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "bzip2", &[]);
     assert_eq!(args[2], "-c-bzip2");
 }
 
 #[test]
 fn test_build_hdiffz_args_pbzip2() {
-    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "pbzip2");
+    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "pbzip2", &[]);
     assert_eq!(args[2], "-c-pbzip2");
 }
 
 #[test]
 fn test_build_hdiffz_args_none_no_compress_flag() {
     // "none" の場合は -c-xxx が付かないので引数は5つ
-    let args = hdiff_common::build_hdiffz_args("old.bin", "new.bin", "out.diff", "none");
+    let args = hdiff_common::build_hdiffz_args("old.bin", "new.bin", "out.diff", "none", &[]);
     assert_eq!(args.len(), 5);
     assert_eq!(args[0], "-f");
     assert_eq!(args[1], "-s");
@@ -66,7 +67,7 @@ fn test_build_hdiffz_args_none_no_compress_flag() {
 #[test]
 fn test_build_hdiffz_args_unknown_defaults_to_zstd() {
     // 未知のアルゴはzstdにフォールバック
-    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "unknown_algo");
+    let args = hdiff_common::build_hdiffz_args("o", "n", "d", "unknown_algo", &[]);
     assert_eq!(args[2], "-c-zstd");
 }
 
@@ -75,7 +76,7 @@ fn test_build_hdiffz_args_paths_preserved() {
     let old = "/path/to/old file.bin";
     let new = "/path/to/new file.bin";
     let diff = "/output/my.diff";
-    let args = hdiff_common::build_hdiffz_args(old, new, diff, "zstd");
+    let args = hdiff_common::build_hdiffz_args(old, new, diff, "zstd", &[]);
     assert_eq!(args[3], old);
     assert_eq!(args[4], new);
     assert_eq!(args[5], diff);
@@ -87,7 +88,7 @@ fn test_build_hdiffz_args_paths_preserved() {
 
 #[test]
 fn test_build_hpatchz_args_basic() {
-    let args = hdiff_common::build_hpatchz_args("base.clip", "patch.diff", "out.clip");
+    let args = hdiff_common::build_hpatchz_args("base.clip", "patch.diff", "out.clip", false);
     assert_eq!(
         args,
         vec!["-f", "-s", "base.clip", "patch.diff", "out.clip"]
@@ -96,7 +97,7 @@ fn test_build_hpatchz_args_basic() {
 
 #[test]
 fn test_build_hpatchz_args_always_5_elements() {
-    let args = hdiff_common::build_hpatchz_args("a", "b", "c");
+    let args = hdiff_common::build_hpatchz_args("a", "b", "c", false);
     assert_eq!(args.len(), 5);
 }
 
@@ -105,7 +106,7 @@ fn test_build_hpatchz_args_paths_preserved() {
     let base = "/backup/base1/work.clip.base";
     let diff = "/backup/base1/work.clip.20260101.hdiff.diff";
     let out = "/work/work_restored.clip";
-    let args = hdiff_common::build_hpatchz_args(base, diff, out);
+    let args = hdiff_common::build_hpatchz_args(base, diff, out, false);
     assert_eq!(args[2], base);
     assert_eq!(args[3], diff);
     assert_eq!(args[4], out);

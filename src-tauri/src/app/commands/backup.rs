@@ -19,6 +19,7 @@ pub async fn backup_or_diff(
     custom_dir: String,
     algo: String,
     compress: String,
+    ignore_list: Vec<String>
 ) -> Result<String, String> {
     let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
     // 1. ディレクトリ解決
@@ -41,6 +42,7 @@ pub async fn backup_or_diff(
             &work.to_string_lossy(),
             &temp.to_string_lossy(),
             &compress,
+            &ignore_list,
         )
         .await?;
 
@@ -66,6 +68,7 @@ pub async fn backup_or_diff(
                 &new_work.to_string_lossy(),
                 &final_dest.to_string_lossy(),
                 &compress,
+                &[],
             )
             .await?;
         }
