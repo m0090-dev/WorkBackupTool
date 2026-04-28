@@ -117,7 +117,9 @@
     "workTargetTypeFolder": "Folder",
     "addTabBtn": "Add New Tab",
     "settingsSaved": "Settings saved.",
-    "settingsError": "Failed to save settings."
+    "settingsError": "Failed to save settings.",
+    "hdiffIgnoreListLabel": "Ignore list for diff (hdiff)",
+    "hdiffIgnoreListHint": "Specify files or patterns to exclude from diff processing. Supports multiple entries."
   },
   "ja": {
     "settings": "設定",
@@ -237,6 +239,8 @@
     "workTargetTypeFolder": "フォルダ",
     "addTabBtn": "新しいタブを追加",
     "settingsSaved": "設定を保存しました。",
-    "settingsError": "設定の保存に失敗しました。"
+    "settingsError": "設定の保存に失敗しました。",
+    "hdiffIgnoreListLabel": "差分（hdiff）の除外リスト",
+    "hdiffIgnoreListHint": "差分処理から除外するファイルやパターンを指定します。複数指定可能です。"
   }
 }
