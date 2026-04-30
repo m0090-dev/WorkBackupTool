@@ -387,10 +387,11 @@ export async function setupGlobalEvents() {
   });
 
   EventsOn("tray-mode-change", async (newMode) => {
+    const tab = getActiveTab();
     const radio = document.querySelector(
       `input[name="backupMode"][value="${newMode}"]`,
     );
-    if (radio) {
+    if (radio && !tab.isLocked) {
       radio.checked = true;
       radio.dispatchEvent(new Event("change", { bubbles: true }));
       const tab = getActiveTab();
