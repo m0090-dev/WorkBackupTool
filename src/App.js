@@ -155,12 +155,6 @@ function setupInitialUI() {
 
   setText("drop-cancel", i18n.dropCancel);
 
-  setText("settings-title", i18n.advancedSettingsTitle);
-  setText("label-startup-cache-limit", i18n.startupCacheLimit);
-  setText("hint-cache-limit", i18n.startupCacheLimitHint);
-  setText("label-threshold", i18n.thresholdLabel);
-  setText("hint-threshold", i18n.thresholdHint);
-  setText("settings-close-btn", i18n.closeBtn);
   setTitle("add-tab-btn", i18n.addTabBtn || "Add New Tab");
 
   // --- ここに追記 ---
