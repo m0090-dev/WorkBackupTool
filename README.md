@@ -4,6 +4,38 @@ A simple, lightweight backup utility built with Tauri (Rust), specifically desig
 
 This tool was created by the author for personal use to ensure quick and reliable versioning during creative workflows.
 
+## 📸 Screenshots
+
+### Main Window
+
+![Main Window](docs/screenshots/main-window.png)
+
+*Standard view with full backup controls and history list.*
+
+![Main Window – Note](docs/screenshots/main-window-note.png)
+
+*Note panel: attach memos with priority marks and preset tags to any backup entry.*
+
+![Main Window – Drag & Drop](docs/screenshots/main-window-dnd.png)
+
+*Drag & drop a file or folder directly onto the window to set it as the backup target.*
+
+### Compact Window
+
+![Compact Window](docs/screenshots/compact-window.png)
+
+*Compact mode for minimal screen footprint during active work.*
+
+![Compact Window – Note](docs/screenshots/compact-window-note.png)
+
+*Note panel in compact mode.*
+
+![Compact Window – Drag & Drop](docs/screenshots/compact-window-dnd.png)
+
+*Drag & drop support in compact mode.*
+
+---
+
 ## 🔎 Key Features
 
 - **Streamlined UI**: A single-window interface focused on "Backup" and "Restore."
