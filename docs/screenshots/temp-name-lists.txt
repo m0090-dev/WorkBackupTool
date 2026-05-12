@@ -1,0 +1,6 @@
+compact-window-dnd.png
+compact-window-note.png
+compact-window.png
+main-window-dnd.png
+main-window-note.png
+main-window.png
