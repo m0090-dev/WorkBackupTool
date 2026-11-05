@@ -237,3 +237,83 @@ h3 {
 .search-clear-btn.visible {
   display: block;
 }
+
+/* =============================================
+   index.html のインラインstyleから移した指定
+   (見た目・優先順位は従来どおり。工程1のリファクタで移動)
+   ============================================= */
+.info-row.info-row--location {
+  margin-top: 10px;
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+}
+
+.mode-info--full {
+  width: 100%;
+}
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 5px;
+}
+
+.diff-options-row {
+  display: flex;
+  gap: 5px;
+  max-width: calc(100% - 16px);
+  margin-top: 5px;
+  box-sizing: border-box;
+}
+
+#diff-algo {
+  width: 65px;
+  flex-shrink: 0;
+  padding: 2px;
+  font-size: 10px;
+}
+
+#hdiff-compress {
+  flex-grow: 1;
+  min-width: 0;
+  padding: 2px;
+  font-size: 10px;
+  box-sizing: border-box;
+}
+
+.lock-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 5px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+#title-history {
+  margin: 0;
+}
+
+#generation-archive-btn {
+  margin-right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* 右側に検索クリアボタン用の余白(25px)を確保 */
+#history-search {
+  padding: 4px 25px 4px 10px;
+  font-size: 11px;
+  border: 1px solid #ddd;
+  border-radius: 15px;
+  width: 130px;
+  outline: none;
+  background: #fafafa;
+}

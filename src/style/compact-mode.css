@@ -205,3 +205,102 @@ body.compact-mode .modal-btn {
 .compact-row {
   margin-bottom: 2px !important; /* 8px → 4px */
 }
+
+/* =============================================
+   7. index.html のインラインstyleから移した指定
+   (既存の #id ルールと同じ詳細度のため、末尾に置いて従来の優先順位を保つ)
+   ※ .compact-row の margin-bottom は上の !important が従来から有効だったため移していない
+   ============================================= */
+.compact-tab-row {
+  padding: 0 10px;
+  margin-top: 8px;
+}
+
+#compact-tab-select {
+  width: 100%;
+  height: 26px;
+  font-size: 11px;
+}
+
+#compact-progress-area {
+  margin-bottom: 10px;
+}
+
+#compact-status-label {
+  font-size: 10px;
+  margin-bottom: 2px;
+  text-align: left;
+}
+
+.compact-progress-bg {
+  height: 6px;
+  background: #333;
+  border-radius: 3px;
+}
+
+#compact-progress-bar {
+  height: 100%;
+  width: 0%;
+  background: #4caf50;
+  transition: width 0.2s;
+}
+
+#compact-selected-file {
+  font-size: 11px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact-type-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+#compact-work-type-select {
+  flex: 0 0 auto;
+  width: 70px;
+  height: 26px;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+#compact-workfile-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  font-size: 11px;
+  height: 26px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compact-select-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#compact-mode-select {
+  width: 100%;
+  padding: 4px;
+}
+
+#compact-hdiff-compress {
+  width: 100%;
+  padding: 4px;
+  font-size: 10px;
+}
+
+#compact-execute-btn {
+  width: 100%;
+  padding: 8px 0;
+  font-weight: bold;
+}
