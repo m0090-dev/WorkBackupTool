@@ -619,3 +619,12 @@
   color: var(--modal-text-dim);
   line-height: 1.4;
 }
+
+/* --- index.html のインラインstyleから移した指定(モーダル幅) --- */
+#archive-modal .modal-content {
+  width: 380px;
+}
+
+#settings-modal .modal-content {
+  width: 360px;
+}
