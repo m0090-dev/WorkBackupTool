@@ -128,6 +128,7 @@ pub fn create_tray_menu<R: tauri::Runtime>(
 
     tauri::menu::MenuBuilder::new(app)
         .item(&tauri::menu::MenuItemBuilder::with_id("show_window", t("showWindow")).build(app)?)
+        .item(&tauri::menu::MenuItemBuilder::with_id("show_compact", t("compactMode")).build(app)?)
         .separator()
         .item(&backup_mode_menu)
         .item(&tauri::menu::MenuItemBuilder::with_id("execute", t("executeBtn")).build(app)?)

@@ -201,6 +201,10 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
         "change_backup" => {
             let _ = app.emit("tray-change-backup-clicked", ());
         }
+        // 世代の圧縮(ファイルメニュー)
+        "generation_archive" => {
+            let _ = app.emit("open-generation-archive", ());
+        }
         // 詳細設定
         "advanced_settings" => {
             let _ = app.emit("open-advanced-settings", ());
