@@ -7,13 +7,19 @@ use tauri::{AppHandle, Manager, Runtime};
 #[cfg(desktop)]
 use tauri::menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuItem, SubmenuBuilder};
 
+/// ネイティブメニュー(mock2.html のメニュー構成「ファイル / 設定 / ヘルプ」に合わせる)
+///
+/// ファイル: 古い世代を圧縮 / 終了
+/// 設定    : 最前面 / コンパクト / トレイ | 起動時・保存先まわりの設定 | 言語 / 詳細設定
+/// ヘルプ  : ソフト情報
+///
+/// ※ メニュー項目のIDは events.rs の handle_menu_event と対応している。
 #[cfg(desktop)]
 pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::Result<Menu<R>> {
     // get_language_text コマンドが必要とする State を取得します
     let state: State<'_, AppState> = app.state();
 
-    // 既存のコマンド get_language_text を直接呼び出すヘルパー
-    // エラー時はキー名をそのまま返す Go 版 GetLanguageText と同じ挙動にします
+    // エラー時はキー名をそのまま返す
     let t = |key: &str| -> String {
         get_language_text(state.clone(), key).unwrap_or_else(|_| key.to_string())
     };
@@ -30,11 +36,11 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .build(app)?;
 
     let compact_mode = CheckMenuItemBuilder::with_id("compact_mode", t("compactMode"))
-        .checked(config.compact_mode) // Go版と同様に初期値は false
+        .checked(config.compact_mode)
         .build(app)?;
 
     let tray_mode = CheckMenuItemBuilder::with_id("tray_mode", t("trayMode"))
-        .checked(false) // Go版と同様に初期値は false
+        .checked(false)
         .build(app)?;
 
     let lang_en = CheckMenuItemBuilder::with_id("lang_en", t("english"))
@@ -62,45 +68,54 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         true,
         None::<&str>,
     )?;
-    // quit の作成
-    let quit = MenuItem::with_id(
+    let generation_archive = MenuItem::with_id(
         app,
-        "quit",         // id
-        t("quit"),      // text
-        true,           // enabled
-        Some("Ctrl+Q"), // accelerator (Option型なので Some で囲む)
+        "generation_archive",
+        t("generationArchive"),
+        true,
+        None::<&str>,
     )?;
 
-    // about の作成
-    let about = MenuItem::with_id(
-        app,
-        "about",        // id
-        t("about"),     // text
-        true,           // enabled
-        Some("Ctrl+A"), // accelerator
-    )?;
+    // ショートカットはウィンドウがアクティブな間だけ有効なメニューのアクセラレータ。
+    // (OS全体に効くグローバルショートカットは、他アプリの Ctrl+A 等を奪うため使わない)
+    let quit = MenuItem::with_id(app, "quit", t("quit"), true, Some("Ctrl+Q"))?;
+    // Ctrl+A は入力欄の「全選択」と衝突するため F1 にする
+    let about = MenuItem::with_id(app, "about", t("about"), true, Some("F1"))?;
 
     // --- サブメニューの組み立て ---
 
-    let settings_menu = SubmenuBuilder::new(app, t("settings"))
-        .item(&always_on_top)
-        .item(&restore_state)
-        .item(&compact_mode)
-        .item(&tray_mode)
-        .item(&use_same_dir_for_temp)
-        .item(&rebuild_cache_on_startup)
-        .item(&show_memo_after_backup)
-        .item(&lang_en)
-        .item(&lang_ja)
-        .item(&advanced_settings_title)
+    let file_menu = SubmenuBuilder::new(app, t("menuFile"))
+        .item(&generation_archive)
+        .separator()
         .item(&quit)
         .build()?;
 
-    let about_menu = SubmenuBuilder::new(app, t("about")).item(&about).build()?;
+    let language_menu = SubmenuBuilder::new(app, t("language"))
+        .item(&lang_en)
+        .item(&lang_ja)
+        .build()?;
+
+    let settings_menu = SubmenuBuilder::new(app, t("settings"))
+        .item(&always_on_top)
+        .item(&compact_mode)
+        .item(&tray_mode)
+        .separator()
+        .item(&restore_state)
+        .item(&rebuild_cache_on_startup)
+        .item(&use_same_dir_for_temp)
+        .item(&show_memo_after_backup)
+        .separator()
+        .item(&language_menu)
+        .item(&advanced_settings_title)
+        .build()?;
+
+    let help_menu = SubmenuBuilder::new(app, t("menuHelp"))
+        .item(&about)
+        .build()?;
 
     // --- ルートメニューの生成 ---
 
     MenuBuilder::new(app)
-        .items(&[&settings_menu, &about_menu])
+        .items(&[&file_menu, &settings_menu, &help_menu])
         .build()
 }

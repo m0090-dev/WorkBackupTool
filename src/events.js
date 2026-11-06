@@ -418,6 +418,18 @@ export async function setupGlobalEvents() {
     await showSettingsModal();
   });
 
+  // ファイルメニュー「世代の圧縮」
+  EventsOn("open-generation-archive", () => {
+    const tab = getActiveTab();
+    if (!tab || !tab.workFile) {
+      showFloatingError(
+        i18n?.selectFileFirst || "Please select a work file first.",
+      );
+      return;
+    }
+    showArchiveModal();
+  });
+
   // --- 検索窓の入力監視 ---
   const searchInput = document.getElementById("history-search");
   const clearBtn = document.getElementById("search-clear-btn");

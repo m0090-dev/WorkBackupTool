@@ -1,4 +1,3 @@
-use crate::app::commands::*;
 use crate::app::menu::*;
 use crate::app::state::AppState;
 use crate::app::tray::*;
@@ -8,10 +7,6 @@ use std::fs;
 use std::sync::Mutex;
 use tauri::App;
 use tauri::Manager;
-use tauri_plugin_dialog::DialogExt;
-
-#[cfg(desktop)]
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 use crate::app::events;
 
@@ -66,18 +61,15 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         // ウィンドウの最前面設定を復元
         let _ = utils::apply_window_always_on_top(app.handle().clone(), always_on_top_enabled);
 
-        // 2. メニューアイテムのチェック状態を同期
-        #[cfg(desktop)]
+        // メニューアイテムのチェック状態を同期
+        if let Some(item) = menu
+            .get("tray_mode")
+            .and_then(|i| i.as_check_menuitem().cloned())
         {
-            if let Some(item) = menu
-                .get("tray_mode")
-                .and_then(|i| i.as_check_menuitem().cloned())
-            {
-                let _ = item.set_checked(tray_enabled);
-            }
+            let _ = item.set_checked(tray_enabled);
         }
 
-        // 3. トレイモードでない場合は確実に表示（tauri.confのvisible:falseを考慮）
+        // トレイモードでない場合は確実に表示（tauri.confのvisible:falseを考慮）
         if !tray_enabled {
             let _ = window.show();
         }
@@ -91,55 +83,10 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             events::handle_window_event(&window_for_event, event);
         });
 
-        // 1. ショートカットの定義
-        let quit_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyQ);
-        let about_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyA);
-
-        // 2. プラグインをハンドラ付きで登録
-        app.handle().plugin(
-            tauri_plugin_global_shortcut::Builder::new()
-                .with_handler(move |app_handle, shortcut, event| {
-                    if event.state() == ShortcutState::Pressed {
-                        if shortcut == &quit_shortcut {
-                            app_handle.exit(0);
-                        } else if shortcut == &about_shortcut {
-                            let state = app_handle.state::<AppState>();
-                            let t = |key: &str| -> String {
-                                get_language_text(state.clone(), key)
-                                    .unwrap_or_else(|_| key.to_string())
-                            };
-
-                            if let Some(window) = app_handle.get_webview_window("main") {
-                                // --- 修正ポイント ---
-                                // 現在の状態を保存
-                                let is_always_on_top = state.config.lock().unwrap().always_on_top;
-
-                                // ダイアログを出す前に一時的に解除（これでダイアログが上に来れる）
-                                if is_always_on_top {
-                                    let _ = window.set_always_on_top(false);
-                                }
-
-                                let window_clone = window.clone();
-                                window
-                                    .dialog()
-                                    .message(t("aboutText"))
-                                    .title(t("about"))
-                                    .show(move |_| {
-                                        // ダイアログが閉じられたら元の設定に戻す
-                                        if is_always_on_top {
-                                            let _ = window_clone.set_always_on_top(true);
-                                        }
-                                    });
-                            }
-                        }
-                    }
-                })
-                .build(),
-        )?;
-
-        // 3. ショートカットを OS に登録
-        app.global_shortcut().register(quit_shortcut)?;
-        app.global_shortcut().register(about_shortcut)?;
+        // ※ 以前ここで Ctrl+Q / Ctrl+A を OS 全体のグローバルショートカットとして登録していたが、
+        //   他アプリの操作(全選択など)を奪うため廃止した。
+        //   終了・ソフト情報はメニューのアクセラレータ(Ctrl+Q / F1)で呼び出す。
+        //   グローバルショートカット機能は別途、設定可能な形で追加する予定。
     }
 
     Ok(())
