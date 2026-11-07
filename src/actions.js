@@ -4,7 +4,6 @@ import {
   BackupOrDiff,
   RestoreBackup,
   GetFileSize,
-  DirExists,
   GetShowMemoAfterBackup,
   GetBackupList,
   ReadTextFile,
@@ -53,6 +52,7 @@ export async function addTab() {
     active: true,
     backupMode: "diff",
     compressMode: "zstd",
+    viewGeneration: null,
   });
   await UpdateAllUI();
   saveCurrentSession();
@@ -132,21 +132,8 @@ export async function OnExecute() {
     }
     // --- C. 差分バックアップモード (既存ロジック完全維持 + 引数拡張) ---
     else if (mode === "diff") {
-      console.log("DEBUG JS: tab.selectedTargetDir =", tab.selectedTargetDir);
-      console.log("DEBUG JS: tab.backupDir =", tab.backupDir);
-      // フォルダの存在確認ロジック
-      if (tab.selectedTargetDir) {
-        const exists = await DirExists(tab.selectedTargetDir);
-        if (!exists) {
-          console.log(
-            "Selected directory no longer exists. Reverting to auto-discovery.",
-          );
-          tab.selectedTargetDir = "";
-        }
-      }
-
-      const targetPath = tab.selectedTargetDir || tab.backupDir || "";
-      console.log("DEBUG JS: Final targetPath sent to Rust =", targetPath);
+      // 書き込み先は常に最新の世代(世代の選択は履歴の表示切替のみ)
+      const targetPath = tab.backupDir || "";
 
       // Rust側(またはGo側)の関数を呼び出し
       // 引数に新しく compress を追加。algoがbsdiffの場合は内部で無視される設計
@@ -159,6 +146,10 @@ export async function OnExecute() {
       );
       successText = `${i18n.diffBackupSuccess} (${algo.toUpperCase()}${algo === "hdiff" ? ":" + compress : ""})`;
     }
+
+    // 作成した履歴がすぐ見えるように、表示する世代を切り替える
+    if (mode === "diff") tab.viewGeneration = null;
+    else if (mode === "archive") tab.viewGeneration = 0;
 
     toggleProgress(false);
     showFloatingMessage(successText);
@@ -178,27 +169,5 @@ export async function OnExecute() {
     toggleProgress(false);
     alert(err);
     return null;
-  }
-}
-
-// --- 復元・適用ロジック ---
-export async function applySelectedBackups() {
-  const tab = getActiveTab();
-  const targets = Array.from(
-    document.querySelectorAll(".diff-checkbox:checked"),
-  ).map((el) => el.value);
-  if (targets.length > 0 && confirm(i18n.restoreConfirm)) {
-    toggleProgress(true, "Restoring...");
-    try {
-      for (const p of targets) {
-        await RestoreBackup(p, tab.workFile);
-      }
-      toggleProgress(false);
-      showFloatingMessage(i18n.diffApplySuccess);
-      await UpdateAllUI();
-    } catch (err) {
-      toggleProgress(false);
-      alert(err);
-    }
   }
 }

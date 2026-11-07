@@ -29,6 +29,10 @@ import {
   showArchiveModal,
   showSettingsModal,
   handleSettingChange,
+  getSelectedPaths,
+  selectHistoryRow,
+  initPopovers,
+  closePopovers,
 } from "./ui";
 
 import { addTab, OnExecute, switchTab } from "./actions";
@@ -48,16 +52,23 @@ const preventDefault = (e) => {
 
 export async function setupGlobalEvents() {
   window.addEventListener("dragenter", preventDefault, true);
+  initPopovers();
+
+  // 直近に選んだ作業対象の種別(トレイメニューからの変更時に使う)
+  let lastWorkTargetType = "file";
 
   // ---- 作業ファイル/フォルダ選択 ----
-  const handleSelectWorkFile = async () => {
+  // typeOverride: "file" | "folder"(通常画面のメニューから)。未指定ならコンパクト画面の選択か直近の種別
+  const handleSelectWorkFile = async (typeOverride) => {
     const tab = getActiveTab();
-    const isCompact = document.body.classList.contains("compact-mode");
-    const targetId = isCompact
-      ? "compact-work-type-select"
-      : "work-target-type-select";
-    const sel = document.getElementById(targetId);
-    const targetType = sel ? sel.value : "file";
+    let targetType = typeOverride;
+    if (!targetType) {
+      const sel = document.body.classList.contains("compact-mode")
+        ? document.getElementById("compact-work-type-select")
+        : null;
+      targetType = sel ? sel.value : lastWorkTargetType;
+    }
+    lastWorkTargetType = targetType;
 
     let res;
     if (targetType === "folder") {
@@ -71,7 +82,7 @@ export async function setupGlobalEvents() {
       tab.workFile = res;
       tab.workFileSize = await GetFileSize(res).catch(() => 0);
       tab.backupDir = "";
-      tab.selectedTargetDir = "";
+      tab.viewGeneration = null;
       addToRecentFiles(res);
       renderTabs();
       await UpdateDisplay();
@@ -102,7 +113,7 @@ export async function setupGlobalEvents() {
       tab.workFile = path;
       tab.workFileSize = await GetFileSize(path).catch(() => 0);
       tab.backupDir = "";
-      tab.selectedTargetDir = "";
+      tab.viewGeneration = null;
 
       addToRecentFiles(path);
       saveCurrentSession();
@@ -122,6 +133,40 @@ export async function setupGlobalEvents() {
     }
   };
 
+  // 履歴のメモ編集(ツールバーの「メモ」/行のダブルクリック)
+  const openNoteEditor = async (path) => {
+    const notePath = path + ".note";
+    let currentText = "";
+    let currentMeta = { mark: 0 };
+
+    try {
+      const raw = await ReadTextFile(notePath);
+      if (raw) {
+        const parsed = parseNoteContent(raw);
+        currentText = parsed.text;
+        currentMeta = parsed.meta;
+      }
+    } catch (err) {
+      currentText = "";
+      currentMeta = { mark: 0 };
+    }
+    showMemoDialog(
+      currentText,
+      { ...currentMeta },
+      async (newText, newMeta) => {
+        try {
+          const finalMeta = { ...newMeta, target: path };
+          await WriteTextFile(notePath, serializeNote(newText, finalMeta));
+          showFloatingMessage(i18n.memoSaved);
+          UpdateHistory();
+        } catch (err) {
+          console.error(err);
+          showFloatingError(i18n.memoSaveError);
+        }
+      },
+    );
+  };
+
   // --- クリックイベントリスナー ---
   window.addEventListener("click", async (e) => {
     const target = e.target.closest("button") || e.target;
@@ -133,54 +178,42 @@ export async function setupGlobalEvents() {
       return;
     }
 
-    // 世代バッジ
-    const genBadge = e.target.closest(".gen-selector-badge");
-    if (genBadge) {
-      e.preventDefault();
-      e.stopPropagation();
-      tab.selectedTargetDir = genBadge.getAttribute("data-dir");
+    // 世代メニューの項目(履歴に表示する世代を切り替える)
+    const genItem = e.target.closest(".gen-item");
+    if (genItem) {
+      tab.viewGeneration = Number(genItem.getAttribute("data-gen"));
       saveCurrentSession();
       UpdateHistory();
       return;
     }
 
-    // 履歴のメモボタン
-    const historyNoteBtn = e.target.closest(".diff-item .note-btn");
-    if (historyNoteBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      const path = historyNoteBtn.getAttribute("data-path");
-      const notePath = path + ".note";
-
-      let currentText = "";
-      let currentMeta = { mark: 0 };
-
-      try {
-        const raw = await ReadTextFile(notePath);
-        if (raw) {
-          const parsed = parseNoteContent(raw);
-          currentText = parsed.text;
-          currentMeta = parsed.meta;
-        }
-      } catch (err) {
-        currentText = "";
-        currentMeta = { mark: 0 };
-      }
-      showMemoDialog(
-        currentText,
-        { ...currentMeta },
-        async (newText, newMeta) => {
-          try {
-            const finalMeta = { ...newMeta, target: path };
-            await WriteTextFile(notePath, serializeNote(newText, finalMeta));
-            showFloatingMessage(i18n.memoSaved);
-            UpdateHistory();
-          } catch (err) {
-            console.error(err);
-            showFloatingError(i18n.memoSaveError);
-          }
-        },
+    // 履歴の行(Ctrl/⌘ クリックで複数選択)
+    const historyRow = e.target.closest("#diff-history-list tr.r");
+    if (historyRow) {
+      selectHistoryRow(
+        historyRow.getAttribute("data-path"),
+        e.ctrlKey || e.metaKey,
       );
+      return;
+    }
+
+    // 作業対象メニュー(ファイル/フォルダを選ぶ)
+    const actionEl = e.target.closest("[data-action]");
+    if (actionEl) {
+      const action = actionEl.getAttribute("data-action");
+      if (action === "pick-file") await handleSelectWorkFile("file");
+      else if (action === "pick-folder") await handleSelectWorkFile("folder");
+      return;
+    }
+
+    // ツールバーの「メモ」
+    if (id === "note-btn") {
+      const paths = getSelectedPaths();
+      if (paths.length !== 1) {
+        showFloatingError(i18n.selectHistoryFirst);
+        return;
+      }
+      await openNoteEditor(paths[0]);
       return;
     }
 
@@ -194,7 +227,7 @@ export async function setupGlobalEvents() {
       return;
     }
 
-    if (id === "workfile-btn" || id === "compact-workfile-btn") {
+    if (id === "compact-workfile-btn") {
       await handleSelectWorkFile();
       return;
     } else if (id === "backupdir-btn") {
@@ -207,17 +240,10 @@ export async function setupGlobalEvents() {
     } else if (id === "refresh-diff-btn") {
       UpdateHistory();
       return;
-    } else if (id === "select-all-btn") {
-      const cbs = document.querySelectorAll(".diff-checkbox");
-      const all = Array.from(cbs).every((cb) => cb.checked);
-      cbs.forEach((cb) => (cb.checked = !all));
-      return;
     } else if (id === "apply-selected-btn") {
       e.preventDefault();
       e.stopPropagation();
-      const targets = Array.from(
-        document.querySelectorAll(".diff-checkbox:checked"),
-      ).map((el) => el.value);
+      const targets = getSelectedPaths();
       if (targets.length === 0) return;
 
       const isConfirmed = await ask(i18n.restoreConfirm, {
@@ -299,6 +325,15 @@ export async function setupGlobalEvents() {
     } else if (id === "settings-modal") {
       if (e.target.id === "settings-modal") e.target.classList.add("hidden");
     }
+  });
+
+  // 履歴の行をダブルクリックでメモ編集
+  window.addEventListener("dblclick", async (e) => {
+    const row = e.target.closest("#diff-history-list tr.r");
+    if (!row) return;
+    const path = row.getAttribute("data-path");
+    selectHistoryRow(path, false);
+    await openNoteEditor(path);
   });
 
   // --- 変更イベントリスナー ---

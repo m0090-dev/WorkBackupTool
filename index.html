@@ -18,165 +18,146 @@
     </div>
 
     <div class="container">
-      <div class="tabs-bar">
+      <div class="toolbar">
+        <button id="execute-backup-btn" class="primary">Execute</button>
+        <button id="apply-selected-btn">Restore</button>
+        <span class="sep"></span>
+        <button id="note-btn">Note</button>
+        <button id="refresh-diff-btn">Refresh</button>
+        <button id="mode-btn" class="info" data-popover="mode-panel">
+          Diff / zstd
+        </button>
+      </div>
+      <div id="progress-container"><div id="progress-bar"></div></div>
+
+      <div class="tabs">
         <div id="tabs-list" class="tabs-list"></div>
         <button id="add-tab-btn" class="add-tab-btn" title="Add New Tab">
           +
         </button>
       </div>
 
-      <div id="active-tab-content">
-        <div class="status-panel">
-          <div class="info-row">
-            <strong id="label-target">Work file:</strong>
-            <span id="selected-workfile">Not Selected</span>
+      <div class="paths">
+        <span id="label-target" class="muted">Work target:</span>
+        <span id="selected-workfile" class="path-value">Not Selected</span>
+        <button id="workfile-btn" data-popover="target-menu">Change</button>
+        <span id="label-location" class="muted">Location:</span>
+        <span id="selected-backupdir" class="path-value">Default Folder</span>
+        <button id="backupdir-btn">Change</button>
+      </div>
 
-            <div class="target-selection-group">
-              <select id="work-target-type-select" class="mini-select-header">
-                <option value="file">File</option>
-                <option value="folder">Folder</option>
-              </select>
-              <button id="workfile-btn" class="mini-btn">Change</button>
-            </div>
+      <div id="message-area" class="hidden"></div>
 
-            <div class="recent-files-section">
-              <div class="recent-title">
-                <span id="label-recent"> Recent Files</span>
-              </div>
-              <div id="recent-list" class="recent-list">
-                <span class="recent-empty">No recent files</span>
-              </div>
-            </div>
-          </div>
+      <div class="searchbar">
+        <input type="text" id="history-search" placeholder="Search..." />
+        <button id="search-clear-btn" class="search-clear-btn" title="Clear">
+          &times;
+        </button>
+      </div>
 
-          <div class="info-row info-row--location">
-            <strong id="label-location">Location:</strong>
-            <span id="selected-backupdir">Default Folder</span>
-            <button id="backupdir-btn" class="mini-btn">Change</button>
+      <div class="table-wrap">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th id="col-date" class="col-date">Date</th>
+              <th id="col-size" class="col-size right">Size</th>
+              <th id="col-priority" class="col-priority">Priority</th>
+              <th id="col-note">Note</th>
+            </tr>
+          </thead>
+          <tbody id="diff-history-list"></tbody>
+        </table>
+      </div>
+
+      <div class="status-bar">
+        <span id="selection-status">None selected</span>
+        <span id="progress-status">Processing...</span>
+        <span class="status-right">
+          <span id="history-count"></span>
+          <span class="dot">&middot;</span>
+          <button
+            id="gen-btn"
+            class="link-btn"
+            data-popover="gen-menu"
+            data-placement="above"
+          ></button>
+          <span class="dot">&middot;</span>
+          <span id="history-size"></span>
+        </span>
+      </div>
+
+      <div id="mode-panel" class="popover hidden" data-mode="diff">
+        <div class="seg">
+          <label>
+            <input type="radio" name="backupMode" value="copy" />
+            <span class="mode-title">Full Copy</span>
+          </label>
+          <label>
+            <input type="radio" name="backupMode" value="archive" />
+            <span class="mode-title">Archive</span>
+          </label>
+          <label>
+            <input type="radio" name="backupMode" value="diff" checked />
+            <span class="mode-title">Diff</span>
+          </label>
+        </div>
+        <div class="mode-detail" data-for="archive">
+          <select id="archive-format" class="mini-select">
+            <option value="zip">ZIP (Normal)</option>
+            <option value="zip-pass">ZIP (Password)</option>
+            <option value="tar">TAR.GZ</option>
+          </select>
+          <div id="password-area" class="password-wrapper">
+            <input
+              type="password"
+              id="archive-password"
+              class="mini-input"
+              placeholder="Enter password..."
+            />
           </div>
         </div>
-
-        <div id="message-area" class="hidden"></div>
-
-        <div class="main-grid">
-          <div class="action-section">
-            <h3 id="title-create-backup">Create New Backup</h3>
-
-            <div class="backup-mode-selector">
-              <label class="mode-card">
-                <input type="radio" name="backupMode" value="copy" checked />
-                <div class="mode-info">
-                  <span class="mode-title">Full Copy</span>
-                  <span class="mode-desc">Standard backup</span>
-                </div>
-              </label>
-
-              <label class="mode-card">
-                <input type="radio" name="backupMode" value="archive" />
-                <div class="mode-info mode-info--full">
-                  <span class="mode-title">Archive</span>
-                  <span class="mode-desc">Compressed (ZIP/TAR)</span>
-                  <div class="mode-row">
-                    <select id="archive-format" class="mini-select">
-                      <option value="zip">ZIP (Normal)</option>
-                      <option value="zip-pass">ZIP (Password)</option>
-                      <option value="tar">TAR.GZ</option>
-                    </select>
-                  </div>
-                  <div id="password-area" class="password-wrapper">
-                    <input
-                      type="password"
-                      id="archive-password"
-                      class="mini-input"
-                      placeholder="Enter password..."
-                    />
-                  </div>
-                </div>
-              </label>
-
-              <label class="mode-card">
-                <input type="radio" name="backupMode" value="diff" />
-                <div class="mode-info mode-info--full">
-                  <span class="mode-title">Diff (Smart)</span>
-                  <span class="mode-desc">Save only changes</span>
-                  <div class="diff-options-row">
-                    <select id="diff-algo" class="mini-select">
-                      <option value="hdiff">Hdiff</option>
-                    </select>
-                    <select id="hdiff-compress" class="mini-select">
-                      <option value="none">None (Uncompressed)</option>
-                      <option value="zstd">Zstandard (zstd)</option>
-                      <option value="lzma2">LZMA2</option>
-                      <option value="lzma">LZMA</option>
-                      <option value="zlib">zlib</option>
-                      <option value="ldef">libdeflate (ldef)</option>
-                      <option value="pbzip2">pbzip2</option>
-                      <option value="bzip2">bzip2</option>
-                    </select>
-                  </div>
-                </div>
-              </label>
-            </div>
-            <div class="lock-row">
-              <button
-                id="lock-mode-btn"
-                class="icon-btn"
-                title="Lock backup mode"
-              >
-                🔓
-              </button>
-            </div>
-
-            <div class="execute-area">
-              <div id="progress-container">
-                <div id="progress-bar"></div>
-              </div>
-              <div id="progress-status">Processing...</div>
-              <button id="execute-backup-btn" class="execute-btn">
-                Execute Backup
-              </button>
-            </div>
-          </div>
-
-          <div id="history-section" class="history-section">
-            <div class="history-header">
-              <h3 id="title-history">Backup History / Restore</h3>
-
-              <button
-                id="generation-archive-btn"
-                class="icon-btn"
-                title="世代アーカイブ"
-              >
-                📦
-              </button>
-
-              <div class="search-container">
-                <input
-                  type="text"
-                  id="history-search"
-                  placeholder=" Search..."
-                />
-                <button
-                  id="search-clear-btn"
-                  class="search-clear-btn"
-                  title="Clear"
-                >
-                  &times;
-                </button>
-              </div>
-            </div>
-
-            <div id="diff-history-list" class="history-container"></div>
-
-            <div class="history-controls">
-              <button id="select-all-btn">Select All</button>
-              <button id="refresh-diff-btn">Refresh List</button>
-              <button id="apply-selected-btn" class="primary-btn">
-                Apply Selected
-              </button>
-            </div>
-          </div>
+        <div class="mode-detail" data-for="diff">
+          <select id="diff-algo" class="mini-select">
+            <option value="hdiff">Hdiff</option>
+          </select>
+          <select id="hdiff-compress" class="mini-select">
+            <option value="none">None (Uncompressed)</option>
+            <option value="zstd">Zstandard (zstd)</option>
+            <option value="lzma2">LZMA2</option>
+            <option value="lzma">LZMA</option>
+            <option value="zlib">zlib</option>
+            <option value="ldef">libdeflate (ldef)</option>
+            <option value="pbzip2">pbzip2</option>
+            <option value="bzip2">bzip2</option>
+          </select>
         </div>
+        <div class="lock-row">
+          <button id="lock-mode-btn" class="icon-btn" title="Lock backup mode">
+            Lock
+          </button>
+        </div>
+      </div>
+
+      <div id="target-menu" class="popover hidden">
+        <button class="menu-item" data-action="pick-file" data-close>
+          Choose file...
+        </button>
+        <button class="menu-item" data-action="pick-folder" data-close>
+          Choose folder...
+        </button>
+        <div class="menu-sep"></div>
+        <div id="label-recent" class="menu-label">Recent Files</div>
+        <div id="recent-list" class="recent-list">
+          <span class="recent-empty">No recent files</span>
+        </div>
+      </div>
+
+      <div id="gen-menu" class="popover hidden">
+        <div id="gen-list"></div>
+        <div class="menu-sep"></div>
+        <button id="generation-archive-btn" class="menu-item" data-close>
+          Compress old generations
+        </button>
       </div>
     </div>
 

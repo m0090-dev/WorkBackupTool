@@ -21,6 +21,7 @@ body.compact-mode .main-grid {
    2. コンパクトモード基盤 (Windowsサイズ補正)
    ============================================= */
 body.compact-mode {
+  color: #eee; /* 工程3bでコンパクト画面を作り直すまで従来の文字色を維持 */
   background-color: var(--bg-light) !important;
   width: 100% !important;
   height: 100% !important;

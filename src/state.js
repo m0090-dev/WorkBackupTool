@@ -14,7 +14,7 @@ export let tabs = [
     workFileSize: 0,
     backupDir: "",
     active: true,
-    selectedTargetDir: "",
+    viewGeneration: null, // 履歴に表示している世代(null=最新)
     backupMode: "diff",
     compressMode: "zstd",
     diffAlgo: "hdiff",
