@@ -109,62 +109,49 @@ function setupInitialUI() {
     if (el) el.textContent = text || "";
   };
 
-  setQueryText(".action-section h3", i18n.newBackupTitle);
-
-  setQueryText(".history-section h3", i18n.historyTitle);
-  setQueryText(".recent-title", i18n.recentFilesTitle);
-  setText("workfile-btn", i18n.workFileBtn);
-
-  setText("backupdir-btn", i18n.backupDirBtn);
-
+  setText("execute-backup-btn", i18n.executeBtn);
+  setText("apply-selected-btn", i18n.restoreBtn);
+  setText("note-btn", i18n.backupMemo);
+  setText("refresh-diff-btn", i18n.refreshBtn);
+  setText("workfile-btn", i18n.changeBtn);
+  setText("backupdir-btn", i18n.changeBtn);
   setText("label-target", i18n.labelWorkFile);
   setText("label-location", i18n.labelLocation);
+  setText("label-recent", i18n.recentFilesTitle);
+  setText("generation-archive-btn", i18n.generationArchive);
   setPlaceholder("history-search", i18n.searchPlaceholder || "Search...");
-  setText("progress-status", i18n.readyStatus || "Ready");
+  setText("progress-status", i18n.processingMsg);
+  setText("col-date", i18n.colDate);
+  setText("col-size", i18n.colSize);
+  setText("col-priority", i18n.colPriority);
+  setText("col-note", i18n.backupMemo);
+  setTitle("add-tab-btn", i18n.addTabBtn || "Add New Tab");
+  setTitle("search-clear-btn", i18n.cancel || "Clear");
 
-  const titles = document.querySelectorAll(".mode-title");
-
-  const descs = document.querySelectorAll(".mode-desc");
-
-  if (titles.length >= 3) {
-    titles[0].textContent = i18n.fullCopyTitle;
-    descs[0].textContent = i18n.fullCopyDesc;
-
-    titles[1].textContent = i18n.archiveTitle;
-    descs[1].textContent = i18n.archiveDesc;
-
-    titles[2].textContent = i18n.diffTitle;
-    descs[2].textContent = i18n.diffDesc;
+  // 作業対象メニュー
+  const targetMenuItems = document.querySelectorAll("#target-menu .menu-item");
+  if (targetMenuItems.length >= 2) {
+    targetMenuItems[0].textContent = i18n.targetMenuFile;
+    targetMenuItems[1].textContent = i18n.targetMenuFolder;
   }
 
-  setText("execute-backup-btn", i18n.executeBtn);
+  // バックアップモード(ポップオーバー内)
+  const titles = document.querySelectorAll("#mode-panel .mode-title");
+  if (titles.length >= 3) {
+    titles[0].textContent = i18n.fullCopyTitle;
+    titles[1].textContent = i18n.archiveTitle;
+    titles[2].textContent = i18n.diffTitle;
+    titles[0].title = i18n.fullCopyDesc || "";
+    titles[1].title = i18n.archiveDesc || "";
+    titles[2].title = i18n.diffDesc || "";
+  }
   const lockBtn = document.getElementById("lock-mode-btn");
   if (lockBtn) lockBtn.title = i18n.lockMode || "Lock backup mode";
 
-  setText("refresh-diff-btn", i18n.refreshBtn);
-
-  setText("apply-selected-btn", i18n.applyBtn);
-
-  setText("select-all-btn", i18n.selectAllBtn);
-
   setText("drop-modal-title", i18n.dropModalTitle);
-
   setText("drop-set-workfile", i18n.dropSetWorkFile);
-
   setText("drop-set-backupdir", i18n.dropSetBackupDir);
-
   setText("drop-cancel", i18n.dropCancel);
-
-  setTitle("add-tab-btn", i18n.addTabBtn || "Add New Tab");
-
-  // --- ここに追記 ---
-  const typeSelect = document.getElementById("work-target-type-select");
-  if (typeSelect) {
-    if (typeSelect.options[0])
-      typeSelect.options[0].textContent = i18n.workTargetTypeFile || "File";
-    if (typeSelect.options[1])
-      typeSelect.options[1].textContent = i18n.workTargetTypeFolder || "Folder";
-  }
 
   // Compact用テキスト
   const typeCompactSelect = document.getElementById("compact-work-type-select");
@@ -191,31 +178,6 @@ function setupInitialUI() {
     cSel.options[1].text = i18n.archiveTitle;
 
     cSel.options[2].text = i18n.diffTitle;
-  }
-
-  const workBtn = document.getElementById("workfile-btn");
-
-  const recentSec = document.querySelector(".recent-files-section");
-
-  if (workBtn && recentSec) {
-    workBtn.addEventListener("mouseenter", () => {
-      recentSec.style.display = "block";
-      setTimeout(() => (recentSec.style.opacity = "1"), 10);
-    });
-
-    workBtn.addEventListener("mouseleave", () => {
-      setTimeout(() => {
-        if (!recentSec.matches(":hover")) {
-          recentSec.style.display = "none";
-          recentSec.style.opacity = "0";
-        }
-      }, 300);
-    });
-
-    recentSec.addEventListener("mouseleave", () => {
-      recentSec.style.display = "none";
-      recentSec.style.opacity = "0";
-    });
   }
 }
 
@@ -246,7 +208,7 @@ function setupDragAndDrop() {
         tab.workFileSize = await GetFileSize(droppedPath);
 
         tab.backupDir = "";
-        tab.selectedTargetDir = "";
+        tab.viewGeneration = null;
 
         addToRecentFiles(droppedPath);
 

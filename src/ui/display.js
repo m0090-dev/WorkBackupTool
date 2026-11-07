@@ -34,27 +34,21 @@ export async function UpdateDisplay() {
   const fileEl = document.getElementById("selected-workfile");
   const dirEl = document.getElementById("selected-backupdir");
   if (fileEl) {
-    const baseName = tab.workFile
-      ? tab.workFile.split(/[\\/]/).pop()
-      : i18n.selectedWorkFile;
-    const sizeText = tab.workFile ? ` [${formatSize(tab.workFileSize)}]` : "";
-    if (!workTargetExists && tab.workFile) {
-      fileEl.innerHTML = `<span style="color: #ff4d4d; font-weight: bold;">${baseName} (Not Found)</span>`;
-    } else {
-      fileEl.textContent = `${baseName}${sizeText}`;
-      fileEl.style.color = "";
-    }
+    const fullPath = tab.workFile || i18n.selectedWorkFile;
+    const sizeText = tab.workFile ? ` (${formatSize(tab.workFileSize)})` : "";
+    const missing = !workTargetExists && tab.workFile;
+    fileEl.textContent = missing
+      ? `${fullPath} (Not Found)`
+      : `${fullPath}${sizeText}`;
+    fileEl.title = tab.workFile || "";
+    fileEl.classList.toggle("missing", !!missing);
   }
   if (dirEl) {
-    const baseName = tab.backupDir
-      ? tab.backupDir.split(/[\\/]/).pop()
-      : i18n.selectedBackupDir;
-    if (!dirExists && tab.backupDir) {
-      dirEl.innerHTML = `<span style="color: #ff4d4d; font-weight: bold;">${baseName} (Not Found)</span>`;
-    } else {
-      dirEl.textContent = baseName;
-      dirEl.style.color = "";
-    }
+    const dirText = tab.backupDir || i18n.selectedBackupDir;
+    const missing = !dirExists && tab.backupDir;
+    dirEl.textContent = missing ? `${dirText} (Not Found)` : dirText;
+    dirEl.title = tab.backupDir || "";
+    dirEl.classList.toggle("missing", !!missing);
   }
 
   const radio = document.querySelector(
@@ -90,12 +84,33 @@ export async function UpdateDisplay() {
   if (normalArchive) normalArchive.value = archiveFormat;
   const lockBtn = document.getElementById("lock-mode-btn");
   if (lockBtn) {
-    lockBtn.textContent = locked ? "🔒" : "🔓";
+    lockBtn.textContent = locked ? i18n.unlockShort : i18n.lockShort;
     lockBtn.title = locked ? i18n.unlockMode : i18n.lockMode;
   }
   const isPass =
     mode === "archive" &&
     document.getElementById("archive-format")?.value === "zip-pass";
+  // ツールバーのモード表示と、モード設定パネルの表示切替
+  const modeBtn = document.getElementById("mode-btn");
+  if (modeBtn) {
+    const modeTitles = {
+      copy: i18n.fullCopyTitle,
+      archive: i18n.archiveTitle,
+      diff: i18n.diffTitle,
+    };
+    const detail =
+      mode === "diff"
+        ? compress
+        : mode === "archive"
+          ? { zip: "ZIP", "zip-pass": "ZIP+PW", tar: "TAR.GZ" }[archiveFormat]
+          : "";
+    modeBtn.textContent = detail
+      ? `${modeTitles[mode]} / ${detail}`
+      : modeTitles[mode];
+    modeBtn.title = i18n.modeButtonTip || "";
+  }
+  const modePanel = document.getElementById("mode-panel");
+  if (modePanel) modePanel.dataset.mode = mode;
   const pwdArea = document.querySelector(".password-wrapper");
   if (pwdArea) {
     pwdArea.style.opacity = isPass ? "1" : "0.3";

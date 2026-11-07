@@ -7,7 +7,13 @@ export { showFloatingMessage, showFloatingError } from "./ui/messages.js";
 export { renderRecentFiles } from "./ui/recent.js";
 export { renderTabs } from "./ui/tabs.js";
 export { UpdateDisplay } from "./ui/display.js";
-export { UpdateHistory } from "./ui/history.js";
+export {
+  UpdateHistory,
+  getSelectedPaths,
+  selectHistoryRow,
+  updateSelectionUI,
+} from "./ui/history.js";
+export { initPopovers, closePopovers } from "./ui/popover.js";
 export { showArchiveModal } from "./ui/archive-modal.js";
 export {
   showSettingsModal,

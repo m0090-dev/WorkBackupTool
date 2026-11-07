@@ -8,8 +8,9 @@
 
 body {
   font-family: "MaruMinya", sans-serif;
-  color: #eee;
-  background-color: #1b2636;
+  font-size: var(--font-size);
+  color: var(--text);
+  background-color: var(--bg);
   margin: 0;
   padding: 0;
 }

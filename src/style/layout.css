@@ -1,319 +1,462 @@
 /**
  * layout.css
- * 通常モード（フルサイズ）の画面レイアウト設定
+ * 通常モード(メイン画面)のレイアウトと部品。mock2.html の業務ツール風デザインに準拠。
+ * 配色は variables.css の新テーマ(--bg / --card / --panel ...)を使う。
  */
 
-/* --- 上部ステータスパネルの配置 --- */
-.status-panel {
-  padding: 6px 12px;
-  background-color: var(--primary-dark);
-  color: #ffffff;
-  font-size: 11px;
-  border-bottom: 2px solid var(--primary-blue);
-  flex-shrink: 0;
-  position: relative;
-  z-index: 100;
+/* --- 共通 --- */
+.muted {
+  color: var(--sub);
+}
+.right {
+  text-align: right;
+}
+.hi {
+  color: var(--red);
+}
+.mid {
+  color: var(--amber);
 }
 
-/* ---- [FIX #1] work-selection-group ----
-   プルダウン (.work-target-type-select) が recent-files-section の
-   ホバー領域に被って pointer-events を奪わないよう、
-   グループ自体は overflow: visible を保ちつつ z-index を明示する */
-.work-selection-group {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-right: 8px;
-}
-/* プルダウンの親グループの z-index を下げる */
-.work-selection-group,
-.target-selection-group {
-  position: relative;
-  z-index: 5 !important; /* 低くする */
-}
-
-/* work-target-type-select はボタンと並ぶプルダウン */
-#work-target-type-select {
-  height: 20px;
-  font-size: 10px;
-  padding: 0 2px;
-  background: #4a5a71;
-  border: 1px solid transparent;
-  color: white;
-  border-radius: 3px;
+.container button,
+.popover button {
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: transparent;
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  padding: 4px 10px;
   cursor: pointer;
-  /* ---- [FIX #1] recent ポップアップの上に乗らないよう z-index を下げる ----
-     recent-files-section は z-index: var(--z-recent) = 1000 なので
-     このプルダウン自体は低く保つ */
-  z-index: 1;
-  position: relative;
-  -webkit-appearance: auto;
+}
+.container button:hover,
+.popover button:hover {
+  background: var(--panel);
+}
+.container button.primary {
+  background: var(--primary);
+  color: var(--on-primary);
+  border-color: var(--primary);
+}
+.container button.primary:hover {
+  opacity: 0.88;
+  background: var(--primary);
+}
+.container button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
-#work-target-type-select option {
-  background-color: #ffffff; /* optionはOS描画に任せて白背景に */
-  color: #000000; /* 黒文字 */
-}
-
-.info-row {
+/* --- ツールバー --- */
+.toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--line);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+.toolbar .sep {
+  width: 0.5px;
+  height: 18px;
+  background: var(--line-strong);
+  margin: 0 4px;
+}
+.container .toolbar button.info {
+  margin-left: auto;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
-  overflow: visible;
-  margin-bottom: 3px;
+  border-color: transparent;
+  color: var(--sub);
+}
+.container .toolbar button.info:hover {
+  color: var(--text);
+}
+
+/* --- 進捗バー(処理中だけ表示) --- */
+#progress-container {
+  height: 3px;
+  background: var(--line);
+  display: none;
+  flex-shrink: 0;
+}
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--sel-line);
+  transition: width 0.2s;
+}
+
+/* --- タブ --- */
+.tabs {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 6px;
+  border-bottom: 0.5px solid var(--line);
+  background: var(--panel);
+  flex-shrink: 0;
+}
+.tabs-list {
+  display: flex;
+  overflow-x: auto;
+  min-width: 0;
+}
+.tabs-list::-webkit-scrollbar {
+  display: none;
+}
+.tab-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--sub);
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  border: 0.5px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+}
+.tab-item:hover {
+  color: var(--text);
+}
+.tab-item.active {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--line);
+  margin-bottom: -0.5px;
+}
+.tab-item.dragging {
+  opacity: 0.5;
+}
+.tab-item.drag-over {
+  border-left: 2px solid var(--sel-line);
+  background: var(--sel);
+}
+.container button.add-tab-btn {
+  border-color: transparent;
+  padding: 2px 8px;
+  margin: 0 0 4px 4px;
+  color: var(--sub);
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* --- 対象 / 保存先 --- */
+.paths {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 4px 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 0.5px solid var(--line);
+  background: var(--card);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.path-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.path-value.missing {
+  color: var(--red);
+  font-weight: bold;
+}
+
+/* --- 検索 --- */
+.searchbar {
   position: relative;
+  padding: 6px 10px;
+  border-bottom: 0.5px solid var(--line);
+  background: var(--card);
+  flex-shrink: 0;
+}
+#history-search {
+  width: 100%;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 24px 4px 8px;
+  color: var(--text);
+  background: var(--card);
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  outline: none;
+}
+#history-search:focus {
+  outline: 1px solid var(--sel-line);
+}
+.container button.search-clear-btn {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  padding: 0 4px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--sub);
+  display: none;
+}
+.container button.search-clear-btn.visible {
+  display: block;
 }
 
-.info-row strong {
-  color: #8db5ff;
-  min-width: 55px;
-  font-size: 10px;
-}
-
-#selected-workfile,
-#selected-backupdir {
+/* --- 履歴テーブル --- */
+.table-wrap {
   flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--card);
+}
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+.history-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-weight: normal;
+  padding: 5px 6px;
+  text-align: left;
+  color: var(--sub);
+  background: var(--panel);
+  border-bottom: 0.5px solid var(--line);
+}
+.history-table td {
+  padding: 6px;
+  border-bottom: 0.5px solid var(--line);
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-/* --- メインコンテンツ：2カラムグリッド --- */
-.main-grid {
-  display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 12px;
-  padding: 12px;
-  flex: 1;
-  background-color: #fff;
-  min-height: 0;
-  overflow: hidden;
-  height: calc(100vh - 107px);
+.history-table th.right {
+  text-align: right;
 }
-
-.action-section,
-.history-section {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
+.history-table th:first-child,
+.history-table td:first-child {
+  padding-left: 10px;
 }
-
-h3 {
-  margin: 0 0 10px 0;
-  font-size: 13px;
-  border-left: 4px solid var(--primary-blue);
-  padding-left: 8px;
-  color: #1a1a1a;
-  flex-shrink: 0;
+.col-date {
+  width: 36%;
 }
-
-/* --- 左カラム：バックアップモード選択 --- */
-.backup-mode-selector {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 1;
-  overflow-y: auto;
+.col-size {
+  width: 20%;
 }
-
-.mode-card {
-  display: flex !important;
-  align-items: center;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  cursor: pointer;
-  background-color: #fff;
-  flex-shrink: 0;
+.col-priority {
+  width: 12%;
 }
-.mode-card:has(input:checked) {
-  border: 2px solid var(--primary-blue);
-  background-color: #f0f7ff;
-}
-
-.mode-title {
-  font-size: 11px;
-  font-weight: 800;
-  color: #111;
-}
-.mode-desc {
-  display: block;
-  font-size: 9px;
-  color: #555;
-  padding-left: 24px;
-}
-
-/* --- 右カラム：履歴表示・差分エリア --- */
-.history-container {
-  flex: 1;
-  max-height: calc(94vh - 180px);
-  height: auto;
-  min-height: 0;
-  min-width: 0;
-  overflow: auto;
-  width: 100%;
-  box-sizing: border-box;
-  border: 1px solid #bbb;
-  border-radius: 4px;
-  background-color: #fff;
-}
-
-/* --- 下部：実行・コントロールエリア --- */
-.execute-area {
-  width: 100%;
-  margin-top: 8px;
-  flex-shrink: 0;
-}
-
-.history-controls {
-  display: flex;
-  gap: 6px;
-  padding-top: 8px;
-  flex-shrink: 0;
-}
-.history-controls button {
-  flex: 1;
-  padding: 6px;
-  font-size: 10px;
-  background-color: #2c3e50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-weight: bold;
+.history-table tr.r {
   cursor: pointer;
 }
-.primary-btn {
-  background-color: #db741f !important;
+.history-table tr.r:hover {
+  background: var(--panel);
+}
+.history-table tr.r.sel {
+  background: var(--sel);
+  color: var(--sel-text);
+}
+.history-table td.info-msg {
+  padding: 18px 10px;
+  text-align: center;
+  white-space: normal;
+  color: var(--sub);
+}
+.history-table td.info-msg.error {
+  color: var(--red);
+}
+.history-table mark {
+  background: #ffeb3b;
+  color: #000;
+  padding: 0 1px;
+  border-radius: 2px;
 }
 
-.diff-item {
-  padding: 6px 8px;
-  border-bottom: 1px solid #eee;
-  font-size: 11px;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  width: max-content;
-  min-width: 100%;
-  box-sizing: border-box;
-}
-.diff-item:hover {
-  background-color: #f0f7ff;
-}
-.diff-name {
-  color: #111;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-/* 検索窓とバツボタンの親要素 */
-.search-container {
+/* --- ステータスバー --- */
+.status-bar {
   position: relative;
   display: flex;
-  align-items: center;
-}
-
-.search-clear-btn {
-  position: absolute;
-  right: 8px;
-  background: none;
-  border: none;
-  color: #999;
-  font-size: 16px;
-  cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  display: none;
-  outline: none;
-  transition: color 0.2s;
-}
-
-.search-clear-btn:hover {
-  color: var(--primary-blue);
-}
-
-.search-clear-btn.visible {
-  display: block;
-}
-
-/* =============================================
-   index.html のインラインstyleから移した指定
-   (見た目・優先順位は従来どおり。工程1のリファクタで移動)
-   ============================================= */
-.info-row.info-row--location {
-  margin-top: 10px;
-  border-top: 1px solid #eee;
-  padding-top: 10px;
-}
-
-.mode-info--full {
-  width: 100%;
-}
-
-.mode-row {
-  display: flex;
-  align-items: center;
   justify-content: space-between;
-  margin-top: 5px;
-}
-
-.diff-options-row {
-  display: flex;
-  gap: 5px;
-  max-width: calc(100% - 16px);
-  margin-top: 5px;
-  box-sizing: border-box;
-}
-
-#diff-algo {
-  width: 65px;
+  align-items: center;
+  padding: 3px 10px;
+  min-height: 26px;
+  background: var(--panel);
+  border-top: 0.5px solid var(--line);
+  font-size: 11px;
+  color: var(--sub);
   flex-shrink: 0;
-  padding: 2px;
-  font-size: 10px;
+}
+.status-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#progress-status {
+  display: none;
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  align-items: center;
+  padding-right: 8px;
+  background: var(--panel);
+  color: var(--text);
+  line-height: 26px;
+}
+.container button.link-btn {
+  border: none;
+  background: none;
+  padding: 1px 4px;
+  font-size: 11px;
+  color: var(--sel-text);
+}
+.link-btn::after {
+  content: " \25BE";
+}
+.container button.link-btn:hover {
+  background: var(--sel);
 }
 
-#hdiff-compress {
-  flex-grow: 1;
-  min-width: 0;
-  padding: 2px;
+/* --- ポップオーバー / メニュー --- */
+.popover {
+  position: fixed;
+  z-index: 3000;
+  min-width: 180px;
+  max-width: 300px;
+  padding: 6px;
+  background: var(--card);
+  color: var(--text);
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  box-shadow: var(--shadow-pop);
+  font-size: 12px;
+}
+.popover .menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+.popover button.menu-item {
+  border-color: transparent;
+}
+.popover button.menu-item:hover,
+.recent-item:hover,
+.gen-item:hover {
+  background: var(--panel);
+}
+.menu-sep {
+  height: 0.5px;
+  margin: 6px 0;
+  background: var(--line);
+}
+.menu-label {
+  padding: 2px 8px 4px;
+  font-size: 11px;
+  color: var(--sub);
+}
+.recent-item,
+.gen-item {
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recent-empty {
+  display: block;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--sub);
+}
+.gen-item.on {
+  background: var(--sel);
+  color: var(--sel-text);
+}
+.gen-item .badge {
+  margin-left: 6px;
   font-size: 10px;
-  box-sizing: border-box;
+  color: var(--sub);
+}
+.gen-item.on .badge {
+  color: var(--sel-text);
 }
 
+/* --- バックアップモード(ポップオーバー内) --- */
+#mode-panel {
+  width: 260px;
+}
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.seg label {
+  display: block;
+  position: relative;
+  cursor: pointer;
+}
+.seg label + label {
+  border-left: 0.5px solid var(--line);
+}
+.seg input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.seg .mode-title {
+  display: block;
+  text-align: center;
+  padding: 5px 0;
+  color: var(--sub);
+}
+.seg input:checked + .mode-title {
+  background: var(--sel);
+  color: var(--sel-text);
+}
+.seg input:disabled + .mode-title {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mode-detail {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+#mode-panel[data-mode="archive"] .mode-detail[data-for="archive"],
+#mode-panel[data-mode="diff"] .mode-detail[data-for="diff"] {
+  display: flex;
+}
+#mode-panel select,
+#mode-panel input[type="password"] {
+  width: 100%;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  color: var(--text);
+  background: var(--card);
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+}
 .lock-row {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 5px;
+  margin-top: 8px;
 }
 
-.history-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-#title-history {
-  margin: 0;
-}
-
-#generation-archive-btn {
-  margin-right: 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-/* 右側に検索クリアボタン用の余白(25px)を確保 */
-#history-search {
-  padding: 4px 25px 4px 10px;
-  font-size: 11px;
-  border: 1px solid #ddd;
-  border-radius: 15px;
-  width: 130px;
-  outline: none;
-  background: #fafafa;
+/* --- タブ右クリックメニュー / メモのタグ削除メニューのショートカット表記 --- */
+.tab-menu-shortcut {
+  font-size: 10px;
+  opacity: 0.5;
+  margin-left: 10px;
 }

@@ -2,6 +2,83 @@ import { GetBackupList, ReadTextFile } from "../tauri_exports";
 import { i18n, getActiveTab, formatSize } from "../state";
 import { parseNoteContent } from "../memo.js";
 import { isBackupExecuting } from "./progress.js";
+import { escapeHtml, escapeRegExp } from "./html.js";
+
+// --- 選択状態(履歴テーブルの行) ---
+const selected = new Set();
+let selectionKey = "";
+
+export function getSelectedPaths() {
+  return Array.from(selected);
+}
+
+/** "2026-11-02 04:52:11" -> "11/02 04:52" */
+function shortTime(ts) {
+  const m = /^\d{4}-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(ts || "");
+  return m ? `${m[1]}/${m[2]} ${m[3]}:${m[4]}` : ts || "";
+}
+
+function fillTemplate(text, values) {
+  return Object.entries(values).reduce(
+    (acc, [k, v]) => acc.replace(`{${k}}`, v),
+    text || "",
+  );
+}
+
+/** 選択状態に合わせて「復元」ボタンとステータスバーの表示を更新する */
+export function updateSelectionUI() {
+  const restoreBtn = document.getElementById("apply-selected-btn");
+  const status = document.getElementById("selection-status");
+  if (!i18n) return;
+  const rows = Array.from(
+    document.querySelectorAll("#diff-history-list tr.r.sel"),
+  );
+  const count = selected.size;
+  const time = rows.length === 1 ? rows[0].dataset.time : "";
+
+  let restoreText = i18n.restoreBtn;
+  let statusText = i18n.statusNoSelection;
+  if (count === 1) {
+    restoreText = fillTemplate(i18n.restoreBtnWith, { time });
+    statusText = fillTemplate(i18n.statusSelected, { time });
+  } else if (count > 1) {
+    restoreText = fillTemplate(i18n.restoreBtnCount, { count });
+    statusText = fillTemplate(i18n.statusSelected, { time: count });
+  }
+  if (restoreBtn) {
+    restoreBtn.textContent = restoreText;
+    restoreBtn.disabled = count === 0;
+  }
+  if (status) status.textContent = statusText;
+}
+
+/** 行をクリックしたときの選択処理。additive=true(Ctrl/⌘クリック)で複数選択 */
+export function selectHistoryRow(path, additive = false) {
+  if (additive) {
+    if (selected.has(path)) selected.delete(path);
+    else selected.add(path);
+  } else {
+    selected.clear();
+    selected.add(path);
+  }
+  document.querySelectorAll("#diff-history-list tr.r").forEach((tr) => {
+    tr.classList.toggle("sel", selected.has(tr.dataset.path));
+  });
+  updateSelectionUI();
+}
+
+function setMeta({ count = 0, genText = "", size = 0 }) {
+  const countEl = document.getElementById("history-count");
+  const genBtn = document.getElementById("gen-btn");
+  const sizeEl = document.getElementById("history-size");
+  if (countEl) countEl.textContent = fillTemplate(i18n.statusCount, { count });
+  if (genBtn) genBtn.textContent = genText;
+  if (sizeEl) sizeEl.textContent = formatSize(size);
+}
+
+function messageRow(text, isError = false) {
+  return `<tr><td colspan="4" class="info-msg${isError ? " error" : ""}">${escapeHtml(text)}</td></tr>`;
+}
 
 export async function UpdateHistory() {
   const tab = getActiveTab();
@@ -12,208 +89,198 @@ export async function UpdateHistory() {
   const executeBtn = document.getElementById("execute-backup-btn");
   const compactExecuteBtn = document.getElementById("compact-execute-btn");
   if (!list || !i18n) return;
-  if (searchInput) {
-    if (document.activeElement !== searchInput) {
-      searchInput.value = tab.searchQuery || "";
-    }
+
+  if (searchInput && document.activeElement !== searchInput) {
+    searchInput.value = tab?.searchQuery || "";
   }
-  if (clearBtn) {
-    if (searchTerm.length > 0) {
-      clearBtn.classList.add("visible");
-    } else {
-      clearBtn.classList.remove("visible");
-    }
-  }
+  if (clearBtn) clearBtn.classList.toggle("visible", searchTerm.length > 0);
+
   if (!tab?.workFile) {
-    list.innerHTML = `<div class="info-msg">${i18n.selectFileFirst}</div>`;
+    list.innerHTML = messageRow(i18n.selectFileFirst);
+    selected.clear();
+    setMeta({ genText: i18n.noGeneration });
+    updateSelectionUI();
     return;
   }
 
   try {
-    let data = await GetBackupList(tab.workFile, tab.backupDir);
-    if (!data || data.length === 0) {
-      list.innerHTML = `<div class="info-msg">${i18n.noHistory}</div>`;
-      return;
-    }
+    const raw = (await GetBackupList(tab.workFile, tab.backupDir)) || [];
 
-    data.sort((a, b) => b.fileName.localeCompare(a.fileName));
-
-    const latestGenNumber = Math.max(
-      ...data.map((item) => item.generation || 0),
+    // メモ(.note)を読み込む
+    const items = await Promise.all(
+      raw.map(async (item) => {
+        const text = await ReadTextFile(item.filePath + ".note").catch(
+          () => "",
+        );
+        const { text: note, meta } = parseNoteContent(text);
+        return { ...item, note, mark: meta?.mark ?? 0 };
+      }),
     );
 
-    let activeDirPath = tab.selectedTargetDir;
-    if (!activeDirPath) {
-      const first = data[0];
-      activeDirPath = first.filePath.replace(/[\\/][^\\/]+$/, "");
+    // --- 世代の整理 ---
+    // generation = 0 は世代に属さない単体アーカイブ、1以上が世代
+    const gens = [...new Set(items.map((i) => i.generation || 0))];
+    const realGens = gens.filter((g) => g > 0).sort((a, b) => b - a);
+    const latest = realGens.length > 0 ? realGens[0] : null;
+    let view = tab.viewGeneration;
+    if (view == null || !gens.includes(view)) {
+      view = latest ?? (gens.includes(0) ? 0 : null);
     }
 
-    const highlight = (text, term) => {
-      if (!term) return text;
-      const regex = new RegExp(`(${term})`, "gi");
-      return text.replace(
-        regex,
-        `<mark style="background-color: #ffeb3b; color: #000; padding: 0 2px; border-radius: 2px;">$1</mark>`,
+    // 世代メニュー
+    const genList = document.getElementById("gen-list");
+    if (genList) {
+      const entries = [
+        ...realGens.map((g) => ({
+          gen: g,
+          label: `${i18n.generationLabel} ${g}`,
+          badge:
+            g === latest
+              ? i18n.genLatest
+              : items.some((i) => i.generation === g && i.isArchived)
+                ? i18n.genArchived
+                : "",
+        })),
+        ...(gens.includes(0)
+          ? [{ gen: 0, label: i18n.genStandalone, badge: "" }]
+          : []),
+      ];
+      genList.innerHTML = entries
+        .map(
+          (e) =>
+            `<div class="gen-item${e.gen === view ? " on" : ""}" data-gen="${e.gen}" data-close>${escapeHtml(e.label)}${e.badge ? `<span class="badge">${escapeHtml(e.badge)}</span>` : ""}</div>`,
+        )
+        .join("");
+    }
+
+    // 検索中は全世代を対象にする。それ以外は選択中の世代だけ
+    let visible = items.filter((i) =>
+      searchTerm ? true : (i.generation || 0) === view,
+    );
+    if (searchTerm) {
+      visible = visible.filter(
+        (i) =>
+          i.fileName.toLowerCase().includes(searchTerm) ||
+          i.note.toLowerCase().includes(searchTerm),
+      );
+    }
+    visible.sort(
+      (a, b) =>
+        b.timestamp.localeCompare(a.timestamp) ||
+        b.fileName.localeCompare(a.fileName),
+    );
+
+    // --- 選択の保持(タブ/世代が変わったらクリア) ---
+    const key = `${tab.id}|${view}`;
+    if (key !== selectionKey) {
+      selected.clear();
+      selectionKey = key;
+    }
+    const visiblePaths = new Set(visible.map((i) => i.filePath));
+    Array.from(selected).forEach((p) => {
+      if (!visiblePaths.has(p)) selected.delete(p);
+    });
+
+    // --- ステータスバー ---
+    let genText = i18n.noGeneration;
+    if (view === 0) genText = i18n.genStandalone;
+    else if (view != null)
+      genText = `${i18n.generationLabel} ${view}${view === latest ? " ★" : ""}`;
+    setMeta({
+      count: visible.length,
+      genText,
+      size: visible.reduce((sum, i) => sum + (i.fileSize || 0), 0),
+    });
+
+    // --- 行の描画 ---
+    const markLabels = {
+      1: i18n.priorityLow,
+      2: i18n.priorityMid,
+      3: i18n.priorityHigh,
+    };
+    const markClasses = { 1: "", 2: "mid", 3: "hi" };
+    const highlight = (text) => {
+      const safe = escapeHtml(text);
+      if (!searchTerm) return safe;
+      return safe.replace(
+        new RegExp(`(${escapeRegExp(escapeHtml(searchTerm))})`, "gi"),
+        "<mark>$1</mark>",
       );
     };
 
-    let isTargetArchivedGeneration = false;
-    const itemsHtml = await Promise.all(
-      data.map(async (item) => {
-        const raw = await ReadTextFile(item.filePath + ".note").catch(() => "");
-        const { text: note, meta: noteMeta } = parseNoteContent(raw);
-
-        if (searchTerm) {
-          const inFileName = item.fileName.toLowerCase().includes(searchTerm);
-          const inNote = note.toLowerCase().includes(searchTerm);
-          if (!inFileName && !inNote) return null;
-        }
-
-        const isDiffFile = item.fileName.toLowerCase().endsWith(".diff");
-        const isArchive = !isDiffFile && item.generation === 0;
-
-        const itemDir =
-          item.filePath.substring(0, item.filePath.lastIndexOf("/")) ||
-          item.filePath.substring(0, item.filePath.lastIndexOf("\\"));
-
-        let statusHtml = "";
-        let genBadge = "";
-        const mark = noteMeta?.mark ?? 0;
-        const markBadge =
-          mark > 0
-            ? (() => {
-                const markColors = { 1: "#e6a817", 2: "#db741f", 3: "#c0392b" };
-                const markLabels = {
-                  1: i18n?.priorityLow || "Low",
-                  2: i18n?.priorityMid || "Mid",
-                  3: i18n?.priorityHigh || "High",
-                };
-                return `<span style="font-size:10px; color:#fff; background:${markColors[mark]}; padding:1px 4px; border-radius:3px; margin-left:3px;">${markLabels[mark]}</span>`;
-              })()
-            : "";
-
-        if (isArchive) {
-          const archiveText = i18n.fullArchive || " Full Archive";
-          statusHtml = `<div style="color:#2f8f5b; font-weight:bold;">${archiveText}</div>`;
-          genBadge = `<span style="font-size:10px; color:#fff; background:#2f8f5b; padding:1px 4px; border-radius:3px; margin-left:5px;">Archive</span>`;
-        } else {
-          const currentGen = item.generation || 1;
-          const isTarget = itemDir === activeDirPath;
-          if (isTarget && item.isArchived) {
-            isTargetArchivedGeneration = true;
-          }
-          const subLabel = item.isArchived
-            ? ` <span style="font-size:9px; opacity:0.9;">(Archive)</span>`
-            : isTarget
-              ? ` <span style="font-size:9px; opacity:0.9;">(Target)</span>`
-              : "";
-          let statusColor = isTarget ? "#2f8f5b" : "#3B5998";
-          let statusIcon = isTarget ? "✅" : "";
-          let statusText = isTarget
-            ? i18n.compatible || "書き込み先 (Active)"
-            : i18n.genMismatch || "別世代 (クリックで切替)";
-
-          if (item.isArchived) {
-            statusColor = "#666";
-            statusText =
-              i18n.archived_generation_extracting ||
-              "世代アーカイブ (一時展開中)";
-            statusIcon = "📦";
-          }
-
-          const genLabel = i18n.generationLabel || "Gen";
-          const currentLabel = isTarget
-            ? ` <span style="font-size:9px; opacity:0.9;">(Target)</span>`
-            : "";
-          const badgeStyle = `font-size:10px; color:#fff; background:${statusColor}; padding:1px 4px; border-radius:3px; margin-left:5px; ${isTarget ? "outline: 2px solid #2f8f5b; outline-offset: 1px;" : ""} cursor:pointer;`;
-
-          statusHtml = `<div style="color:${statusColor}; font-weight:bold;">${statusIcon} ${statusText}</div>
-                        <div style="font-size:11px; color:#666;">${genLabel}: ${currentGen} ${isTarget ? "★" : ""}</div>`;
-
-          genBadge = `<span class="gen-selector-badge" data-dir="${itemDir}" style="${badgeStyle}">${genLabel}.${currentGen}${currentLabel}</span>`;
-        }
-
-        const markLabels = {
-          1: i18n?.priorityLow || "Low",
-          2: i18n?.priorityMid || "Mid",
-          3: i18n?.priorityHigh || "High",
-        };
-        const markText =
-          mark > 0
-            ? `<br><strong>${i18n?.priorityLabel || "Priority"}:</strong> ${markLabels[mark]}`
-            : "";
-
-        const popupContent = `${statusHtml}<hr style="border:0; border-top:1px solid #eee; margin:5px 0;"><strong>Path:</strong> ${item.filePath}${markText}${note ? `<br><hr style="border:0; border-top:1px dashed #ccc; margin:5px 0;"><strong>${i18n.backupMemo}:</strong> ${note}` : ""}`;
-
-        const displayedFileName = highlight(item.fileName, searchTerm);
-        const displayedNote = highlight(note, searchTerm);
-
-        return `<div class="diff-item" style="${itemDir === activeDirPath ? "border-left: 4px solid #2f8f5b; background: #f0fff4;" : ""}">
-          <div style="display:flex; align-items:center; width:100%;">
-            <label style="display:flex; align-items:center; cursor:pointer; flex:1; min-width:0;">
-              <input type="checkbox" class="diff-checkbox" value="${item.filePath}" style="margin-right:10px;">
-              <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
-                <span class="diff-name" data-hover-content="${encodeURIComponent(popupContent)}" style="font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                  ${displayedFileName} ${genBadge} ${markBadge} <span style="font-size:10px; color:#3B5998;">(${formatSize(item.fileSize)})</span>
-                </span>
-                <span style="font-size:10px; color:#888;">${item.timestamp}</span>
-                ${note ? `<div style="font-size:10px; color:#2f8f5b; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"> ${displayedNote}</div>` : ""}
-              </div>
-            </label>
-            <button class="note-btn" data-path="${item.filePath}" style="background:none; border:none; cursor:pointer; font-size:14px; padding:4px;">📝</button>
-          </div>
-        </div>`;
-      }),
-    );
-    list.innerHTML = itemsHtml.filter((html) => html !== null).join("");
-
-    if (executeBtn) {
-      if (isTargetArchivedGeneration) {
-        executeBtn.setAttribute("disabled", "");
-      } else if (!isBackupExecuting()) {
-        executeBtn.removeAttribute("disabled");
-      }
+    if (visible.length === 0) {
+      list.innerHTML = messageRow(i18n.noHistory);
+    } else {
+      list.innerHTML = visible
+        .map((item) => {
+          const time = shortTime(item.timestamp);
+          const mark = item.mark || 0;
+          const markCell =
+            mark > 0
+              ? `<td class="${markClasses[mark] || ""}">${escapeHtml(markLabels[mark] || "")}</td>`
+              : `<td class="muted">-</td>`;
+          const firstLine = (item.note || "").split("\n")[0];
+          const genLabel =
+            (item.generation || 0) === 0
+              ? i18n.genStandalone
+              : `${i18n.generationLabel} ${item.generation}${item.isArchived ? ` (${i18n.genArchived})` : ""}`;
+          const tip =
+            `<strong>${escapeHtml(item.fileName)}</strong><br>` +
+            `${escapeHtml(item.timestamp)} · ${escapeHtml(genLabel)}<br>` +
+            `<strong>Path:</strong> ${escapeHtml(item.filePath)}` +
+            (mark > 0
+              ? `<br><strong>${escapeHtml(i18n.priorityLabel)}:</strong> ${escapeHtml(markLabels[mark])}`
+              : "") +
+            (item.note
+              ? `<hr><strong>${escapeHtml(i18n.backupMemo)}:</strong> ${escapeHtml(item.note)}`
+              : "");
+          return `<tr class="r${selected.has(item.filePath) ? " sel" : ""}" data-path="${escapeHtml(item.filePath)}" data-time="${escapeHtml(time)}" data-hover-content="${encodeURIComponent(tip)}"><td>${escapeHtml(time)}</td><td class="right">${formatSize(item.fileSize)}</td>${markCell}<td class="muted">${highlight(firstLine)}</td></tr>`;
+        })
+        .join("");
     }
-    if (compactExecuteBtn) {
-      if (isTargetArchivedGeneration) {
-        compactExecuteBtn.setAttribute("disabled", "");
-      } else if (!isBackupExecuting()) {
-        compactExecuteBtn.removeAttribute("disabled");
-      }
+    updateSelectionUI();
+
+    // 実行ボタン: 処理中でなければ有効化
+    if (!isBackupExecuting()) {
+      executeBtn?.removeAttribute("disabled");
+      compactExecuteBtn?.removeAttribute("disabled");
     }
     setupHistoryPopups();
   } catch (err) {
     console.error(err);
-    list.innerHTML = `<div class="info-msg" style="color:red;">Error: ${err.message || "loading history"}</div>`;
+    list.innerHTML = messageRow(
+      `Error: ${err.message || err || "loading history"}`,
+      true,
+    );
   }
 }
 
 function setupHistoryPopups() {
   const tooltip =
     document.getElementById("history-tooltip") || createTooltipElement();
-  const targets = document.querySelectorAll(".diff-name");
+  const targets = document.querySelectorAll("#diff-history-list tr.r");
 
   targets.forEach((target) => {
-    target.onmouseenter = (e) => {
-      const content = decodeURIComponent(
+    target.onmouseenter = () => {
+      tooltip.innerHTML = decodeURIComponent(
         target.getAttribute("data-hover-content"),
       );
-      tooltip.innerHTML = content;
       tooltip.classList.remove("hidden");
 
       const rect = target.getBoundingClientRect();
-      tooltip.style.left = `${rect.left}px`;
-      tooltip.style.top = `${rect.bottom + 5}px`;
-
       const tooltipHeight = tooltip.offsetHeight;
-      const windowHeight = window.innerHeight;
+      const tooltipWidth = tooltip.offsetWidth;
 
-      let topPosition = rect.bottom + 2;
-      if (topPosition + tooltipHeight > windowHeight) {
-        topPosition = rect.top - tooltipHeight - 2;
+      let top = rect.bottom + 2;
+      if (top + tooltipHeight > window.innerHeight) {
+        top = rect.top - tooltipHeight - 2;
       }
-
-      tooltip.style.top = `${topPosition}px`;
+      const left = Math.max(
+        4,
+        Math.min(rect.left + 10, window.innerWidth - tooltipWidth - 4),
+      );
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
     };
 
     target.onmouseleave = () => {

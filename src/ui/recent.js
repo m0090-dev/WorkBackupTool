@@ -1,4 +1,5 @@
 import { recentFiles } from "../state";
+import { escapeHtml } from "./html.js";
 
 export function renderRecentFiles() {
   const list = document.getElementById("recent-list");
@@ -11,7 +12,8 @@ export function renderRecentFiles() {
   list.innerHTML = recentFiles
     .map((path) => {
       const fileName = path.split(/[\\/]/).pop();
-      return `<div class="recent-item" title="${path}" data-path="${path}"><i></i> ${fileName}</div>`;
+      const p = escapeHtml(path);
+      return `<div class="recent-item" title="${p}" data-path="${p}" data-close>${escapeHtml(fileName)}</div>`;
     })
     .join("");
 }

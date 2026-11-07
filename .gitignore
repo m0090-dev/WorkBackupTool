@@ -25,5 +25,6 @@ dist-ssr
 
 # Rust binaries 
 src-tauri/binaries/*
+src-tauri/target/*
 !src-tauri/binaries/android/
 !src-tauri/binaries/.gitkeep

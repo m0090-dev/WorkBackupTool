@@ -41,3 +41,46 @@
   --modal-input-bg: #252526;
   --modal-hover-bg: rgba(255, 255, 255, 0.05);
 }
+
+/* =============================================
+   新UI(mock2.html 準拠)のテーマ。OS のライト/ダーク設定に追従する
+   ============================================= */
+:root {
+  --font-size: 13px;
+
+  --bg: #f1efe8;
+  --card: #ffffff;
+  --panel: #f7f6f1;
+  --text: #1f1f1d;
+  --sub: #6b6a66;
+  --line: #e2e0d8;
+  --line-strong: #b9b7ad;
+  --primary: #1f1f1d;
+  --on-primary: #ffffff;
+  --sel: #e6f1fb;
+  --sel-text: #0c447c;
+  --sel-line: #85b7eb;
+  --red: #a32d2d;
+  --amber: #854f0b;
+  --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1a;
+    --card: #262624;
+    --panel: #2d2d2a;
+    --text: #ecebe6;
+    --sub: #a3a199;
+    --line: #3a3a37;
+    --line-strong: #55544f;
+    --primary: #ecebe6;
+    --on-primary: #1c1c1a;
+    --sel: #0c447c;
+    --sel-text: #b5d4f4;
+    --sel-line: #378add;
+    --red: #f09595;
+    --amber: #fac775;
+    --shadow-pop: 0 4px 14px rgba(0, 0, 0, 0.5);
+  }
+}
