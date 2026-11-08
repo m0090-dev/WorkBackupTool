@@ -313,7 +313,7 @@ export async function setupGlobalEvents() {
       return;
     }
 
-    if (id == "lock-mode-btn") {
+    if (id === "lock-mode-check") {
       if (!tab) return;
       tab.isLocked = !tab.isLocked;
       await UpdateDisplay();

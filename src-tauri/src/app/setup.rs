@@ -12,7 +12,7 @@ use crate::app::events;
 
 pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
     let window = app.get_webview_window("main").unwrap();
-    let initial_size = tauri::Size::Logical(tauri::LogicalSize::new(420.0, 520.0));
+    let initial_size = tauri::Size::Logical(tauri::LogicalSize::new(420.0, 340.0));
 
     #[cfg(desktop)]
     {
