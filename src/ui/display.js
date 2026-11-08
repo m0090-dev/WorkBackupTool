@@ -82,17 +82,20 @@ export async function UpdateDisplay() {
     compactComp.disabled = locked;
   }
   if (normalArchive) normalArchive.value = archiveFormat;
-  const lockBtn = document.getElementById("lock-mode-btn");
-  if (lockBtn) {
-    lockBtn.textContent = locked ? i18n.unlockShort : i18n.lockShort;
-    lockBtn.title = locked ? i18n.unlockMode : i18n.lockMode;
+  // ロック(モード設定パネル内のチェックボックス)
+  const lockCheck = document.getElementById("lock-mode-check");
+  if (lockCheck) lockCheck.checked = locked;
+  const lockHint = document.getElementById("lock-mode-hint");
+  if (lockHint) {
+    lockHint.textContent = locked ? i18n.lockHintOn : i18n.lockHintOff;
   }
   const isPass =
     mode === "archive" &&
     document.getElementById("archive-format")?.value === "zip-pass";
+
   // ツールバーのモード表示と、モード設定パネルの表示切替
-  const modeBtn = document.getElementById("mode-btn");
-  if (modeBtn) {
+  const modeSummary = document.getElementById("mode-summary");
+  if (modeSummary) {
     const modeTitles = {
       copy: i18n.fullCopyTitle,
       archive: i18n.archiveTitle,
@@ -102,20 +105,23 @@ export async function UpdateDisplay() {
       mode === "diff"
         ? compress
         : mode === "archive"
-          ? { zip: "ZIP", "zip-pass": "ZIP+PW", tar: "TAR.GZ" }[archiveFormat]
+          ? { zip: "ZIP", "zip-pass": "ZIP / Password", tar: "TAR.GZ" }[
+              archiveFormat
+            ]
           : "";
-    modeBtn.textContent = detail
+    modeSummary.textContent = detail
       ? `${modeTitles[mode]} / ${detail}`
       : modeTitles[mode];
-    modeBtn.title = i18n.modeButtonTip || "";
   }
   const modePanel = document.getElementById("mode-panel");
   if (modePanel) modePanel.dataset.mode = mode;
-  const pwdArea = document.querySelector(".password-wrapper");
+  // パスワード欄は「ZIP (Password)」のときだけ表示
+  const pwdArea = document.getElementById("password-area");
   if (pwdArea) {
-    pwdArea.style.opacity = isPass ? "1" : "0.3";
+    pwdArea.style.display = isPass ? "grid" : "none";
     document.getElementById("archive-password").disabled = !isPass;
   }
+
   const cFileEl = document.getElementById("compact-selected-file");
   if (cFileEl)
     cFileEl.textContent = tab.workFile

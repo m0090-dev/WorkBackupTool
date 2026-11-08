@@ -24,8 +24,9 @@
         <span class="sep"></span>
         <button id="note-btn">Note</button>
         <button id="refresh-diff-btn">Refresh</button>
-        <button id="mode-btn" class="info" data-popover="mode-panel">
-          Diff / zstd
+        <button id="mode-btn" class="mode-trigger" data-popover="mode-panel">
+          <span id="mode-summary">Diff / zstd</span>
+          <span class="caret">&#9660;</span>
         </button>
       </div>
       <div id="progress-container"><div id="progress-bar"></div></div>
@@ -40,20 +41,15 @@
       <div class="paths">
         <span id="label-target" class="muted">Work target:</span>
         <span id="selected-workfile" class="path-value">Not Selected</span>
-        <button id="workfile-btn" data-popover="target-menu">Change</button>
+        <button id="workfile-btn" class="small" data-popover="target-menu">
+          Change
+        </button>
         <span id="label-location" class="muted">Location:</span>
         <span id="selected-backupdir" class="path-value">Default Folder</span>
-        <button id="backupdir-btn">Change</button>
+        <button id="backupdir-btn" class="small">Change</button>
       </div>
 
       <div id="message-area" class="hidden"></div>
-
-      <div class="searchbar">
-        <input type="text" id="history-search" placeholder="Search..." />
-        <button id="search-clear-btn" class="search-clear-btn" title="Clear">
-          &times;
-        </button>
-      </div>
 
       <div class="table-wrap">
         <table class="history-table">
@@ -62,7 +58,22 @@
               <th id="col-date" class="col-date">Date</th>
               <th id="col-size" class="col-size right">Size</th>
               <th id="col-priority" class="col-priority">Priority</th>
-              <th id="col-note">Note</th>
+              <th id="col-note" class="col-note">
+                <div class="note-search">
+                  <input
+                    type="text"
+                    id="history-search"
+                    placeholder="Search notes"
+                  />
+                  <button
+                    id="search-clear-btn"
+                    class="search-clear-btn"
+                    title="Clear"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody id="diff-history-list"></tbody>
@@ -86,55 +97,88 @@
         </span>
       </div>
 
-      <div id="mode-panel" class="popover hidden" data-mode="diff">
-        <div class="seg">
-          <label>
-            <input type="radio" name="backupMode" value="copy" />
-            <span class="mode-title">Full Copy</span>
-          </label>
-          <label>
-            <input type="radio" name="backupMode" value="archive" />
-            <span class="mode-title">Archive</span>
-          </label>
-          <label>
-            <input type="radio" name="backupMode" value="diff" checked />
-            <span class="mode-title">Diff</span>
-          </label>
+      <div id="mode-panel" class="popover mode-popover hidden" data-mode="diff">
+        <div class="popover-head">
+          <span id="mode-panel-title">Backup mode</span>
+          <button id="mode-panel-close" type="button" data-close>Close</button>
         </div>
-        <div class="mode-detail" data-for="archive">
-          <select id="archive-format" class="mini-select">
-            <option value="zip">ZIP (Normal)</option>
-            <option value="zip-pass">ZIP (Password)</option>
-            <option value="tar">TAR.GZ</option>
-          </select>
-          <div id="password-area" class="password-wrapper">
-            <input
-              type="password"
-              id="archive-password"
-              class="mini-input"
-              placeholder="Enter password..."
-            />
+        <div class="mode-options">
+          <label class="mode-option">
+            <input type="radio" name="backupMode" value="copy" />
+            <span class="mode-option-copy">
+              <span class="mode-option-title">Full Copy</span>
+              <span class="mode-option-desc">Standard backup</span>
+            </span>
+          </label>
+
+          <label class="mode-option">
+            <input type="radio" name="backupMode" value="archive" />
+            <span class="mode-option-copy">
+              <span class="mode-option-title">Archive</span>
+              <span class="mode-option-desc">Compressed (ZIP/TAR)</span>
+            </span>
+          </label>
+          <div class="mode-settings" data-for="archive">
+            <div class="setting-row">
+              <span id="label-archive-format" class="setting-label"
+                >Format</span
+              >
+              <select id="archive-format" class="mini-select">
+                <option value="zip">ZIP (Normal)</option>
+                <option value="zip-pass">ZIP (Password)</option>
+                <option value="tar">TAR.GZ</option>
+              </select>
+            </div>
+            <div id="password-area" class="setting-row password-wrapper">
+              <span id="label-archive-password" class="setting-label"
+                >Password</span
+              >
+              <input
+                type="password"
+                id="archive-password"
+                class="mini-input"
+                placeholder="Enter password"
+              />
+            </div>
+          </div>
+
+          <label class="mode-option">
+            <input type="radio" name="backupMode" value="diff" checked />
+            <span class="mode-option-copy">
+              <span class="mode-option-title">Diff</span>
+              <span class="mode-option-desc">Save only changes</span>
+            </span>
+          </label>
+          <div class="mode-settings" data-for="diff">
+            <div class="setting-row">
+              <span id="label-diff-algo" class="setting-label">Algorithm</span>
+              <select id="diff-algo" class="mini-select">
+                <option value="hdiff">Hdiff</option>
+              </select>
+            </div>
+            <div class="setting-row">
+              <span id="label-diff-compress" class="setting-label"
+                >Compression</span
+              >
+              <select id="hdiff-compress" class="mini-select">
+                <option value="none">None (Uncompressed)</option>
+                <option value="zstd">Zstandard (zstd)</option>
+                <option value="lzma2">LZMA2</option>
+                <option value="lzma">LZMA</option>
+                <option value="zlib">zlib</option>
+                <option value="ldef">libdeflate (ldef)</option>
+                <option value="pbzip2">pbzip2</option>
+                <option value="bzip2">bzip2</option>
+              </select>
+            </div>
           </div>
         </div>
-        <div class="mode-detail" data-for="diff">
-          <select id="diff-algo" class="mini-select">
-            <option value="hdiff">Hdiff</option>
-          </select>
-          <select id="hdiff-compress" class="mini-select">
-            <option value="none">None (Uncompressed)</option>
-            <option value="zstd">Zstandard (zstd)</option>
-            <option value="lzma2">LZMA2</option>
-            <option value="lzma">LZMA</option>
-            <option value="zlib">zlib</option>
-            <option value="ldef">libdeflate (ldef)</option>
-            <option value="pbzip2">pbzip2</option>
-            <option value="bzip2">bzip2</option>
-          </select>
-        </div>
-        <div class="lock-row">
-          <button id="lock-mode-btn" class="icon-btn" title="Lock backup mode">
-            Lock
-          </button>
+        <div class="popover-footer">
+          <label class="lock-control">
+            <input type="checkbox" id="lock-mode-check" />
+            <span id="lock-mode-label">Lock mode</span>
+          </label>
+          <span id="lock-mode-hint" class="locked-hint">Can switch</span>
         </div>
       </div>
 

@@ -139,8 +139,15 @@
     "selectHistoryFirst": "Select a history entry first.",
     "noGeneration": "No generation",
     "modeButtonTip": "Backup mode and options",
-    "lockShort": "Lock",
-    "unlockShort": "Unlock"
+    "searchNotePlaceholder": "Search notes",
+    "settingFormat": "Format",
+    "settingPassword": "Password",
+    "settingAlgorithm": "Algorithm",
+    "settingCompression": "Compression",
+    "passwordPlaceholder": "Enter password",
+    "lockModeLabel": "Lock mode",
+    "lockHintOff": "Can switch",
+    "lockHintOn": "Locked"
   },
   "ja": {
     "settings": "設定",
@@ -282,7 +289,14 @@
     "selectHistoryFirst": "履歴を選択してください。",
     "noGeneration": "世代なし",
     "modeButtonTip": "バックアップモードとオプション",
-    "lockShort": "固定",
-    "unlockShort": "固定を解除"
+    "searchNotePlaceholder": "メモを検索",
+    "settingFormat": "形式",
+    "settingPassword": "パスワード",
+    "settingAlgorithm": "アルゴリズム",
+    "settingCompression": "圧縮",
+    "passwordPlaceholder": "パスワードを入力",
+    "lockModeLabel": "モードをロック",
+    "lockHintOff": "切替可能",
+    "lockHintOn": "ロック中"
   }
 }

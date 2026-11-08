@@ -119,12 +119,14 @@ function setupInitialUI() {
   setText("label-location", i18n.labelLocation);
   setText("label-recent", i18n.recentFilesTitle);
   setText("generation-archive-btn", i18n.generationArchive);
-  setPlaceholder("history-search", i18n.searchPlaceholder || "Search...");
+  setPlaceholder(
+    "history-search",
+    i18n.searchNotePlaceholder || i18n.searchPlaceholder || "Search...",
+  );
   setText("progress-status", i18n.processingMsg);
   setText("col-date", i18n.colDate);
   setText("col-size", i18n.colSize);
   setText("col-priority", i18n.colPriority);
-  setText("col-note", i18n.backupMemo);
   setTitle("add-tab-btn", i18n.addTabBtn || "Add New Tab");
   setTitle("search-clear-btn", i18n.cancel || "Clear");
 
@@ -135,18 +137,29 @@ function setupInitialUI() {
     targetMenuItems[1].textContent = i18n.targetMenuFolder;
   }
 
-  // バックアップモード(ポップオーバー内)
-  const titles = document.querySelectorAll("#mode-panel .mode-title");
-  if (titles.length >= 3) {
-    titles[0].textContent = i18n.fullCopyTitle;
-    titles[1].textContent = i18n.archiveTitle;
-    titles[2].textContent = i18n.diffTitle;
-    titles[0].title = i18n.fullCopyDesc || "";
-    titles[1].title = i18n.archiveDesc || "";
-    titles[2].title = i18n.diffDesc || "";
+  // バックアップモード設定パネル
+  const modeTitles = document.querySelectorAll(
+    "#mode-panel .mode-option-title",
+  );
+  const modeDescs = document.querySelectorAll("#mode-panel .mode-option-desc");
+  if (modeTitles.length >= 3 && modeDescs.length >= 3) {
+    modeTitles[0].textContent = i18n.fullCopyTitle;
+    modeDescs[0].textContent = i18n.fullCopyDesc;
+    modeTitles[1].textContent = i18n.archiveTitle;
+    modeDescs[1].textContent = i18n.archiveDesc;
+    modeTitles[2].textContent = i18n.diffTitle;
+    modeDescs[2].textContent = i18n.diffDesc;
   }
-  const lockBtn = document.getElementById("lock-mode-btn");
-  if (lockBtn) lockBtn.title = i18n.lockMode || "Lock backup mode";
+  setText("mode-panel-title", i18n.backupMode);
+  setText("mode-panel-close", i18n.closeBtn);
+  setText("label-archive-format", i18n.settingFormat);
+  setText("label-archive-password", i18n.settingPassword);
+  setText("label-diff-algo", i18n.settingAlgorithm);
+  setText("label-diff-compress", i18n.settingCompression);
+  setText("lock-mode-label", i18n.lockModeLabel);
+  setPlaceholder("archive-password", i18n.passwordPlaceholder);
+  const modeBtnEl = document.getElementById("mode-btn");
+  if (modeBtnEl) modeBtnEl.title = i18n.modeButtonTip || "";
 
   setText("drop-modal-title", i18n.dropModalTitle);
   setText("drop-set-workfile", i18n.dropSetWorkFile);

@@ -63,17 +63,27 @@
   background: var(--line-strong);
   margin: 0 4px;
 }
-.container .toolbar button.info {
+/* モード切替ボタン(押すとモード設定パネルが開く) */
+.container .toolbar button.mode-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin-left: auto;
-  max-width: 150px;
+  min-width: 0;
+  padding: 4px 7px;
+  color: var(--sub);
+  border-color: transparent;
+}
+.container .toolbar button.mode-trigger:hover {
+  border-color: var(--line);
+}
+.mode-trigger #mode-summary {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border-color: transparent;
-  color: var(--sub);
 }
-.container .toolbar button.info:hover {
-  color: var(--text);
+.mode-trigger .caret {
+  font-size: 9px;
 }
 
 /* --- 進捗バー(処理中だけ表示) --- */
@@ -146,6 +156,10 @@
 }
 
 /* --- 対象 / 保存先 --- */
+.container .paths button.small {
+  padding: 1px 8px;
+  font-size: 11px;
+}
 .paths {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -167,19 +181,16 @@
   font-weight: bold;
 }
 
-/* --- 検索 --- */
-.searchbar {
+/* --- 履歴テーブル --- */
+/* 検索欄は「メモ」列の見出しに置く(行を増やさないため) */
+.note-search {
   position: relative;
-  padding: 6px 10px;
-  border-bottom: 0.5px solid var(--line);
-  background: var(--card);
-  flex-shrink: 0;
 }
 #history-search {
   width: 100%;
   font: inherit;
-  font-size: 12px;
-  padding: 4px 24px 4px 8px;
+  font-size: 11px;
+  padding: 2px 16px 2px 5px;
   color: var(--text);
   background: var(--card);
   border: 0.5px solid var(--line-strong);
@@ -191,13 +202,13 @@
 }
 .container button.search-clear-btn {
   position: absolute;
-  right: 14px;
+  right: 2px;
   top: 50%;
   transform: translateY(-50%);
   border: none;
   background: none;
-  padding: 0 4px;
-  font-size: 16px;
+  padding: 0 3px;
+  font-size: 14px;
   line-height: 1;
   color: var(--sub);
   display: none;
@@ -206,7 +217,6 @@
   display: block;
 }
 
-/* --- 履歴テーブル --- */
 .table-wrap {
   flex: 1;
   min-height: 0;
@@ -245,13 +255,13 @@
   padding-left: 10px;
 }
 .col-date {
-  width: 36%;
+  width: 38%;
 }
 .col-size {
   width: 20%;
 }
 .col-priority {
-  width: 12%;
+  width: 10%;
 }
 .history-table tr.r {
   cursor: pointer;
@@ -337,6 +347,12 @@
   border-radius: 4px;
   box-shadow: var(--shadow-pop);
   font-size: 12px;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+#gen-list {
+  max-height: 170px;
+  overflow-y: auto;
 }
 .popover .menu-item {
   display: block;
@@ -389,69 +405,116 @@
   color: var(--sel-text);
 }
 
-/* --- バックアップモード(ポップオーバー内) --- */
-#mode-panel {
-  width: 260px;
+/* --- バックアップモード設定パネル(mock2_1.html 準拠) --- */
+.popover.mode-popover {
+  width: min(286px, calc(100vw - 14px));
+  max-width: none;
+  max-height: 200px;
+  padding: 10px;
 }
-.seg {
+.popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--sub);
+  font-size: 11px;
+}
+.mode-options {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border: 0.5px solid var(--line-strong);
-  border-radius: 4px;
-  overflow: hidden;
+  gap: 5px;
 }
-.seg label {
-  display: block;
-  position: relative;
+.mode-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 6px 7px;
+  border: 0.5px solid var(--line);
+  border-radius: 4px;
   cursor: pointer;
 }
-.seg label + label {
-  border-left: 0.5px solid var(--line);
-}
-.seg input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-.seg .mode-title {
-  display: block;
-  text-align: center;
-  padding: 5px 0;
-  color: var(--sub);
-}
-.seg input:checked + .mode-title {
+.mode-option:has(input:checked) {
   background: var(--sel);
-  color: var(--sel-text);
+  border-color: var(--line-strong);
 }
-.seg input:disabled + .mode-title {
-  opacity: 0.5;
-  cursor: not-allowed;
+.mode-option input {
+  margin: 2px 0 0;
+  accent-color: var(--primary);
 }
-.mode-detail {
-  display: none;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
+.mode-option-copy {
+  min-width: 0;
 }
-#mode-panel[data-mode="archive"] .mode-detail[data-for="archive"],
-#mode-panel[data-mode="diff"] .mode-detail[data-for="diff"] {
-  display: flex;
-}
-#mode-panel select,
-#mode-panel input[type="password"] {
-  width: 100%;
-  font: inherit;
+.mode-option-title {
+  display: block;
   font-size: 12px;
-  padding: 4px 6px;
-  color: var(--text);
-  background: var(--card);
-  border: 0.5px solid var(--line-strong);
+}
+.mode-option-desc {
+  display: block;
+  margin-top: 1px;
+  color: var(--sub);
+  font-size: 10px;
+}
+.mode-settings {
+  display: none;
+  margin: 0 0 0 22px;
+  padding: 8px;
+  background: var(--panel);
   border-radius: 4px;
 }
-.lock-row {
+#mode-panel[data-mode="archive"] .mode-settings[data-for="archive"],
+#mode-panel[data-mode="diff"] .mode-settings[data-for="diff"] {
+  display: block;
+}
+.setting-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.setting-row:first-child {
+  margin-top: 0;
+}
+.setting-label {
+  color: var(--sub);
+  font-size: 11px;
+}
+#mode-panel .mini-select,
+#mode-panel .mini-input {
+  min-width: 0;
+  width: 100%;
+  padding: 4px 6px;
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+}
+.popover-footer {
   display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--line);
+}
+.lock-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--sub);
+  font-size: 11px;
+  cursor: pointer;
+}
+.lock-control input {
+  accent-color: var(--primary);
+}
+.locked-hint {
+  color: var(--sub);
+  font-size: 10px;
 }
 
 /* --- タブ右クリックメニュー / メモのタグ削除メニューのショートカット表記 --- */
