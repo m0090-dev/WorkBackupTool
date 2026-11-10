@@ -1,0 +1,318 @@
+/**
+ * dialog.css
+ * ダイアログ(ドロップ時・メモ・世代圧縮・詳細設定)の共通スタイル。mock2_popup_1.html 準拠。
+ * ダイアログはウィンドウ全体を覆うオーバーレイの中央に表示する。
+ */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: rgba(20, 20, 18, 0.24);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 420px;
+  max-height: calc(100vh - 24px);
+  background: var(--card);
+  color: var(--text);
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+}
+
+.d-head {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  background: var(--panel);
+  border-bottom: 0.5px solid var(--line);
+  font-size: 12px;
+  color: var(--sub);
+}
+
+.d-body {
+  padding: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.d-foot {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--panel);
+  border-top: 0.5px solid var(--line);
+}
+
+.d-foot .hint {
+  margin-right: auto;
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.dialog button {
+  padding: 5px 12px;
+}
+
+.dialog .label,
+.label {
+  font-size: 12px;
+  color: var(--sub);
+}
+
+.dialog .path {
+  font-size: 12px;
+  padding: 6px 8px;
+  margin: 6px 0 10px;
+  background: var(--panel);
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.notice {
+  padding: 8px;
+  background: var(--panel);
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--red);
+}
+
+/* --- フォーム部品(ダイアログ内) --- */
+.dialog select,
+.dialog input[type="text"],
+.dialog input[type="number"],
+.dialog input[type="password"],
+.dialog textarea {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  color: var(--text);
+  background: var(--card);
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  min-width: 0;
+}
+
+.dialog select option {
+  background: var(--card);
+  color: var(--text);
+}
+
+.dialog input:focus,
+.dialog textarea:focus {
+  outline: 1px solid var(--sel-line);
+}
+
+/* --- 世代の圧縮 --- */
+.archive-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0 6px;
+}
+
+.archive-select-all {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.archive-scroll-list {
+  max-height: 140px;
+  overflow-y: auto;
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+}
+
+.archive-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 0.5px solid var(--line);
+  cursor: pointer;
+}
+
+.archive-item:last-child {
+  border-bottom: none;
+}
+
+.archive-item:hover {
+  background: var(--panel);
+}
+
+.archive-item .a-name {
+  display: block;
+  font-size: 12px;
+}
+
+.archive-item .a-time {
+  display: block;
+  font-size: 10px;
+  color: var(--sub);
+}
+
+.archive-empty {
+  padding: 14px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--sub);
+}
+
+/* --- 詳細設定 --- */
+.settings-tabs {
+  display: flex;
+  margin-bottom: 12px;
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dialog button.settings-tab-btn {
+  flex: 1;
+  border: none;
+  border-radius: 0;
+  color: var(--sub);
+}
+
+.dialog button.settings-tab-btn + .settings-tab-btn {
+  border-left: 0.5px solid var(--line);
+}
+
+.dialog button.settings-tab-btn.active {
+  background: var(--sel);
+  color: var(--sel-text);
+}
+
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-item > label,
+.settings-item .settings-name {
+  font-size: 12px;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.check-row input {
+  accent-color: var(--primary);
+}
+
+.settings-hint {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--sub);
+  white-space: pre-line;
+}
+
+.settings-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.settings-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px 2px 8px;
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--sub);
+}
+
+.dialog button.settings-tag-remove {
+  border: none;
+  padding: 0 4px;
+  color: var(--sub);
+}
+
+.taglist-add {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.taglist-add input {
+  flex: 1;
+}
+
+/* --- コンパクト画面(幅 320px)での調整 --- */
+body.compact-mode .dialog-overlay {
+  padding: 10px;
+}
+
+body.compact-mode .dialog {
+  max-width: 100%;
+  max-height: none; /* 高さはウィンドウ側がダイアログに合わせて伸びる */
+}
+
+body.compact-mode .d-body {
+  padding: 10px;
+  max-height: 240px;
+}
+
+body.compact-mode .d-foot {
+  padding: 8px;
+}
+
+body.compact-mode .d-foot button {
+  padding: 5px 10px;
+}
+
+/* ドロップ時: 3つのボタンを縦に並べる(作業対象を最上段) */
+body.compact-mode #drop-modal #drop-modal-label,
+body.compact-mode #drop-modal #drop-modal-instruction {
+  display: none;
+}
+
+body.compact-mode #drop-modal .path {
+  margin: 0;
+}
+
+body.compact-mode #drop-modal .d-foot {
+  flex-direction: column-reverse;
+  align-items: stretch;
+  padding: 0 10px 10px;
+  background: none;
+  border-top: none;
+}
+
+body.compact-mode #drop-modal .d-foot button {
+  width: 100%;
+}
+
+body.compact-mode #drop-modal #drop-cancel {
+  border-color: transparent;
+  color: var(--sub);
+}

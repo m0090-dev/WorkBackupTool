@@ -52,22 +52,35 @@ export async function SaveTags(tags) {
   await WriteTextFile(path, JSON.stringify(tags));
 }
 
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** メモ欄に #タグ が入っているか(単語として) */
+const tagPattern = (tag) => new RegExp(`(^|\\s)#${escapeRegExp(tag)}(?=\\s|$)`);
+
+const escapeHtml = (text) =>
+  String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+
 /**
- * 再利用可能なメモ入力ダイアログを表示する
+ * 再利用可能なメモ入力ダイアログを表示する(mock2_popup_1.html 準拠)
+ * options.time: 見出しに出すバックアップの時刻(例 "04:52")
  */
 export async function showMemoDialog(
   initialText = "",
   initialMeta = {},
   onSave,
+  options = {},
 ) {
   // 既存のダイアログがあれば削除
   const old = document.getElementById("memo-dialog-overlay");
   if (old) old.remove();
 
-  // オーバーレイの作成
-  const overlay = document.createElement("div");
-  overlay.id = "memo-dialog-overlay";
-  overlay.className = "memo-overlay";
+  const compact = document.body.classList.contains("compact-mode");
+  const TAG_LIMIT = 3; // コンパクト画面で最初に見せるタグの数
+  let expanded = false;
 
   // 定型文の初期読み込み
   let tags = await LoadTags();
@@ -75,104 +88,135 @@ export async function showMemoDialog(
   // i18n の安全な参照
   const t = {
     backupMemo: i18n?.backupMemo || "Note",
+    addTag: i18n?.tagAddBtn || "+",
     addTagTitle: i18n?.addTagTitle || "Add Tag",
     memoPlaceholder: i18n?.memoPlaceholder || "...",
     cancel: i18n?.cancel || "Cancel",
     save: i18n?.save || "Save",
     enterNewTag: i18n?.enterNewTag || "Enter tag content",
-    delete: i18n?.delete || "Delete", // 削除ボタン用
+    delete: i18n?.delete || "Delete",
     markLabel: i18n?.priorityLabel || "Priority",
-    markNone: i18n?.priorityNone || "None",
-    markLow: i18n?.priorityLow || "Low",
-    markMid: i18n?.priorityMid || "Mid",
-    markHigh: i18n?.priorityHigh || "High",
+    marks: [
+      i18n?.priorityNone || "None",
+      i18n?.priorityLow || "Low",
+      i18n?.priorityMid || "Mid",
+      i18n?.priorityHigh || "High",
+    ],
+    hint: i18n?.memoHint || "Ctrl+Enter to save",
   };
+  const title =
+    !compact && options.time && i18n?.memoDialogTitle
+      ? i18n.memoDialogTitle.replace("{time}", options.time)
+      : t.backupMemo;
 
-  // ダイアログのHTML構造
+  const overlay = document.createElement("div");
+  overlay.id = "memo-dialog-overlay";
+  overlay.className = "dialog-overlay";
   overlay.innerHTML = `
-        <div class="memo-dialog">
-            <div class="memo-dialog-header"> ${t.backupMemo}</div>
-	    <div class="memo-mark-container">
-  <span class="memo-mark-label">${t.markLabel}</span>
-  <button class="mark-btn active" data-mark="0">${t.markNone}</button>
-  <button class="mark-btn" data-mark="1">${t.markLow}</button>
-  <button class="mark-btn" data-mark="2">${t.markMid}</button>
-  <button class="mark-btn" data-mark="3">${t.markHigh}</button>
-</div>
-            <div class="memo-tag-container">
-                <div id="dialog-tag-list" style="display:inline-block;"></div>
-                <button id="dialog-tag-add-btn" class="tag-add-btn" title="${t.addTagTitle}">+</button>
-            </div>
-            <textarea id="dialog-memo-input" class="memo-textarea" rows="3" placeholder="${t.memoPlaceholder}"></textarea>
-            <div class="memo-dialog-footer">
-                <button id="memo-cancel-btn" class="memo-btn-secondary">${t.cancel}</button>
-                <button id="memo-save-btn" class="memo-btn-primary">${t.save}</button>
-            </div>
+    <div class="dialog memo-dialog">
+      <div class="d-head">${escapeHtml(title)}</div>
+      <div class="d-body">
+        ${compact ? "" : `<span class="label">${escapeHtml(t.markLabel)}</span>`}
+        <div class="seg">
+          ${t.marks
+            .map(
+              (label, i) =>
+                `<div class="seg-item" data-mark="${i}">${escapeHtml(label)}</div>`,
+            )
+            .join("")}
         </div>
-    `;
-
+        <div id="dialog-tag-list" class="tags"></div>
+        <div id="tag-inline-slot"></div>
+        <textarea id="dialog-memo-input" class="memo-textarea" rows="${compact ? 2 : 3}" placeholder="${escapeHtml(t.memoPlaceholder)}"></textarea>
+      </div>
+      <div class="d-foot">
+        ${compact ? "" : `<span class="hint">${escapeHtml(t.hint)}</span>`}
+        <button id="memo-cancel-btn">${escapeHtml(t.cancel)}</button>
+        <button id="memo-save-btn" class="primary">${escapeHtml(t.save)}</button>
+      </div>
+    </div>
+  `;
   document.body.appendChild(overlay);
 
   const input = overlay.querySelector("#dialog-memo-input");
   const tagList = overlay.querySelector("#dialog-tag-list");
+  const slot = overlay.querySelector("#tag-inline-slot");
+  const segItems = overlay.querySelectorAll(".seg-item");
 
   input.value = initialText;
-  input.focus();
 
-  // --- ヘルパー：既存のカスタムメニューを消去 ---
-  const removeContextMenu = () => {
+  // --- 優先度 ---
+  const initialMark = initialMeta?.mark ?? 0;
+  segItems.forEach((item) => {
+    item.classList.toggle("on", parseInt(item.dataset.mark) === initialMark);
+    item.onclick = (e) => {
+      e.stopPropagation();
+      removeContextMenu();
+      segItems.forEach((o) => o.classList.remove("on"));
+      item.classList.add("on");
+    };
+  });
+
+  // --- ヘルパー:右クリックメニューの消去 ---
+  function removeContextMenu() {
     const existing = document.getElementById("tag-context-menu");
     if (existing) existing.remove();
-  };
+  }
 
-  // --- タグリストの描画 ---
-  const renderTags = () => {
+  // --- タグの描画(クリックで #タグ をメモ欄に入れる/外す) ---
+  function renderTags() {
     tagList.innerHTML = "";
-    tags.forEach((tag, index) => {
-      const span = document.createElement("span");
-      span.className = "tag-item";
-      span.innerText = `#${tag}`;
+    const limited = compact && !expanded && tags.length > TAG_LIMIT;
+    const shown = limited ? tags.slice(0, TAG_LIMIT) : tags;
 
-      // 左クリック：タグ挿入
+    shown.forEach((tag) => {
+      const span = document.createElement("span");
+      const re = tagPattern(tag);
+      span.className = re.test(input.value) ? "on" : "";
+      span.textContent = `#${tag}`;
+
       span.onclick = (e) => {
         e.stopPropagation();
         removeContextMenu();
-        const val = input.value.trim();
-        input.value = val ? `${val} #${tag}` : `#${tag}`;
+        if (re.test(input.value)) {
+          input.value = input.value
+            .replace(re, "$1")
+            .replace(/[ \t]{2,}/g, " ")
+            .trim();
+        } else {
+          const val = input.value.trim();
+          input.value = val ? `${val} #${tag}` : `#${tag}`;
+        }
         input.focus();
+        renderTags();
       };
 
-      // 右クリック：カスタムコンテキストメニュー表示
+      // 右クリック:タグの削除メニュー
       span.oncontextmenu = (e) => {
         e.preventDefault();
         e.stopPropagation();
         removeContextMenu();
 
-        // メニュー生成
         const menu = document.createElement("div");
         menu.id = "tag-context-menu";
-        menu.className = "tab-context-menu"; // ご提示のCSSクラスを使用
+        menu.className = "tab-context-menu";
         menu.style.left = `${e.clientX}px`;
         menu.style.top = `${e.clientY}px`;
 
-        // 削除アイテム生成
         const delItem = document.createElement("div");
-        delItem.className = "tab-menu-item danger"; // 赤色強調スタイル
-        delItem.innerHTML = `<span>${t.delete}</span><span class="tab-menu-shortcut">#${tag}</span>`;
-
+        delItem.className = "tab-menu-item danger";
+        delItem.innerHTML = `<span>${escapeHtml(t.delete)}</span><span class="tab-menu-shortcut">#${escapeHtml(tag)}</span>`;
         delItem.onclick = async (ev) => {
           ev.stopPropagation();
-          tags.splice(index, 1);
+          tags = tags.filter((x) => x !== tag);
           await SaveTags(tags);
           renderTags();
           removeContextMenu();
-          if (input) input.focus();
+          input.focus();
         };
-
         menu.appendChild(delItem);
         document.body.appendChild(menu);
 
-        // メニュー以外をクリックしたら閉じる
         const closeMenu = () => {
           removeContextMenu();
           document.removeEventListener("click", closeMenu);
@@ -182,78 +226,51 @@ export async function showMemoDialog(
 
       tagList.appendChild(span);
     });
-  };
 
-  renderTags();
-  const initialMark = initialMeta?.mark ?? 0;
-  overlay.querySelectorAll(".mark-btn").forEach((btn) => {
-    btn.classList.toggle("active", parseInt(btn.dataset.mark) === initialMark);
-  });
-  overlay.querySelectorAll(".mark-btn").forEach((btn) => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      removeContextMenu();
-      overlay
-        .querySelectorAll(".mark-btn")
-        .forEach((b) => b.classList.remove("active"));
-      btn.classList.add("active");
-    };
-  });
-  overlay.querySelector("#memo-save-btn").onclick = (e) => {
-    e.stopPropagation();
-    const mark = parseInt(
-      overlay.querySelector(".mark-btn.active")?.dataset.mark ?? "0",
-    );
-    if (onSave) onSave(input.value.trim(), { mark });
-    removeContextMenu();
-    overlay.remove();
-  };
-
-  // --- 入力欄などのイベント保護（メニュー消去を兼ねる） ---
-  input.addEventListener("contextmenu", (e) => {
-    e.stopPropagation();
-    removeContextMenu();
-    return true;
-  });
-
-  input.onclick = (e) => {
-    e.stopPropagation();
-    removeContextMenu();
-  };
-
-  overlay.querySelector("#dialog-tag-add-btn").onclick = async (e) => {
-    e.stopPropagation();
-    removeContextMenu();
-
-    // 既存のインライン入力があれば削除
-    const existingInput = overlay.querySelector("#tag-inline-input-container");
-    if (existingInput) {
-      existingInput.remove();
-      return;
+    // コンパクト画面: 残りのタグは「他 N 件」で展開
+    if (limited) {
+      const more = document.createElement("span");
+      more.className = "more";
+      more.textContent = (i18n?.tagsMore || "{count} more").replace(
+        "{count}",
+        tags.length - TAG_LIMIT,
+      );
+      more.onclick = (e) => {
+        e.stopPropagation();
+        expanded = true;
+        renderTags();
+      };
+      tagList.appendChild(more);
     }
 
-    // インライン入力欄を生成
-    const container = document.createElement("div");
-    container.id = "tag-inline-input-container";
-    container.style.cssText = "display:flex; gap:4px; margin-top:6px;";
+    // タグの追加
+    const add = document.createElement("span");
+    add.className = "more";
+    add.textContent = t.addTag;
+    add.title = t.addTagTitle;
+    add.onclick = (e) => {
+      e.stopPropagation();
+      removeContextMenu();
+      openInlineTagInput();
+    };
+    tagList.appendChild(add);
+  }
 
+  function openInlineTagInput() {
+    if (slot.firstChild) {
+      slot.innerHTML = "";
+      return;
+    }
+    const box = document.createElement("div");
+    box.className = "tag-inline-add";
     const tagInput = document.createElement("input");
     tagInput.type = "text";
     tagInput.placeholder = t.enterNewTag;
-    tagInput.style.cssText =
-      "flex:1; background:#252526; border:1px solid #444; color:#eee; padding:4px 8px; border-radius:4px; font-size:11px; outline:none;";
-
     const confirmBtn = document.createElement("button");
-    confirmBtn.textContent = "✓";
-    confirmBtn.style.cssText =
-      "background:#3498db; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;";
-
-    container.appendChild(tagInput);
-    container.appendChild(confirmBtn);
-
-    // タグリストの下に挿入
-    const tagContainer = overlay.querySelector(".memo-tag-container");
-    tagContainer.after(container);
+    confirmBtn.textContent = "OK";
+    box.appendChild(tagInput);
+    box.appendChild(confirmBtn);
+    slot.appendChild(box);
     tagInput.focus();
 
     const addTag = async () => {
@@ -261,36 +278,67 @@ export async function showMemoDialog(
       if (val && !tags.includes(val)) {
         tags.push(val);
         await SaveTags(tags);
+        expanded = true;
         renderTags();
       }
-      container.remove();
+      slot.innerHTML = "";
     };
-
     confirmBtn.onclick = (ev) => {
       ev.stopPropagation();
       addTag();
     };
     tagInput.addEventListener("keydown", (ev) => {
+      ev.stopPropagation();
       if (ev.key === "Enter") {
         ev.preventDefault();
         addTag();
       }
-      if (ev.key === "Escape") container.remove();
+      if (ev.key === "Escape") slot.innerHTML = "";
     });
+  }
+
+  renderTags();
+  input.addEventListener("input", renderTags);
+  input.addEventListener("contextmenu", (e) => {
+    e.stopPropagation();
+    removeContextMenu();
+  });
+  input.onclick = (e) => {
+    e.stopPropagation();
+    removeContextMenu();
   };
 
-  // --- ダイアログのボタン操作 ---
-  overlay.querySelector("#memo-cancel-btn").onclick = (e) => {
-    e.stopPropagation();
+  // --- 保存 / キャンセル ---
+  const close = () => {
     removeContextMenu();
     overlay.remove();
   };
-
-  // 外側クリックで閉じる
-  overlay.onclick = (e) => {
-    if (e.target === overlay) {
-      removeContextMenu();
-      overlay.remove();
-    }
+  const save = () => {
+    const mark = parseInt(
+      overlay.querySelector(".seg-item.on")?.dataset.mark ?? "0",
+    );
+    if (onSave) onSave(input.value.trim(), { mark });
+    close();
   };
+  overlay.querySelector("#memo-save-btn").onclick = (e) => {
+    e.stopPropagation();
+    save();
+  };
+  overlay.querySelector("#memo-cancel-btn").onclick = (e) => {
+    e.stopPropagation();
+    close();
+  };
+  overlay.onclick = (e) => {
+    if (e.target === overlay) close();
+  };
+  overlay.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      save();
+    } else if (e.key === "Escape") {
+      close();
+    }
+  });
+
+  input.focus();
 }

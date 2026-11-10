@@ -61,87 +61,63 @@ html {
   pointer-events: none;
 }
 
-/* 履歴リスト専用の詳細ポップアップ */
-.history-tooltip {
+/* ツールチップ(履歴の行・タブ)。新UIのテーマ変数に合わせる */
+.history-tooltip,
+.tab-tooltip {
   position: fixed;
-  z-index: 9999;
-  background: #111; /* タブポップアップと統一 */
-  color: var(--modal-text-main);
-  padding: 10px 14px;
+  z-index: 10000;
+  max-width: 300px;
+  padding: 7px 10px;
+  background: var(--card);
+  color: var(--text);
+  border: 0.5px solid var(--line-strong);
   border-radius: 4px;
+  box-shadow: var(--shadow-pop);
   font-size: 11px;
-  max-width: 400px;
-  word-break: break-all;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
-  transition: opacity 0.15s ease;
   line-height: 1.5;
-  border: 1px solid #444;
-  animation: tabTooltipFadeIn 0.15s ease-out; /* アニメーションも共通化 */
+  word-break: break-all;
+  pointer-events: none;
+  animation: tooltipFadeIn 0.15s ease-out;
 }
 
 .history-tooltip.hidden {
   display: none;
-  opacity: 0;
 }
 
-/* ラベル部分（Path: や BackupMemo: など） */
 .history-tooltip strong {
-  color: var(--modal-accent); /* メモのボタン等と同じ水色に統一 */
+  color: var(--sel-text);
 }
 
-/* 区切り線(hr)の調整 */
 .history-tooltip hr {
   border: 0;
-  border-top: 1px solid #333;
-  margin: 8px 0;
+  border-top: 0.5px solid var(--line);
+  margin: 6px 0;
 }
 
-/* コンパクトなタブ用ポップアップ */
-.tab-tooltip {
-  position: fixed;
-  z-index: 10000;
-  background: #111;
-  border: 1px solid #444;
-  border-radius: 4px;
-  padding: 8px 12px; /* わずかに余裕を持たせて視認性アップ */
-  color: var(--modal-text-main);
-  font-size: 11px;
-  pointer-events: none; /* マウスイベントを透過させて操作を邪魔しない */
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-  max-width: 320px; /* ダイアログ幅に合わせて調整 */
-  line-height: 1.5;
-  animation: tabTooltipFadeIn 0.15s ease-out; /* アニメーション名を具体化 */
-  white-space: normal;
-  /* Windows/Mac でフォントを綺麗に見せる */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* タブ名（タイトル部分） */
-.tab-tooltip b {
-  color: var(--modal-accent);
+.tooltip-title {
   display: block;
-  margin-bottom: 4px;
-  border-bottom: 1px solid #333; /* 境界線を薄く入れてセクションを分ける */
+  margin-bottom: 3px;
   padding-bottom: 2px;
-  letter-spacing: 0.02em;
+  border-bottom: 0.5px solid var(--line);
+  color: var(--sel-text);
+  font-weight: bold;
 }
 
-/* フルパス表示（コード風） */
 .tab-tooltip code {
-  font-family: "Consolas", "Monaco", "Courier New", monospace;
-  color: #88ee88; /* ターミナル風の馴染む緑 */
-  word-break: break-all; /* 長いパスを途中で折り返す */
   display: block;
-  opacity: 0.9;
+  font-family: "Consolas", "Monaco", "Courier New", monospace;
+  color: var(--sub);
+  word-break: break-all;
 }
 
-/* フェードインアニメーションの定義 */
-@keyframes tabTooltipFadeIn {
+.tooltip-mode {
+  color: var(--amber);
+}
+
+@keyframes tooltipFadeIn {
   from {
     opacity: 0;
-    transform: translateY(-4px); /* 上からふわっと降りてくる演出 */
+    transform: translateY(-3px);
   }
   to {
     opacity: 1;

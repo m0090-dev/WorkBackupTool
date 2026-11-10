@@ -1,6 +1,15 @@
 import { i18n } from "../state";
 
 let isExecuting = false;
+// コンパクト画面の状態表示(処理中でないときに出す文言。UpdateHistory が更新する)
+let idleStatus = "";
+
+export function setCompactIdleStatus(text) {
+  idleStatus = text || "";
+  if (isExecuting) return;
+  const el = document.getElementById("compact-last-status");
+  if (el) el.textContent = idleStatus;
+}
 
 /** バックアップ/復元などの処理中かどうか(履歴更新時に実行ボタンの有効化判定で使う) */
 export function isBackupExecuting() {
@@ -15,7 +24,7 @@ export function toggleProgress(show, text = "") {
   const status = document.getElementById("progress-status");
   const btn = document.getElementById("execute-backup-btn");
   const cBar = document.getElementById("compact-progress-bar");
-  const cSts = document.getElementById("compact-status-label");
+  const cSts = document.getElementById("compact-last-status");
   const cBtn = document.getElementById("compact-execute-btn");
 
   if (show) {
@@ -38,7 +47,7 @@ export function toggleProgress(show, text = "") {
       if (container) container.style.display = "none";
       if (status) status.style.display = "none";
       if (btn) btn.removeAttribute("disabled");
-      if (cSts) cSts.textContent = readyText;
+      if (cSts) cSts.textContent = idleStatus || readyText;
       if (cBar) cBar.style.width = "0%";
       if (cBtn) cBtn.removeAttribute("disabled");
     }, 500);

@@ -1,6 +1,7 @@
 import { GetGenerationFolders } from "../tauri_exports";
 import { i18n, getActiveTab } from "../state";
 import { showFloatingError } from "./messages.js";
+import { escapeHtml } from "./html.js";
 
 export async function showArchiveModal() {
   const tab = getActiveTab();
@@ -30,22 +31,19 @@ export async function showArchiveModal() {
     archiveCandidates.sort((a, b) => b.generation - a.generation);
 
     if (archiveCandidates.length === 0) {
-      listContainer.innerHTML = `
-        <div style="font-size:11px; color:#888; text-align:center; padding:15px;">
-          ${i18n.noArchiveCandidates || "No folders available to archive."}
-        </div>`;
+      listContainer.innerHTML = `<div class="archive-empty">${escapeHtml(i18n.noArchiveCandidates || "No folders available to archive.")}</div>`;
       document.getElementById("archive-execute-btn").disabled = true;
     } else {
       listContainer.innerHTML = archiveCandidates
         .map(
           (c) => `
         <label class="archive-item">
-          <input type="checkbox" class="archive-gen-check" 
-                 value="${c.filePath}" 
+          <input type="checkbox" class="archive-gen-check"
+                 value="${escapeHtml(c.filePath)}"
                  data-gen="${c.generation}">
-          <div style="display:flex; flex-direction:column; text-align:left;">
-            <span style="font-weight:bold; color:#fff;">${i18n.generationLabel}.${c.generation}</span>
-            <span style="font-size:10px; color:#bbb;">${c.timestamp}</span>
+          <div>
+            <span class="a-name">${escapeHtml(i18n.generationLabel)} ${c.generation}</span>
+            <span class="a-time">${escapeHtml(c.timestamp)}</span>
           </div>
         </label>
       `,

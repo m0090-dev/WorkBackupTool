@@ -1,4 +1,5 @@
 import { i18n, tabs } from "../state";
+import { escapeHtml } from "./html.js";
 import { switchTab, removeTab, reorderTabs } from "../actions";
 
 //TODO: Drag and drop関係はtauri v2が修整されたら正常動作するはず
@@ -166,12 +167,10 @@ function setupTabTooltip(el, tab) {
     tooltip = document.createElement("div");
     tooltip.className = "tab-tooltip";
     tooltip.innerHTML = `
-      <div style="margin-bottom:4px;"><b>${fileName}</b></div>
-      <div style="font-size:10px; opacity:0.8; line-height: 1.4;">
-        <b>${i18n.labelWorkFile}</b> <code>${workPath}</code><br>
-        <b>${i18n.labelLocation}</b> <code>${backupPath}</code><br>
-        <b>${i18n.backupMode}:</b> <span style="color:#ffd700">${mode.toUpperCase()}</span>
-      </div>
+      <span class="tooltip-title">${escapeHtml(fileName)}</span>
+      <b>${escapeHtml(i18n.labelWorkFile)}</b> <code>${escapeHtml(workPath)}</code>
+      <b>${escapeHtml(i18n.labelLocation)}</b> <code>${escapeHtml(backupPath)}</code>
+      <b>${escapeHtml(i18n.backupMode)}:</b> <span class="tooltip-mode">${escapeHtml(mode.toUpperCase())}</span>
     `;
 
     document.body.appendChild(tooltip);

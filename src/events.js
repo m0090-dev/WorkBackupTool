@@ -33,6 +33,10 @@ import {
   selectHistoryRow,
   initPopovers,
   closePopovers,
+  setCompactHistoryMode,
+  resetCompactHeight,
+  initCompactAutoSize,
+  UpdateAllUI,
 } from "./ui";
 
 import { addTab, OnExecute, switchTab } from "./actions";
@@ -53,6 +57,7 @@ const preventDefault = (e) => {
 export async function setupGlobalEvents() {
   window.addEventListener("dragenter", preventDefault, true);
   initPopovers();
+  initCompactAutoSize();
 
   // 直近に選んだ作業対象の種別(トレイメニューからの変更時に使う)
   let lastWorkTargetType = "file";
@@ -61,13 +66,7 @@ export async function setupGlobalEvents() {
   // typeOverride: "file" | "folder"(通常画面のメニューから)。未指定ならコンパクト画面の選択か直近の種別
   const handleSelectWorkFile = async (typeOverride) => {
     const tab = getActiveTab();
-    let targetType = typeOverride;
-    if (!targetType) {
-      const sel = document.body.classList.contains("compact-mode")
-        ? document.getElementById("compact-work-type-select")
-        : null;
-      targetType = sel ? sel.value : lastWorkTargetType;
-    }
+    const targetType = typeOverride || lastWorkTargetType;
     lastWorkTargetType = targetType;
 
     let res;
@@ -136,6 +135,11 @@ export async function setupGlobalEvents() {
   // 履歴のメモ編集(ツールバーの「メモ」/行のダブルクリック)
   const openNoteEditor = async (path) => {
     const notePath = path + ".note";
+    // 見出しに出すバックアップの時刻(履歴の行の「MM/DD HH:mm」の時刻部分)
+    const row = Array.from(
+      document.querySelectorAll("#diff-history-list tr.r"),
+    ).find((tr) => tr.getAttribute("data-path") === path);
+    const time = (row?.getAttribute("data-time") || "").split(" ").pop();
     let currentText = "";
     let currentMeta = { mark: 0 };
 
@@ -164,6 +168,7 @@ export async function setupGlobalEvents() {
           showFloatingError(i18n.memoSaveError);
         }
       },
+      { time },
     );
   };
 
@@ -188,7 +193,9 @@ export async function setupGlobalEvents() {
     }
 
     // 履歴の行(Ctrl/⌘ クリックで複数選択)
-    const historyRow = e.target.closest("#diff-history-list tr.r");
+    const historyRow = e.target.closest(
+      "#diff-history-list tr.r, #compact-history-list tr.r",
+    );
     if (historyRow) {
       selectHistoryRow(
         historyRow.getAttribute("data-path"),
@@ -207,7 +214,7 @@ export async function setupGlobalEvents() {
     }
 
     // ツールバーの「メモ」
-    if (id === "note-btn") {
+    if (id === "note-btn" || id === "compact-note-btn") {
       const paths = getSelectedPaths();
       if (paths.length !== 1) {
         showFloatingError(i18n.selectHistoryFirst);
@@ -227,10 +234,22 @@ export async function setupGlobalEvents() {
       return;
     }
 
-    if (id === "compact-workfile-btn") {
-      await handleSelectWorkFile();
+    // コンパクト画面: タブの切り替え / 履歴表示の切り替え
+    const compactTab = e.target.closest(".compact-tab-item");
+    if (compactTab) {
+      await switchTab(Number(compactTab.getAttribute("data-tab-id")));
       return;
-    } else if (id === "backupdir-btn") {
+    }
+    if (id === "compact-history-btn") {
+      setCompactHistoryMode(true);
+      return;
+    }
+    if (id === "compact-back-btn") {
+      setCompactHistoryMode(false);
+      return;
+    }
+
+    if (id === "backupdir-btn") {
       await handleSelectBackupDir();
       return;
     } else if (id === "execute-backup-btn" || id === "compact-execute-btn") {
@@ -240,7 +259,7 @@ export async function setupGlobalEvents() {
     } else if (id === "refresh-diff-btn") {
       UpdateHistory();
       return;
-    } else if (id === "apply-selected-btn") {
+    } else if (id === "apply-selected-btn" || id === "compact-restore-btn") {
       e.preventDefault();
       e.stopPropagation();
       const targets = getSelectedPaths();
@@ -313,9 +332,9 @@ export async function setupGlobalEvents() {
       return;
     }
 
-    if (id === "lock-mode-check") {
+    if (id === "lock-mode-check" || id === "compact-lock-mode-check") {
       if (!tab) return;
-      tab.isLocked = !tab.isLocked;
+      tab.isLocked = target.checked;
       await UpdateDisplay();
       saveCurrentSession();
     }
@@ -329,7 +348,9 @@ export async function setupGlobalEvents() {
 
   // 履歴の行をダブルクリックでメモ編集
   window.addEventListener("dblclick", async (e) => {
-    const row = e.target.closest("#diff-history-list tr.r");
+    const row = e.target.closest(
+      "#diff-history-list tr.r, #compact-history-list tr.r",
+    );
     if (!row) return;
     const path = row.getAttribute("data-path");
     selectHistoryRow(path, false);
@@ -338,22 +359,20 @@ export async function setupGlobalEvents() {
 
   // --- 変更イベントリスナー ---
   document.addEventListener("change", async (e) => {
-    const id = e.target.id;
-    const name = e.target.name;
+    // コンパクト画面の設定部品は、通常画面と同じ扱いにそろえる("compact-" を外す)
+    const id = (e.target.id || "").replace(/^compact-/, "");
+    const name =
+      e.target.name === "compactBackupMode" ? "backupMode" : e.target.name;
     const value = e.target.value;
     const tab = getActiveTab();
 
-    if (id === "compact-tab-select") {
-      switchTab(Number(value));
-      return;
-    }
     if (name == "diff-algo") {
       if (tab) tab.diffAlgo = value;
     }
     if (name === "backupMode") {
       if (tab) tab.backupMode = value;
     }
-    if (id === "hdiff-compress" || id === "compact-hdiff-compress") {
+    if (id === "hdiff-compress") {
       if (tab) tab.compressMode = value;
     }
     if (id == "archive-format") {
@@ -363,25 +382,25 @@ export async function setupGlobalEvents() {
       ["backupMode", "archive-format"].includes(name) ||
       id === "archive-format" ||
       id === "diff-algo" ||
-      id === "hdiff-compress" ||
-      id === "compact-hdiff-compress"
+      id === "hdiff-compress"
     ) {
       await UpdateDisplay();
       saveCurrentSession();
-    }
-    if (id === "compact-mode-select") {
-      const radio = document.querySelector(
-        `input[name="backupMode"][value="${value}"]`,
-      );
-      if (radio) {
-        radio.checked = true;
-        if (tab) tab.backupMode = value;
-      }
     }
     if (id == "archive-select-all-check") {
       const checks = document.querySelectorAll(".archive-gen-check");
       checks.forEach((c) => (c.checked = e.target.checked));
     }
+  });
+
+  // ZIPパスワード欄は通常画面とコンパクト画面で同じ値を共有する
+  document.addEventListener("input", (e) => {
+    const pair = {
+      "archive-password": "compact-archive-password",
+      "compact-archive-password": "archive-password",
+    }[e.target.id];
+    const other = pair && document.getElementById(pair);
+    if (other) other.value = e.target.value;
   });
 
   window.addEventListener("contextmenu", (e) => {
@@ -442,11 +461,19 @@ export async function setupGlobalEvents() {
     if (isCompact) {
       document.body.classList.add("compact-mode");
       if (view) view.classList.remove("hidden");
-      if (typeof UpdateDisplay === "function") await UpdateDisplay();
+      await UpdateAllUI();
+      resetCompactHeight();
     } else {
       document.body.classList.remove("compact-mode");
+      document.body.classList.remove("frameless");
+      setCompactHistoryMode(false);
       if (view) view.classList.add("hidden");
     }
+  });
+
+  // トレイから開いた枠なしウィンドウでは、移動用のバーを出す
+  EventsOn("compact-frameless", (isFrameless) => {
+    document.body.classList.toggle("frameless", !!isFrameless);
   });
 
   EventsOn("open-advanced-settings", async () => {

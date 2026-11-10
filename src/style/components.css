@@ -1,336 +1,100 @@
 /**
  * components.css
- * 再利用可能な部品（ボタン、タブ、ポップアップ、モーダル等）
+ * 画面をまたいで使う小さな部品(右クリックメニュー、通知メッセージ、起動オーバーレイ)。
+ * 配色は variables.css の新テーマ変数を使う。
  */
 
-/* --- ボタン共通 --- */
-.mini-btn {
-  padding: 2px 8px;
-  font-size: 10px;
-  height: 20px;
-  background: #4a5a71;
-  border: none;
-  color: white;
-  border-radius: 3px;
-  cursor: pointer;
-}
-.mini-btn:hover {
-  background: var(--primary-blue);
-}
-
-.execute-btn {
-  width: 100%;
-  height: 38px;
-  background-color: var(--success-green);
-  color: white;
-  border: none;
-  font-weight: 900;
-  font-size: 12px;
-  border-radius: 6px;
-  box-shadow: 0 2px 0 #1e5c3a;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.execute-btn:active {
-  transform: translateY(2px);
-  box-shadow: none;
-}
-.execute-btn:disabled {
-  background-color: #ccc !important;
-  cursor: not-allowed;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-/* --- タブ操作専用 コンテキストメニュー --- */
+/* --- 右クリックメニュー(タブ・メモのタグ) --- */
 .tab-context-menu {
   position: fixed;
   z-index: 10000;
-  background: #1e1e1e; /* タブバーの背景に近い色 */
-  border: 1px solid #333;
-  border-radius: 4px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
-  padding: 4px 0;
   min-width: 150px;
+  padding: 4px 0;
+  background: var(--card);
+  color: var(--text);
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  box-shadow: var(--shadow-pop);
+  font-size: 12px;
   user-select: none;
-  font-family: sans-serif;
 }
 
 .tab-menu-item {
-  padding: 8px 15px;
-  font-size: 12px;
-  color: #ccc;
-  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition:
-    background 0.15s,
-    color 0.15s;
+  padding: 6px 12px;
+  color: var(--text);
+  cursor: pointer;
 }
 
 .tab-menu-item:hover {
-  background: #383838;
-  color: #fff;
+  background: var(--panel);
 }
 
-/* 削除ボタンなどは色を変えて強調 */
 .tab-menu-item.danger {
-  color: #ff5555;
-}
-
-.tab-menu-item.danger:hover {
-  background: #442222;
-  color: #ff8888;
+  color: var(--red);
 }
 
 .tab-menu-separator {
-  height: 1px;
-  background: #333;
+  height: 0.5px;
   margin: 4px 0;
+  background: var(--line);
 }
 
-/* --- メッセージエリア --- */
+/* --- 通知メッセージ(画面上部に数秒だけ表示) --- */
 #message-area {
-  position: fixed; /* absoluteよりfixedの方が画面全体に対して浮くので確実 */
-  top: 20px; /* 少し上に詰めるとコンパクトモードでも見やすい */
+  position: fixed;
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
-  width: 240px;
-  padding: 10px; /* 少し余裕を持たせる */
-  background-color: var(--success-green);
-  color: #fff;
-  font-size: 11px;
+  width: min(280px, calc(100vw - 24px));
+  padding: 8px 10px;
+  background: var(--primary);
+  color: var(--on-primary);
+  font-size: 12px;
   text-align: center;
-  border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5); /* 影を強くして浮かせる */
-  z-index: 99999 !important; /* 何が何でも最前面に出す */
-  pointer-events: none; /* メッセージ越しに下のボタンが押せるようにする */
+  border-radius: 4px;
+  box-shadow: var(--shadow-pop);
+  z-index: 99999;
+  pointer-events: none; /* メッセージ越しに下のボタンを押せるようにする */
 }
 
-/* 表示・非表示の切り替え（JSのclassListと連動） */
 #message-area.hidden {
   display: none !important;
 }
 
-/* エラー時の色を強制 */
 #message-area.error {
-  background-color: #d32f2f !important;
-  color: #ffffff !important;
+  background: var(--red);
+  color: var(--on-primary);
 }
 
-/* --- モーダル部品 --- */
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  -webkit-backdrop-filter: blur(2px);
-  backdrop-filter: blur(2px);
-}
-
-.modal-content {
-  background: var(--modal-bg);
-  padding: 20px;
-  border-radius: 8px;
-  width: 320px;
-  border: 1px solid var(--modal-border);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  text-align: center;
-  animation: modal-pop 0.3s ease-out;
-  color: var(--modal-text-main);
-}
-.modal-content h3 {
-  color: var(--modal-text-main); /* #eeeeee */
-  margin-top: 0;
-  margin-bottom: 15px;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-@keyframes modal-pop {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.path-display {
-  font-size: 10px;
-  background: #111;
-  padding: 10px;
-  border-radius: 4px;
-  border: 1px solid #444;
-  margin: 12px 0;
-  text-align: left;
-  font-family: monospace;
-  word-break: break-all;
-  color: var(--modal-text-main);
-}
-
-.modal-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-/* --- ボタンデザイン：メモの質感に完全統合 --- */
-
-.modal-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  font-size: 12px;
-  transition: all 0.2s;
-  outline: none;
-}
-
-/* メインボタン：メモの primary と同じ馴染む水色 */
-.modal-btn.primary {
-  background: var(--modal-accent);
-  color: white;
-}
-.modal-btn.primary:hover {
-  background: #2980b9;
-}
-
-/* セカンダリボタン：メモのタグのような馴染むデザイン */
-.modal-btn.secondary {
-  background: #2c3e50;
-  color: var(--modal-accent);
-  border: 1px solid #34495e;
-}
-.modal-btn.secondary:hover {
-  background: var(--modal-accent);
-  color: white;
-  border-color: #5dade2;
-}
-
-/* キャンセルボタン：メモの secondary（枠線のみ） */
-.modal-btn.cancel {
-  background: transparent;
-  color: var(--modal-text-dim);
-  border: 1px solid #444;
-}
-.modal-btn.cancel:hover {
-  background: var(--modal-hover-bg);
-  color: var(--modal-text-main);
-  border-color: #666;
-}
-
-/* --- 世代アーカイブモーダル専用スタイル --- */
-
-/* 警告ボックス：背景を少し暗めの赤にして文字を読みやすく */
-.archive-warning {
-  font-size: 11px;
-  color: #ff8a8a;
-  background: rgba(211, 47, 47, 0.15);
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(211, 47, 47, 0.3);
-  margin-bottom: 15px;
-  text-align: left;
-  line-height: 1.4;
-}
-
-.archive-list-container {
-  text-align: left;
-  margin-bottom: 15px;
-}
-
-.archive-list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.archive-select-all {
-  font-size: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--modal-text-main);
-}
-
-/* スクロールリスト：内側の背景を調整 */
-.archive-scroll-list {
-  max-height: 180px;
-  overflow-y: auto;
-  border: 1px solid var(--modal-border);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 5px;
-}
-
-/* JSで追加される各アイテムのスタイル（ui.jsのinnerHTMLに合わせて調整） */
-.archive-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px;
-  cursor: pointer;
-  font-size: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background 0.2s;
-}
-
-.archive-item:hover {
-  background: var(--modal-hover-bg);
-}
-
-.archive-item:last-child {
-  border-bottom: none;
-}
-
-/* --- 起動時オーバーレイのスタイル --- */
+/* --- 起動時オーバーレイ --- */
 .startup-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: #1e1e1e; /* アプリのメイン背景色に合わせる */
+  inset: 0;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999; /* 全てのUI、モーダルより上に配置 */
+  background-color: var(--bg);
+  z-index: 9999;
   transition: opacity 0.4s ease-out;
-  pointer-events: all; /* 背後の操作を完全にブロック */
+  pointer-events: all; /* 背後の操作をブロック */
 }
 
 .loader-container {
   text-align: center;
-  max-width: 400px;
+  max-width: 360px;
   width: 80%;
 }
 
-/* スタイリッシュな円形スピン */
 .loader-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-left-color: #0078d4; /* アクセントカラー */
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line);
+  border-left-color: var(--sel-line);
   border-radius: 50%;
-  margin: 0 auto 24px;
+  margin: 0 auto 18px;
   animation: startup-spin 1s linear infinite;
 }
 
@@ -341,94 +105,18 @@
 }
 
 .loader-title {
-  color: #ffffff;
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 8px;
-  letter-spacing: 0.05em;
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 6px;
 }
 
 .loader-status {
-  color: #aaaaaa;
-  font-size: 0.9rem;
+  color: var(--sub);
+  font-size: 12px;
   margin-bottom: 4px;
 }
 
 .loader-sub {
-  color: #666666;
-  font-size: 0.75rem;
-}
-
-/* 非表示用クラス */
-.startup-overlay.hidden {
-  opacity: 0;
-  pointer-events: none;
-  /* 実際のアニメーション後にJSで display:none にする */
-}
-
-/* --- 詳細設定モーダル専用スタイル --- */
-.settings-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid #333;
-  padding-bottom: 8px;
-}
-
-.settings-tab-btn {
-  background: #2c3e50;
-  color: #999;
-  border: 1px solid #34495e;
-  padding: 4px 12px;
-  border-radius: 4px 4px 0 0;
+  color: var(--sub);
   font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.settings-tab-btn:hover {
-  background: #3498db;
-  color: white;
-}
-
-.settings-tab-btn.active {
-  background: #3498db;
-  color: white;
-  border-color: #5dade2;
-}
-
-.settings-pages {
-  min-height: 80px;
-}
-
-.settings-page {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.settings-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.settings-item label {
-  font-size: 12px;
-  color: var(--modal-text-main);
-}
-
-.settings-hint {
-  font-size: 10px;
-  color: var(--modal-text-dim);
-  line-height: 1.4;
-}
-
-/* --- index.html のインラインstyleから移した指定(モーダル幅) --- */
-#archive-modal .modal-content {
-  width: 380px;
-}
-
-#settings-modal .modal-content {
-  width: 360px;
 }

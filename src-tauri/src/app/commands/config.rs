@@ -153,6 +153,12 @@ pub async fn toggle_compact_mode(window: WebviewWindow, is_compact: bool) -> Res
     utils::apply_compact_mode(&window, is_compact).map_err(|e| e.to_string())
 }
 
+/// コンパクト/トレイ表示の高さを中身に合わせて変更する(幅は変えない)
+#[tauri::command]
+pub async fn set_window_height(window: WebviewWindow, height: f64) -> Result<(), String> {
+    utils::apply_window_height(&window, height).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn toggle_window_visibility(app: AppHandle, show: bool) -> Result<(), String> {
     utils::apply_window_visibility(app, show)

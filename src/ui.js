@@ -14,6 +14,13 @@ export {
   updateSelectionUI,
 } from "./ui/history.js";
 export { initPopovers, closePopovers } from "./ui/popover.js";
+export {
+  UpdateCompact,
+  setCompactHistoryMode,
+  syncCompactHeight,
+  resetCompactHeight,
+  initCompactAutoSize,
+} from "./ui/compact.js";
 export { showArchiveModal } from "./ui/archive-modal.js";
 export {
   showSettingsModal,

@@ -14,7 +14,7 @@ pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Re
         window.set_max_size(None::<Size>)?;
     }
     let (width, height, title) = if is_compact {
-        (300.0, 260.0, "WorkBackupTool (Compact mode)")
+        (320.0, 96.0, "WorkBackupTool (Compact mode)")
     } else {
         (420.0, 340.0, "WorkBackupTool")
     };
@@ -50,7 +50,7 @@ pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> taur
         window.set_always_on_top(true)?; // 最前面
         window.set_skip_taskbar(true)?; // タスクバーに出さない
 
-        let size = Size::Logical(LogicalSize::new(300.0, 210.0));
+        let size = Size::Logical(LogicalSize::new(320.0, 120.0));
         window.set_size(size)?;
         window.set_min_size(Some(size))?;
         window.set_max_size(Some(size))?;
@@ -140,4 +140,22 @@ pub fn create_tray_menu<R: tauri::Runtime>(
         .separator()
         .item(&tauri::menu::MenuItemBuilder::with_id("quit", t("quit")).build(app)?)
         .build()
+}
+
+/// コンパクト/トレイ表示の高さを、中身に合わせて変更する(幅はそのまま)。
+/// 高さは JS 側(ui/compact.js)が測った値を渡す。
+pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result<()> {
+    let scale = window.scale_factor()?;
+    let width = window.inner_size()?.width as f64 / scale;
+    let new_size = Size::Logical(LogicalSize::new(width, height.clamp(60.0, 700.0)));
+
+    #[cfg(desktop)]
+    {
+        window.set_min_size(None::<Size>)?;
+        window.set_max_size(None::<Size>)?;
+        window.set_size(new_size)?;
+        window.set_min_size(Some(new_size))?;
+        window.set_max_size(Some(new_size))?;
+    }
+    Ok(())
 }

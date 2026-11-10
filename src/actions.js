@@ -158,10 +158,17 @@ export async function OnExecute() {
     const showMemo = await GetShowMemoAfterBackup();
     if (showMemo && newFilePath) {
       const notePath = newFilePath + ".note";
-      showMemoDialog("", { mark: 0 }, async (newText, newMeta) => {
-        await WriteTextFile(notePath, serializeNote(newText, newMeta));
-        UpdateHistory();
-      });
+      const now = new Date();
+      const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      showMemoDialog(
+        "",
+        { mark: 0 },
+        async (newText, newMeta) => {
+          await WriteTextFile(notePath, serializeNote(newText, newMeta));
+          UpdateHistory();
+        },
+        { time },
+      );
     }
     await UpdateAllUI();
     return successText;

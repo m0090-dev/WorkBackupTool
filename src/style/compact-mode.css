@@ -1,307 +1,233 @@
 /**
  * compact-mode.css
- * モード切り替えルールとコンパクト表示専用のスタイル
+ * コンパクト画面(幅 320px)。mock2_1.html のコンパクト版に準拠。
+ * ウィンドウの高さは中身に合わせて JS(ui/compact.js)が自動調整する。
  */
 
-/* =============================================
-   1. モード切り替えの絶対ルール (通常モード抹消)
-   ============================================= */
+/* モード切り替えの絶対ルール: コンパクト時は通常画面を隠す */
 #compact-view {
   display: none !important;
 }
 
-body.compact-mode .container,
-body.compact-mode .status-panel,
-body.compact-mode .tabs-bar,
-body.compact-mode .main-grid {
+body.compact-mode .container {
   display: none !important;
 }
 
-/* =============================================
-   2. コンパクトモード基盤 (Windowsサイズ補正)
-   ============================================= */
-body.compact-mode {
-  color: #eee; /* 工程3bでコンパクト画面を作り直すまで従来の文字色を維持 */
-  background-color: var(--bg-light) !important;
-  width: 100% !important;
-  height: 100% !important;
-  overflow: hidden !important;
-  margin: 0;
-}
-
 body.compact-mode #compact-view {
-  display: flex !important;
-  flex-direction: column;
-  width: 100%;
-  height: 100%;
-  /* Windowsのタイトルバー干渉を避けるためpadding-bottomをさらに強化 */
-  padding: 4px 6px 8px 6px;
-  box-sizing: border-box;
-  gap: 4px;
-  position: relative;
-  overflow: hidden !important;
+  display: block !important;
+  background: var(--card);
+  color: var(--text);
+  font-size: 12px;
 }
 
-/* =============================================
-   3. 最近使ったファイルのポップアップ (被り防止)
-   ============================================= */
-body.compact-mode .recent-files-section {
-  position: absolute;
-  /* ボタンの下ではなく「上」に展開させて実行ボタンを隠さないようにする */
-  bottom: 75px;
-  left: 8px;
-  right: 8px;
-  width: auto;
-  max-height: 100px;
-  z-index: 10000;
-  background: #ffffff;
-  border: 2px solid var(--primary-blue);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+/* 枠なしウィンドウ(トレイから開いたとき)だけ、移動用のバーを出す */
+.c-dragbar {
   display: none;
+  padding: 5px 8px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--sub);
+  background: var(--panel);
+  border-bottom: 0.5px solid var(--line);
+  user-select: none;
+  cursor: grab;
 }
 
-/* =============================================
-   4. ドラッグ＆ドロップモーダル (超コンパクト化 + パス表示調整)
-   ============================================ */
-body.compact-mode .modal-overlay {
-  position: fixed; /* absoluteではなくfixedで画面全体を覆う */
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.85);
-  z-index: 20000;
+body.frameless .c-dragbar {
+  display: block;
+}
+
+/* --- 通常のコンパクト表示 --- */
+.c-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 5px;
+  gap: 6px;
+  padding: 7px 8px;
 }
 
-body.compact-mode .modal-content {
-  width: 90%;
-  max-width: 260px;
-  max-height: 95vh; /* 文字がつぶれないよう、全体の許容高さを少し緩和 */
-  overflow-y: auto;
-  padding: 8px;
-  margin: 0;
+#compact-view button.c-name {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  border-radius: 4px;
-}
-
-body.compact-mode .modal-content h2,
-body.compact-mode .modal-content h3 {
-  font-size: 11px;
-  margin: 0;
-  line-height: 1.2;
-}
-
-/* --- パス表示エリアの調整 (横スクロール対応) --- */
-body.compact-mode .path-display {
-  font-size: 10px;
-  background: #e9ecef;
-  padding: 6px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  margin: 4px 0;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  padding: 4px 6px;
+  border-color: transparent;
   text-align: left;
-  font-family: monospace;
-  color: #111;
-  line-height: 1.3;
-  /* 横スクロールの設定 */
-  white-space: nowrap; /* 改行させない */
-  overflow-x: auto; /* 横スクロールを有効に */
-  display: block; /* block要素として扱う */
-  min-height: 24px;
 }
 
-/* スクロールバーの見た目をコンパクトに (Wails/WebView2用) */
-body.compact-mode .path-display::-webkit-scrollbar {
-  height: 4px;
-}
-body.compact-mode .path-display::-webkit-scrollbar-thumb {
-  background: #ccc;
-  border-radius: 10px;
+#compact-view button.c-name:hover {
+  border-color: var(--line);
 }
 
-body.compact-mode .modal-buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin-top: 2px;
-}
-
-body.compact-mode .modal-btn {
-  padding: 6px 2px;
-  font-size: 10px;
-  height: 30px; /* 少し高さを戻して押しやすく */
-  line-height: 1;
-}
-
-/* =============================================
-   5. パーツ再調整 (バックアップモード幅拡大)
-   ============================================= */
-.compact-header {
-  display: flex;
-  justify-content: space-between;
-}
-.compact-title-text {
-  font-size: 7px;
-  font-weight: bold;
-  color: var(--primary-blue);
-}
-
-#compact-selected-file {
-  font-size: 9px;
-  padding: 3px 5px;
-  background: #fff;
-  border: 1px solid #ccd0d5;
-  white-space: nowrap;
+.c-name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.compact-control-group {
-  display: flex;
-  gap: 6px;
+.caret {
+  font-size: 9px;
+  color: var(--sub);
 }
 
-#compact-mode-select {
-  flex: 2;
-  font-size: 11px;
-  height: 28px;
-  border: 1px solid #ccd0d5;
-}
-
-#compact-workfile-btn {
-  flex: 1;
-  height: 22px;
-  font-size: 10px;
-}
-
-/* =============================================
-   6. 実行エリア (底上げ固定)
-   ============================================= */
-.compact-footer {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-bottom: 5px;
-}
-
-#compact-execute-btn {
-  width: 100%;
-  height: 30px;
-  background-color: var(--success-green);
-  color: white;
-  border: none;
-  font-weight: 900;
-  font-size: 13px;
-  border-radius: 6px;
-  box-shadow: 0 2px 0 #1e5c3a;
-}
-.compact-row {
-  margin-bottom: 2px !important; /* 8px → 4px */
-}
-
-/* =============================================
-   7. index.html のインラインstyleから移した指定
-   (既存の #id ルールと同じ詳細度のため、末尾に置いて従来の優先順位を保つ)
-   ※ .compact-row の margin-bottom は上の !important が従来から有効だったため移していない
-   ============================================= */
-.compact-tab-row {
-  padding: 0 10px;
-  margin-top: 8px;
-}
-
-#compact-tab-select {
-  width: 100%;
-  height: 26px;
-  font-size: 11px;
-}
-
-#compact-progress-area {
-  margin-bottom: 10px;
-}
-
-#compact-status-label {
-  font-size: 10px;
-  margin-bottom: 2px;
-  text-align: left;
-}
-
-.compact-progress-bg {
-  height: 6px;
-  background: #333;
-  border-radius: 3px;
+.c-progress {
+  height: 2px;
+  background: var(--line);
 }
 
 #compact-progress-bar {
   height: 100%;
   width: 0%;
-  background: #4caf50;
+  background: var(--sel-line);
   transition: width 0.2s;
 }
 
-#compact-selected-file {
-  font-size: 11px;
-  color: #fff;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 4px;
-  border-radius: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.compact-type-row {
+.c-status {
   display: flex;
-  gap: 4px;
-  margin-top: 6px;
   align-items: center;
-}
-
-#compact-work-type-select {
-  flex: 0 0 auto;
-  width: 70px;
-  height: 26px;
+  gap: 5px;
+  padding: 4px 8px;
+  background: var(--panel);
   font-size: 11px;
-  padding: 2px 4px;
+  color: var(--sub);
 }
 
-#compact-workfile-btn {
+#compact-last-status {
   flex: 1;
   min-width: 0;
-  padding: 4px 6px;
-  font-size: 11px;
-  height: 26px;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.compact-select-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-#compact-mode-select {
-  width: 100%;
-  padding: 4px;
-}
-
-#compact-hdiff-compress {
-  width: 100%;
-  padding: 4px;
+#compact-view .c-status button.mode-trigger {
+  margin-left: auto;
+  padding: 2px 5px;
   font-size: 10px;
 }
 
-#compact-execute-btn {
-  width: 100%;
-  padding: 8px 0;
-  font-weight: bold;
+/* --- 履歴表示(「履歴」ボタンで切り替え) --- */
+.c-history {
+  display: none;
+}
+
+#compact-view.history-mode .c-normal {
+  display: none;
+}
+
+#compact-view.history-mode .c-history {
+  display: block;
+}
+
+.c-history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 0.5px solid var(--line);
+}
+
+.c-history-title {
+  font-size: 12px;
+}
+
+.c-history-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.c-history-head button {
+  padding: 3px 8px;
+  font-size: 11px;
+}
+
+.c-history-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  font-size: 10px;
+  color: var(--sub);
+  border-bottom: 0.5px solid var(--line);
+}
+
+#compact-history-info {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.c-table-wrap {
+  max-height: 160px;
+  overflow: auto;
+}
+
+.history-table.compact {
+  font-size: 11px;
+}
+
+.history-table.compact th {
+  padding: 5px 4px;
+  font-size: 10px;
+}
+
+.history-table.compact td {
+  padding: 6px 4px;
+}
+
+.history-table.compact th:first-child,
+.history-table.compact td:first-child {
+  padding-left: 8px;
+}
+
+.history-table.compact .c-date {
+  width: 36%;
+}
+
+.history-table.compact .c-size {
+  width: 20%;
+}
+
+.history-table.compact .c-priority {
+  width: 13%;
+}
+
+.history-table.compact .c-memo {
+  width: 31%;
+}
+
+.c-history-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 5px 8px;
+  background: var(--panel);
+  border-top: 0.5px solid var(--line);
+  font-size: 10px;
+  color: var(--sub);
+}
+
+/* パネル内のタブ一覧 */
+.compact-tab-item {
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compact-tab-item:hover {
+  background: var(--panel);
+}
+
+.compact-tab-item.on {
+  background: var(--sel);
+  color: var(--sel-text);
 }

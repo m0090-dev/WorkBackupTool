@@ -1,7 +1,7 @@
 import { GetBackupList, ReadTextFile } from "../tauri_exports";
 import { i18n, getActiveTab, formatSize } from "../state";
 import { parseNoteContent } from "../memo.js";
-import { isBackupExecuting } from "./progress.js";
+import { isBackupExecuting, setCompactIdleStatus } from "./progress.js";
 import { escapeHtml, escapeRegExp } from "./html.js";
 
 // --- 選択状態(履歴テーブルの行) ---
@@ -50,6 +50,12 @@ export function updateSelectionUI() {
     restoreBtn.disabled = count === 0;
   }
   if (status) status.textContent = statusText;
+
+  // コンパクト画面の履歴表示
+  const cRestore = document.getElementById("compact-restore-btn");
+  if (cRestore) cRestore.disabled = count === 0;
+  const cStatus = document.getElementById("compact-selection-status");
+  if (cStatus) cStatus.textContent = statusText;
 }
 
 /** 行をクリックしたときの選択処理。additive=true(Ctrl/⌘クリック)で複数選択 */
@@ -61,19 +67,40 @@ export function selectHistoryRow(path, additive = false) {
     selected.clear();
     selected.add(path);
   }
-  document.querySelectorAll("#diff-history-list tr.r").forEach((tr) => {
-    tr.classList.toggle("sel", selected.has(tr.dataset.path));
-  });
+  document
+    .querySelectorAll("#diff-history-list tr.r, #compact-history-list tr.r")
+    .forEach((tr) => {
+      tr.classList.toggle("sel", selected.has(tr.dataset.path));
+    });
   updateSelectionUI();
 }
 
-function setMeta({ count = 0, genText = "", size = 0 }) {
+function setMeta({ count = 0, genText = "", size = 0, name = "" }) {
   const countEl = document.getElementById("history-count");
   const genBtn = document.getElementById("gen-btn");
   const sizeEl = document.getElementById("history-size");
-  if (countEl) countEl.textContent = fillTemplate(i18n.statusCount, { count });
+  const countText = fillTemplate(i18n.statusCount, { count });
+  if (countEl) countEl.textContent = countText;
   if (genBtn) genBtn.textContent = genText;
   if (sizeEl) sizeEl.textContent = formatSize(size);
+
+  // コンパクト画面: 「ファイル名 · N 件 · サイズ」+ 世代ボタン
+  const cInfo = document.getElementById("compact-history-info");
+  if (cInfo) {
+    cInfo.textContent = [name, countText, formatSize(size)]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  const cGen = document.getElementById("compact-gen-btn");
+  if (cGen) cGen.textContent = genText;
+}
+
+/** 履歴の行を通常画面とコンパクト画面の両方に反映する */
+function setRows(html) {
+  const list = document.getElementById("diff-history-list");
+  const cList = document.getElementById("compact-history-list");
+  if (list) list.innerHTML = html;
+  if (cList) cList.innerHTML = html;
 }
 
 function messageRow(text, isError = false) {
@@ -96,7 +123,8 @@ export async function UpdateHistory() {
   if (clearBtn) clearBtn.classList.toggle("visible", searchTerm.length > 0);
 
   if (!tab?.workFile) {
-    list.innerHTML = messageRow(i18n.selectFileFirst);
+    setRows(messageRow(i18n.selectFileFirst));
+    setCompactIdleStatus(i18n.readyStatus);
     selected.clear();
     setMeta({ genText: i18n.noGeneration });
     updateSelectionUI();
@@ -145,12 +173,15 @@ export async function UpdateHistory() {
           ? [{ gen: 0, label: i18n.genStandalone, badge: "" }]
           : []),
       ];
-      genList.innerHTML = entries
+      const genHtml = entries
         .map(
           (e) =>
             `<div class="gen-item${e.gen === view ? " on" : ""}" data-gen="${e.gen}" data-close>${escapeHtml(e.label)}${e.badge ? `<span class="badge">${escapeHtml(e.badge)}</span>` : ""}</div>`,
         )
         .join("");
+      genList.innerHTML = genHtml;
+      const cGenList = document.getElementById("compact-gen-list");
+      if (cGenList) cGenList.innerHTML = genHtml;
     }
 
     // 検索中は全世代を対象にする。それ以外は選択中の世代だけ
@@ -187,6 +218,7 @@ export async function UpdateHistory() {
     else if (view != null)
       genText = `${i18n.generationLabel} ${view}${view === latest ? " ★" : ""}`;
     setMeta({
+      name: tab.workFile.split(/[\\/]/).pop(),
       count: visible.length,
       genText,
       size: visible.reduce((sum, i) => sum + (i.fileSize || 0), 0),
@@ -209,35 +241,50 @@ export async function UpdateHistory() {
     };
 
     if (visible.length === 0) {
-      list.innerHTML = messageRow(i18n.noHistory);
+      setRows(messageRow(i18n.noHistory));
     } else {
-      list.innerHTML = visible
-        .map((item) => {
-          const time = shortTime(item.timestamp);
-          const mark = item.mark || 0;
-          const markCell =
-            mark > 0
-              ? `<td class="${markClasses[mark] || ""}">${escapeHtml(markLabels[mark] || "")}</td>`
-              : `<td class="muted">-</td>`;
-          const firstLine = (item.note || "").split("\n")[0];
-          const genLabel =
-            (item.generation || 0) === 0
-              ? i18n.genStandalone
-              : `${i18n.generationLabel} ${item.generation}${item.isArchived ? ` (${i18n.genArchived})` : ""}`;
-          const tip =
-            `<strong>${escapeHtml(item.fileName)}</strong><br>` +
-            `${escapeHtml(item.timestamp)} · ${escapeHtml(genLabel)}<br>` +
-            `<strong>Path:</strong> ${escapeHtml(item.filePath)}` +
-            (mark > 0
-              ? `<br><strong>${escapeHtml(i18n.priorityLabel)}:</strong> ${escapeHtml(markLabels[mark])}`
-              : "") +
-            (item.note
-              ? `<hr><strong>${escapeHtml(i18n.backupMemo)}:</strong> ${escapeHtml(item.note)}`
-              : "");
-          return `<tr class="r${selected.has(item.filePath) ? " sel" : ""}" data-path="${escapeHtml(item.filePath)}" data-time="${escapeHtml(time)}" data-hover-content="${encodeURIComponent(tip)}"><td>${escapeHtml(time)}</td><td class="right">${formatSize(item.fileSize)}</td>${markCell}<td class="muted">${highlight(firstLine)}</td></tr>`;
-        })
-        .join("");
+      setRows(
+        visible
+          .map((item) => {
+            const time = shortTime(item.timestamp);
+            const mark = item.mark || 0;
+            const markCell =
+              mark > 0
+                ? `<td class="${markClasses[mark] || ""}">${escapeHtml(markLabels[mark] || "")}</td>`
+                : `<td class="muted">-</td>`;
+            const firstLine = (item.note || "").split("\n")[0];
+            const genLabel =
+              (item.generation || 0) === 0
+                ? i18n.genStandalone
+                : `${i18n.generationLabel} ${item.generation}${item.isArchived ? ` (${i18n.genArchived})` : ""}`;
+            const tip =
+              `<strong>${escapeHtml(item.fileName)}</strong><br>` +
+              `${escapeHtml(item.timestamp)} · ${escapeHtml(genLabel)}<br>` +
+              `<strong>Path:</strong> ${escapeHtml(item.filePath)}` +
+              (mark > 0
+                ? `<br><strong>${escapeHtml(i18n.priorityLabel)}:</strong> ${escapeHtml(markLabels[mark])}`
+                : "") +
+              (item.note
+                ? `<hr><strong>${escapeHtml(i18n.backupMemo)}:</strong> ${escapeHtml(item.note)}`
+                : "");
+            return `<tr class="r${selected.has(item.filePath) ? " sel" : ""}" data-path="${escapeHtml(item.filePath)}" data-time="${escapeHtml(time)}" data-hover-content="${encodeURIComponent(tip)}"><td>${escapeHtml(time)}</td><td class="right">${formatSize(item.fileSize)}</td>${markCell}<td class="muted">${highlight(firstLine)}</td></tr>`;
+          })
+          .join(""),
+      );
     }
+
+    // コンパクト画面の「前回」表示(最新の履歴)
+    const newest = [...items].sort((a, b) =>
+      b.timestamp.localeCompare(a.timestamp),
+    )[0];
+    setCompactIdleStatus(
+      newest
+        ? fillTemplate(i18n.compactLast, {
+            time: shortTime(newest.timestamp),
+            size: formatSize(newest.fileSize),
+          })
+        : i18n.readyStatus,
+    );
     updateSelectionUI();
 
     // 実行ボタン: 処理中でなければ有効化
@@ -248,9 +295,8 @@ export async function UpdateHistory() {
     setupHistoryPopups();
   } catch (err) {
     console.error(err);
-    list.innerHTML = messageRow(
-      `Error: ${err.message || err || "loading history"}`,
-      true,
+    setRows(
+      messageRow(`Error: ${err.message || err || "loading history"}`, true),
     );
   }
 }
@@ -258,7 +304,9 @@ export async function UpdateHistory() {
 function setupHistoryPopups() {
   const tooltip =
     document.getElementById("history-tooltip") || createTooltipElement();
-  const targets = document.querySelectorAll("#diff-history-list tr.r");
+  const targets = document.querySelectorAll(
+    "#diff-history-list tr.r, #compact-history-list tr.r",
+  );
 
   targets.forEach((target) => {
     target.onmouseenter = () => {

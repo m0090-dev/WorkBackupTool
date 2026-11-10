@@ -49,8 +49,6 @@
         <button id="backupdir-btn" class="small">Change</button>
       </div>
 
-      <div id="message-area" class="hidden"></div>
-
       <div class="table-wrap">
         <table class="history-table">
           <thead>
@@ -110,7 +108,6 @@
               <span class="mode-option-desc">Standard backup</span>
             </span>
           </label>
-
           <label class="mode-option">
             <input type="radio" name="backupMode" value="archive" />
             <span class="mode-option-copy">
@@ -141,9 +138,8 @@
               />
             </div>
           </div>
-
           <label class="mode-option">
-            <input type="radio" name="backupMode" value="diff" checked />
+            <input type="radio" name="backupMode" value="diff" />
             <span class="mode-option-copy">
               <span class="mode-option-title">Diff</span>
               <span class="mode-option-desc">Save only changes</span>
@@ -205,107 +201,196 @@
       </div>
     </div>
 
-    <div id="drop-modal" class="modal-overlay hidden">
-      <div class="modal-content">
-        <h4 id="drop-modal-title">File/Folder Dropped</h4>
-        <p id="drop-modal-path" class="path-display"></p>
-        <p id="drop-modal-instruction">Please select the target type:</p>
-        <div class="modal-buttons">
-          <button id="drop-set-workfile" class="modal-btn primary">
-            Set as Work File
-          </button>
-          <button id="drop-set-backupdir" class="modal-btn secondary">
-            Set as Backup Folder
-          </button>
-          <button id="drop-cancel" class="modal-btn cancel">Cancel</button>
+    <div id="message-area" class="hidden"></div>
+
+    <div id="drop-modal" class="dialog-overlay hidden">
+      <div class="dialog">
+        <div id="drop-modal-title" class="d-head">Set target</div>
+        <div class="d-body">
+          <span id="drop-modal-label" class="label">Dropped path</span>
+          <div id="drop-modal-path" class="path"></div>
+          <span id="drop-modal-instruction">Set this path as:</span>
+        </div>
+        <div class="d-foot">
+          <button id="drop-cancel">Cancel</button>
+          <button id="drop-set-backupdir">Backup folder</button>
+          <button id="drop-set-workfile" class="primary">Work target</button>
         </div>
       </div>
     </div>
 
-    <div id="archive-modal" class="modal-overlay hidden">
-      <div class="modal-content">
-        <h3 id="archive-modal-title" class="modal-title-text">
-          📦 <span id="title-gen-archive">Generation Archive</span>
-        </h3>
-
-        <div id="archive-warning-box" class="archive-warning">
-          ⚠️ <strong>Warning:</strong><br />
-          <span id="label-archive-desc"
-            >Original folders will be deleted. Restore is still possible.</span
-          >
+    <div id="archive-modal" class="dialog-overlay hidden">
+      <div class="dialog">
+        <div id="archive-modal-title" class="d-head">
+          <span id="title-gen-archive">Generation Archive</span>
         </div>
-
-        <div class="archive-list-container">
+        <div class="d-body">
+          <div id="archive-warning-box" class="notice">
+            <span id="label-archive-desc"></span>
+          </div>
           <div class="archive-list-header">
             <label class="archive-select-all">
               <input type="checkbox" id="archive-select-all-check" />
               <span id="label-archive-select-all">Select All</span>
             </label>
-            <select id="archive-format-select" class="mini-select dark-style">
+            <select id="archive-format-select" class="mini-select">
               <option value="zip">ZIP</option>
               <option value="tar">tar.gz</option>
             </select>
           </div>
-
           <div id="archive-gen-list" class="archive-scroll-list"></div>
         </div>
-
-        <div class="modal-buttons archive-footer-btns">
-          <button id="archive-cancel-btn" class="modal-btn cancel">
-            Cancel
-          </button>
-          <button id="archive-execute-btn" class="modal-btn primary">
-            Execute
-          </button>
+        <div class="d-foot">
+          <button id="archive-cancel-btn">Cancel</button>
+          <button id="archive-execute-btn" class="primary">Execute</button>
         </div>
       </div>
     </div>
-    <div id="settings-modal" class="modal-overlay hidden">
-      <div class="modal-content"></div>
+
+    <div id="settings-modal" class="dialog-overlay hidden">
+      <div class="dialog"></div>
     </div>
 
     <div id="compact-view" class="hidden">
-      <div class="compact-container">
-        <div class="compact-header">
-          <span class="compact-title-text">WorkBackupTool (Compact)</span>
-        </div>
+      <div class="c-dragbar" data-tauri-drag-region>WorkBackupTool</div>
 
-        <div class="compact-tab-row">
-          <select id="compact-tab-select" class="mini-select"></select>
+      <div class="c-normal">
+        <div class="c-row">
+          <button
+            id="compact-target-btn"
+            class="c-name"
+            data-popover="compact-target-panel"
+          >
+            <span id="compact-filename" class="c-name-text">No File</span>
+            <span class="caret">&#9660;</span>
+          </button>
+          <button id="compact-execute-btn" class="primary">Execute</button>
+          <button id="compact-history-btn">History</button>
         </div>
+        <div class="c-progress"><div id="compact-progress-bar"></div></div>
+        <div class="c-status">
+          <span id="compact-last-status">Ready</span>
+          <button
+            id="compact-mode-btn"
+            class="mode-trigger"
+            data-popover="compact-mode-panel"
+          >
+            <span id="compact-mode-summary">Diff / zstd</span>
+            <span class="caret">&#9660;</span>
+          </button>
+        </div>
+      </div>
 
-        <div class="compact-content">
-          <div id="compact-progress-area" class="compact-progress-wrapper">
-            <div id="compact-status-label">Ready</div>
-            <div class="compact-progress-bg">
-              <div
-                id="compact-progress-bar"
-                class="compact-progress-fill"
-              ></div>
+      <div class="c-history">
+        <div class="c-history-head">
+          <span id="compact-history-title" class="c-history-title"
+            >History</span
+          >
+          <span class="c-history-actions">
+            <button id="compact-note-btn">Note</button>
+            <button id="compact-restore-btn">Restore</button>
+            <button id="compact-back-btn">Back</button>
+          </span>
+        </div>
+        <div class="c-history-info">
+          <span id="compact-history-info"></span>
+          <button
+            id="compact-gen-btn"
+            class="link-btn"
+            data-popover="compact-gen-panel"
+          ></button>
+        </div>
+        <div class="c-table-wrap">
+          <table class="history-table compact">
+            <thead>
+              <tr>
+                <th id="c-col-date" class="c-date">Date</th>
+                <th id="c-col-size" class="c-size right">Size</th>
+                <th id="c-col-priority" class="c-priority">Priority</th>
+                <th id="c-col-note" class="c-memo">Note</th>
+              </tr>
+            </thead>
+            <tbody id="compact-history-list"></tbody>
+          </table>
+        </div>
+        <div class="c-history-status">
+          <span id="compact-selection-status">None selected</span>
+          <span id="compact-history-mode"></span>
+        </div>
+      </div>
+
+      <div
+        id="compact-mode-panel"
+        class="popover mode-popover inline hidden"
+        data-mode="diff"
+      >
+        <div class="popover-head">
+          <span id="compact-mode-panel-title">Backup mode</span>
+          <button id="compact-mode-panel-close" type="button" data-close>
+            Close
+          </button>
+        </div>
+        <div class="mode-options">
+          <label class="mode-option">
+            <input type="radio" name="compactBackupMode" value="copy" />
+            <span class="mode-option-copy">
+              <span class="mode-option-title">Full Copy</span>
+              <span class="mode-option-desc">Standard backup</span>
+            </span>
+          </label>
+          <label class="mode-option">
+            <input type="radio" name="compactBackupMode" value="archive" />
+            <span class="mode-option-copy">
+              <span class="mode-option-title">Archive</span>
+              <span class="mode-option-desc">Compressed (ZIP/TAR)</span>
+            </span>
+          </label>
+          <div class="mode-settings" data-for="archive">
+            <div class="setting-row">
+              <span id="compact-label-archive-format" class="setting-label"
+                >Format</span
+              >
+              <select id="compact-archive-format" class="mini-select">
+                <option value="zip">ZIP (Normal)</option>
+                <option value="zip-pass">ZIP (Password)</option>
+                <option value="tar">TAR.GZ</option>
+              </select>
+            </div>
+            <div
+              id="compact-password-area"
+              class="setting-row password-wrapper"
+            >
+              <span id="compact-label-archive-password" class="setting-label"
+                >Password</span
+              >
+              <input
+                type="password"
+                id="compact-archive-password"
+                class="mini-input"
+                placeholder="Enter password"
+              />
             </div>
           </div>
-
-          <div class="compact-row target-display">
-            <div id="compact-selected-file" class="compact-filename-text">
-              No File Selected
-            </div>
-
-            <div class="compact-type-row">
-              <select id="compact-work-type-select" class="mini-select">
-                <option value="file">File</option>
-                <option value="folder">Folder</option>
+          <label class="mode-option">
+            <input type="radio" name="compactBackupMode" value="diff" />
+            <span class="mode-option-copy">
+              <span class="mode-option-title">Diff</span>
+              <span class="mode-option-desc">Save only changes</span>
+            </span>
+          </label>
+          <div class="mode-settings" data-for="diff">
+            <div class="setting-row">
+              <span id="compact-label-diff-algo" class="setting-label"
+                >Algorithm</span
+              >
+              <select id="compact-diff-algo" class="mini-select">
+                <option value="hdiff">Hdiff</option>
               </select>
-              <button id="compact-workfile-btn" class="mini-btn">Change</button>
             </div>
-          </div>
-
-          <div class="compact-row">
-            <div class="compact-select-stack">
-              <select id="compact-mode-select" class="mini-select">
-                <option value="copy">Full Copy</option>
-                <option value="archive">Archive</option>
-                <option value="diff">Diff (Smart)</option>
-              </select>
+            <div class="setting-row">
+              <span id="compact-label-diff-compress" class="setting-label"
+                >Compression</span
+              >
               <select id="compact-hdiff-compress" class="mini-select">
                 <option value="none">None (Uncompressed)</option>
                 <option value="zstd">Zstandard (zstd)</option>
@@ -318,9 +403,35 @@
               </select>
             </div>
           </div>
-
-          <button id="compact-execute-btn" class="execute-btn">EXECUTE</button>
         </div>
+        <div class="popover-footer">
+          <label class="lock-control">
+            <input type="checkbox" id="compact-lock-mode-check" />
+            <span id="compact-lock-mode-label">Lock mode</span>
+          </label>
+          <span id="compact-lock-mode-hint" class="locked-hint"
+            >Can switch</span
+          >
+        </div>
+      </div>
+
+      <div id="compact-target-panel" class="popover inline hidden">
+        <div id="label-compact-tabs" class="menu-label">Tabs</div>
+        <div id="compact-tab-list"></div>
+        <div class="menu-sep"></div>
+        <button class="menu-item" data-action="pick-file" data-close>
+          Choose file...
+        </button>
+        <button class="menu-item" data-action="pick-folder" data-close>
+          Choose folder...
+        </button>
+        <div class="menu-sep"></div>
+        <div id="label-compact-recent" class="menu-label">Recent Files</div>
+        <div id="compact-recent-list" class="recent-list"></div>
+      </div>
+
+      <div id="compact-gen-panel" class="popover inline hidden">
+        <div id="compact-gen-list"></div>
       </div>
     </div>
 

@@ -201,3 +201,10 @@ export async function PrepareArchiveCache(
 export async function RebuildArchiveCaches(workFile, backupDir) {
   return await invoke("rebuild_archive_caches", { workFile, backupDir });
 }
+
+/**
+ * コンパクト/トレイ表示の高さを中身に合わせて変更する(幅は変えない)
+ */
+export async function SetWindowHeight(height) {
+  return await invoke("set_window_height", { height });
+}
