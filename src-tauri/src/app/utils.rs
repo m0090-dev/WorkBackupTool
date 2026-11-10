@@ -74,15 +74,25 @@ pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> taur
         window.set_always_on_top(true)?;
         window.set_skip_taskbar(true)?;
 
-        // ドラッグバー込みの実サイズに近い値。大きめにしない。
-        let size = Size::Logical(LogicalSize::new(320.0, 78.0));
-        window.set_size(size)?;
-        // 下限のみ。上限は apply_window_height で初めて固定する
-        window.set_min_size(Some(Size::Logical(LogicalSize::new(320.0, 60.0))))?;
+        let target = Size::Logical(LogicalSize::new(320.0, 78.0));
 
-        #[cfg(target_os = "windows")]
-        {
-            let _ = window.set_size(size);
+        // 今のサイズと近いなら触らない
+        let need_resize = match (window.inner_size(), window.scale_factor()) {
+            (Ok(sz), Ok(scale)) => {
+                let h = sz.height as f64 / scale;
+                let w = sz.width as f64 / scale;
+                (h - 78.0).abs() > 4.0 || (w - 320.0).abs() > 4.0
+            }
+            _ => true,
+        };
+
+        if need_resize {
+            window.set_size(target)?;
+            window.set_min_size(Some(Size::Logical(LogicalSize::new(320.0, 60.0))))?;
+            #[cfg(target_os = "windows")]
+            {
+                let _ = window.set_size(target);
+            }
         }
     } else {
         window.set_decorations(true)?;
@@ -207,17 +217,10 @@ pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result
     Ok(())
 }
 
-
-
-
-
-
 #[cfg(target_os = "windows")]
 pub fn disable_dwm_transitions(window: &tauri::WebviewWindow) {
     use windows::Win32::Foundation::HWND;
-    use windows::Win32::Graphics::Dwm::{
-        DwmSetWindowAttribute, DWMWA_TRANSITIONS_FORCEDISABLED,
-    };
+    use windows::Win32::Graphics::Dwm::{DwmSetWindowAttribute, DWMWA_TRANSITIONS_FORCEDISABLED};
 
     let Ok(hwnd_raw) = window.hwnd() else {
         return;
