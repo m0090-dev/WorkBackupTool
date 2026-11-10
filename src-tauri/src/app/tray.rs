@@ -41,15 +41,17 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
                 } => {
                     let app_handle = tray.app_handle();
                     if let Some(window) = app_handle.get_webview_window("main") {
-                        // 1. 枠なし + 仮サイズ
-                        let _ = utils::apply_tray_popup_mode(&window, true);
-
-                        // 2. 先に JS へ通知（クラス付与・レイアウト・高さ計測を早めに開始）
+                        // 1. 先に JS に通知（compact-mode / frameless のクラスを先に付ける）
                         let _ = app_handle.emit("compact-mode-event", true);
                         let _ = app_handle.emit("compact-frameless", true);
 
-                        // 3. 位置 → 表示
+                        // 2. 枠なし + 初期サイズ（max 固定なし）
+                        let _ = utils::apply_tray_popup_mode(&window, true);
+
+                        // 3. トレイ真上へ
                         let _ = window.as_ref().window().move_window(Position::TrayCenter);
+
+                        // 4. 表示
                         let _ = window.show();
                         let _ = window.set_focus();
                     }

@@ -39,34 +39,31 @@ pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Re
 }
 
 pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> tauri::Result<()> {
-    // 制約を完全解除
+    // 制約をいったん外す
     window.set_resizable(true)?;
     window.set_min_size(None::<Size>)?;
     window.set_max_size(None::<Size>)?;
 
     if is_tray_mode {
         // --- トレイポップアップ用 ---
+        // 順序: 枠なし → 属性 → サイズ（Windows で client 領域がずれにくい順）
         window.set_decorations(false)?;
         window.set_always_on_top(true)?;
         window.set_skip_taskbar(true)?;
 
-        // 初期高さは「小さめ」にする。
-        // 実際の高さは JS の set_window_height（実測）に任せる。
-        // 94 固定だと内容より大きくなり下余白の主因になる。
-        // dragbar 分を見込んでも 80 前後で十分。JSがすぐ伸ばす。
-        let size = Size::Logical(LogicalSize::new(320.0, 80.0));
+        // 通常コンパクト 70 + ドラッグバー約 12〜14 → 実測に近い 82
+        // ここで max まで固定しない（JS が一回だけ合わせられる余地を残す）
+        let size = Size::Logical(LogicalSize::new(320.0, 82.0));
         window.set_size(size)?;
+        // 下限だけ軽く固定。上限は JS の set_window_height に任せる
+        window.set_min_size(Some(Size::Logical(LogicalSize::new(320.0, 60.0))))?;
+        // set_max_size はしない（ガチ固定が余白・ちらつきの元）
 
-        // Windows: decorations 変更直後にクライアント領域がずれる対策
+        // Windows: decorations 変更直後の client 再計算対策でサイズを一度だけ再適用
         #[cfg(target_os = "windows")]
         {
             let _ = window.set_size(size);
         }
-
-        // min/max は「仮」として低く抑える。JS側 apply_window_height が
-        // 毎回 min/max を外してから正しい値を入れるので問題ない。
-        window.set_min_size(Some(size))?;
-        window.set_max_size(Some(size))?;
     } else {
         // --- 通常モード復帰 ---
         window.set_decorations(true)?;
@@ -155,15 +152,17 @@ pub fn create_tray_menu<R: tauri::Runtime>(
         .build()
 }
 
-/// コンパクト/トレイ表示の高さを、中身に合わせて変更する(幅はそのまま)。
-/// 高さは JS 側(ui/compact.js)が測った値を渡す。
+/// コンパクト/トレイ表示の高さを中身に合わせる（幅はそのまま）。
+/// JS が測った値を渡す。ここでのみ min/max を同じ値で固定する。
 pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result<()> {
     let scale = window.scale_factor()?;
     let width = window.inner_size()?.width as f64 / scale;
-    let new_size = Size::Logical(LogicalSize::new(width, height.clamp(60.0, 700.0)));
+    let h = height.clamp(60.0, 700.0);
+    let new_size = Size::Logical(LogicalSize::new(width, h));
 
     #[cfg(desktop)]
     {
+        // 制約解除 → サイズ → 固定（1回のセットで完結させる）
         window.set_min_size(None::<Size>)?;
         window.set_max_size(None::<Size>)?;
         window.set_size(new_size)?;
