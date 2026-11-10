@@ -63,50 +63,59 @@ pub fn position_tray_popup(window: &WebviewWindow) -> tauri::Result<()> {
 }
 
 pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> tauri::Result<()> {
-    window.set_resizable(true)?;
-    window.set_min_size(None::<Size>)?;
-    window.set_max_size(None::<Size>)?;
-
-    if window.is_decorated().unwrap_or(true) {
-        window.set_decorations(false)?;
-    }
-    if is_tray_mode {
-        window.set_always_on_top(true)?;
-        window.set_skip_taskbar(true)?;
-
-        let target = Size::Logical(LogicalSize::new(320.0, 78.0));
-
-        // 今のサイズと近いなら触らない
-        let need_resize = match (window.inner_size(), window.scale_factor()) {
-            (Ok(sz), Ok(scale)) => {
-                let h = sz.height as f64 / scale;
-                let w = sz.width as f64 / scale;
-                (h - 78.0).abs() > 4.0 || (w - 320.0).abs() > 4.0
-            }
-            _ => true,
-        };
-
-        if need_resize {
-            window.set_size(target)?;
-            window.set_min_size(Some(Size::Logical(LogicalSize::new(320.0, 60.0))))?;
-            #[cfg(target_os = "windows")]
-            {
-                let _ = window.set_size(target);
-            }
-        }
-    } else {
+    if !is_tray_mode {
+        // 復帰処理は今まで通り
         window.set_decorations(true)?;
         window.set_always_on_top(false)?;
         window.set_skip_taskbar(false)?;
-
         let size = Size::Logical(LogicalSize::new(420.0, 340.0));
+        window.set_resizable(true)?;
+        window.set_min_size(None::<Size>)?;
+        window.set_max_size(None::<Size>)?;
         window.set_size(size)?;
         window.set_min_size(Some(size))?;
         window.set_max_size(Some(size))?;
         window.center()?;
+        return Ok(());
     }
+
+    // --- トレイへ ---
+    // すでにトレイ向けなら、サイズ・制約に一切触らない
+    let already_tray = !window.is_decorated().unwrap_or(true);
+    let size_ok = match (window.inner_size(), window.scale_factor()) {
+        (Ok(sz), Ok(scale)) => {
+            let h = sz.height as f64 / scale;
+            let w = sz.width as f64 / scale;
+            (h - 78.0).abs() < 6.0 && (w - 320.0).abs() < 6.0
+        }
+        _ => false,
+    };
+
+    if already_tray && size_ok {
+        let _ = window.set_always_on_top(true);
+        let _ = window.set_skip_taskbar(true);
+        return Ok(()); // ★ ここで終了（set_size しない）
+    }
+
+    // 初回だけ構成
+    window.set_resizable(true)?;
+    window.set_min_size(None::<Size>)?;
+    window.set_max_size(None::<Size>)?;
+    if window.is_decorated().unwrap_or(true) {
+        window.set_decorations(false)?;
+    }
+    window.set_always_on_top(true)?;
+    window.set_skip_taskbar(true)?;
+
+    let size = Size::Logical(LogicalSize::new(320.0, 78.0));
+    window.set_size(size)?;
+    window.set_min_size(Some(Size::Logical(LogicalSize::new(320.0, 60.0))))?;
     Ok(())
 }
+
+
+
+
 pub fn apply_window_visibility(app: AppHandle, show: bool) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         if show {
