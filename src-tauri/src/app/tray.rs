@@ -42,6 +42,7 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
                     let app_handle = tray.app_handle();
                     if let Some(window) = app_handle.get_webview_window("main") {
                         // 1. 先に JS に通知（compact-mode / frameless のクラスを先に付ける）
+                        let _ = window.hide();
                         let _ = app_handle.emit("compact-mode-event", true);
                         let _ = app_handle.emit("compact-frameless", true);
 
