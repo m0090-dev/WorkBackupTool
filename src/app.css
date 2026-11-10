@@ -1,29 +1,21 @@
 /**
-
  * app.css
-
  * 分割されたすべてのスタイルシートを統合します。
-
  */
 
 /* 1. 基本設定と変数 */
-
 @import "./style/variables.css";
-
 @import "./style/base.css";
 
-/* 2. UIコンポーネント（ボタン、タブ、モーダルなど） */
-
+/* 2. 共通の小さな部品(右クリックメニュー、通知、起動オーバーレイ) */
 @import "./style/components.css";
 
-/* 3. メインレイアウト（通常モードの配置） */
-
+/* 3. メイン画面のレイアウトと部品 */
 @import "./style/layout.css";
 
+/* 4. ダイアログ(ドロップ・メモ・世代圧縮・詳細設定) */
+@import "./style/dialog.css";
 @import "./style/memo.css";
 
-/* 4. 特殊モード（コンパクト表示用） */
-
-/* ※ layout.cssの後に読み込むことで、必要に応じてスタイルを上書きします */
-
+/* 5. コンパクト画面(layout.css の後に読み込んで必要に応じて上書きする) */
 @import "./style/compact-mode.css";

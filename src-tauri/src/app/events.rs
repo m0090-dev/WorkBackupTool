@@ -103,6 +103,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
 
             let _ = utils::apply_window_visibility(app.clone(), true);
             let _ = app.emit("compact-mode-event", false);
+            let _ = app.emit("compact-frameless", false);
 
             if let Some(window) = app.get_webview_window("main") {
                 let _ = utils::apply_tray_popup_mode(&window, false);
@@ -120,6 +121,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = utils::apply_tray_popup_mode(&window, true);
                 let _ = app.emit("compact-mode-event", true);
+                let _ = app.emit("compact-frameless", true);
                 #[cfg(target_os = "windows")]
                 let _ = window.as_ref().window().move_window(Position::TrayCenter);
                 #[cfg(not(target_os = "windows"))]
@@ -179,6 +181,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = utils::apply_compact_mode(&window, next_val);
                     let _ = app.emit("compact-mode-event", next_val);
+                    let _ = app.emit("compact-frameless", false);
                 }
             }
 

@@ -1,5 +1,74 @@
 import { FileExists, DirExists } from "../tauri_exports";
-import { i18n, tabs, getActiveTab, formatSize } from "../state";
+import { i18n, getActiveTab, formatSize } from "../state";
+import { UpdateCompact } from "./compact.js";
+
+const $ = (id) => document.getElementById(id);
+
+/**
+ * バックアップモードの設定パネル(通常画面 pfx="" / コンパクト画面 pfx="compact-")を
+ * アクティブタブの状態に合わせる。
+ */
+function applyModeControls(pfx, tab) {
+  const mode = tab.backupMode || "diff";
+  const locked = tab.isLocked || false;
+  const compress = tab.compressMode || "zstd";
+  const archiveFormat = tab.archiveFormat || "zip";
+  const radioName = pfx ? "compactBackupMode" : "backupMode";
+
+  document.querySelectorAll(`input[name="${radioName}"]`).forEach((r) => {
+    r.checked = r.value === mode;
+    r.disabled = locked;
+  });
+
+  const algo = $(`${pfx}diff-algo`);
+  if (algo) algo.value = tab.diffAlgo || "hdiff";
+  const comp = $(`${pfx}hdiff-compress`);
+  if (comp) {
+    comp.value = compress;
+    comp.disabled = locked;
+  }
+  const format = $(`${pfx}archive-format`);
+  if (format) format.value = archiveFormat;
+
+  // ロック(パネル内のチェックボックス)
+  const lockCheck = $(`${pfx}lock-mode-check`);
+  if (lockCheck) lockCheck.checked = locked;
+  const lockHint = $(`${pfx}lock-mode-hint`);
+  if (lockHint) {
+    lockHint.textContent = locked ? i18n.lockHintOn : i18n.lockHintOff;
+  }
+
+  const panel = $(`${pfx}mode-panel`);
+  if (panel) panel.dataset.mode = mode;
+
+  // パスワード欄は「ZIP (Password)」のときだけ表示
+  const isPass = mode === "archive" && archiveFormat === "zip-pass";
+  const pwdArea = $(`${pfx}password-area`);
+  if (pwdArea) {
+    pwdArea.style.display = isPass ? "grid" : "none";
+    const pwd = $(`${pfx}archive-password`);
+    if (pwd) pwd.disabled = !isPass;
+  }
+}
+
+/** モードの表示名(ツールバー/ステータスの要約) */
+function modeSummary(tab) {
+  const mode = tab.backupMode || "diff";
+  const titles = {
+    copy: i18n.fullCopyTitle,
+    archive: i18n.archiveTitle,
+    diff: i18n.diffTitle,
+  };
+  const detail =
+    mode === "diff"
+      ? tab.compressMode || "zstd"
+      : mode === "archive"
+        ? { zip: "ZIP", "zip-pass": "ZIP / Password", tar: "TAR.GZ" }[
+            tab.archiveFormat || "zip"
+          ]
+        : "";
+  return detail ? `${titles[mode]} / ${detail}` : titles[mode];
+}
 
 // 全体のUI更新
 export async function UpdateDisplay() {
@@ -18,21 +87,9 @@ export async function UpdateDisplay() {
   if (tab.backupDir) {
     dirExists = await DirExists(tab.backupDir);
   }
-  const tabSelect = document.getElementById("compact-tab-select");
-  if (tabSelect) {
-    tabSelect.innerHTML = tabs
-      .map((t) => {
-        const fileName = t.workFile
-          ? t.workFile.split(/[\\/]/).pop()
-          : "No File";
-        return `<option value="${t.id}" ${t.active ? "selected" : ""}>${fileName}</option>`;
-      })
-      .join("");
-    tabSelect.value = tab.id;
-  }
 
-  const fileEl = document.getElementById("selected-workfile");
-  const dirEl = document.getElementById("selected-backupdir");
+  const fileEl = $("selected-workfile");
+  const dirEl = $("selected-backupdir");
   if (fileEl) {
     const fullPath = tab.workFile || i18n.selectedWorkFile;
     const sizeText = tab.workFile ? ` (${formatSize(tab.workFileSize)})` : "";
@@ -51,83 +108,16 @@ export async function UpdateDisplay() {
     dirEl.classList.toggle("missing", !!missing);
   }
 
-  const radio = document.querySelector(
-    `input[name="backupMode"][value="${tab.backupMode}"]`,
-  );
-  if (radio) radio.checked = true;
-  const compactModeSel = document.getElementById("compact-mode-select");
-  if (compactModeSel) compactModeSel.value = tab.backupMode;
-
-  const locked = tab.isLocked || false;
-
-  document.querySelectorAll('input[name="backupMode"]').forEach((r) => {
-    r.disabled = locked;
+  // モード設定(通常画面・コンパクト画面)
+  applyModeControls("", tab);
+  applyModeControls("compact-", tab);
+  const summary = modeSummary(tab);
+  ["mode-summary", "compact-mode-summary"].forEach((id) => {
+    const el = $(id);
+    if (el) el.textContent = summary;
   });
-  const normalComp = document.getElementById("hdiff-compress");
-  const compactComp = document.getElementById("compact-hdiff-compress");
-  const compress = tab.compressMode || "zstd";
-  const normalAlgo = document.getElementById("diff-algo");
-  const algo = tab.diffAlgo || "hdiff";
-  const normalArchive = document.getElementById("archive-format");
-  const archiveFormat = tab.archiveFormat || "zip";
-  const mode = tab.backupMode || "diff";
+  const cMode = $("compact-history-mode");
+  if (cMode) cMode.textContent = summary;
 
-  if (normalAlgo) normalAlgo.value = algo;
-  if (normalComp) {
-    normalComp.value = compress;
-    normalComp.disabled = locked;
-  }
-  if (compactComp) {
-    compactComp.value = compress;
-    compactComp.disabled = locked;
-  }
-  if (normalArchive) normalArchive.value = archiveFormat;
-  // ロック(モード設定パネル内のチェックボックス)
-  const lockCheck = document.getElementById("lock-mode-check");
-  if (lockCheck) lockCheck.checked = locked;
-  const lockHint = document.getElementById("lock-mode-hint");
-  if (lockHint) {
-    lockHint.textContent = locked ? i18n.lockHintOn : i18n.lockHintOff;
-  }
-  const isPass =
-    mode === "archive" &&
-    document.getElementById("archive-format")?.value === "zip-pass";
-
-  // ツールバーのモード表示と、モード設定パネルの表示切替
-  const modeSummary = document.getElementById("mode-summary");
-  if (modeSummary) {
-    const modeTitles = {
-      copy: i18n.fullCopyTitle,
-      archive: i18n.archiveTitle,
-      diff: i18n.diffTitle,
-    };
-    const detail =
-      mode === "diff"
-        ? compress
-        : mode === "archive"
-          ? { zip: "ZIP", "zip-pass": "ZIP / Password", tar: "TAR.GZ" }[
-              archiveFormat
-            ]
-          : "";
-    modeSummary.textContent = detail
-      ? `${modeTitles[mode]} / ${detail}`
-      : modeTitles[mode];
-  }
-  const modePanel = document.getElementById("mode-panel");
-  if (modePanel) modePanel.dataset.mode = mode;
-  // パスワード欄は「ZIP (Password)」のときだけ表示
-  const pwdArea = document.getElementById("password-area");
-  if (pwdArea) {
-    pwdArea.style.display = isPass ? "grid" : "none";
-    document.getElementById("archive-password").disabled = !isPass;
-  }
-
-  const cFileEl = document.getElementById("compact-selected-file");
-  if (cFileEl)
-    cFileEl.textContent = tab.workFile
-      ? tab.workFile.split(/[\\/]/).pop()
-      : i18n.selectedWorkFile || "No File Selected";
-  const cSel = document.getElementById("compact-mode-select");
-  if (cSel) cSel.disabled = locked;
-  if (cSel && mode) cSel.value = mode;
+  UpdateCompact();
 }

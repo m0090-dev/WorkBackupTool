@@ -13,13 +13,13 @@ export async function showSettingsModal() {
   if (!modal || !i18n) return;
   try {
     const config = await GetConfig();
-    const lang = i18n.language || "ja";
+    const lang = config.language || "ja";
 
     const categories = [
       ...new Set(settingsSchema.map((item) => item.category)),
     ];
 
-    const modalContent = modal.querySelector(".modal-content");
+    const modalContent = modal.querySelector(".dialog");
     if (!modalContent) return;
 
     const tabsHtml = categories
@@ -46,7 +46,7 @@ export async function showSettingsModal() {
             if (item.type === "boolean") {
               return `
             <div class="settings-item">
-              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+              <label class="check-row">
                 <input type="checkbox" class="settings-input" data-key="${item.key}" ${currentValue ? "checked" : ""}>
                 <span>${labelText}</span>
               </label>
@@ -55,13 +55,12 @@ export async function showSettingsModal() {
             } else if (item.type === "number") {
               return `
             <div class="settings-item">
-              <label>${labelText}</label>
+              <span class="settings-name">${labelText}</span>
               <input type="number" class="settings-input" data-key="${item.key}"
                 value="${currentValue}"
                 ${item.min !== null ? `min="${item.min}"` : ""}
                 ${item.max !== null ? `max="${item.max}"` : ""}
-                step="${item.step || 1}"
-                style="width:80px; background:#252526; border:1px solid #444; color:#eee; padding:4px 8px; border-radius:4px;">
+                step="${item.step || 1}">
               ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
             </div>`;
             } else if (item.type === "taglist") {
@@ -74,13 +73,12 @@ export async function showSettingsModal() {
                 .join("");
               return `
             <div class="settings-item settings-taglist-item" data-key="${item.key}" data-scope="${item.scope || "config"}">
-              <label>${labelText}</label>
+              <span class="settings-name">${labelText}</span>
               <div class="settings-tags" id="tags-${item.key}">${tagsHtml}</div>
-              <div style="display:flex; gap:6px; margin-top:4px;">
+              <div class="taglist-add">
                 <input type="text" class="settings-tag-input" data-key="${item.key}"
-                  placeholder="${i18n.hdiffIgnoreListPlaceholder || "e.g. *.tmp"}"
-                  style="flex:1; background:#252526; border:1px solid #444; color:#eee; padding:4px 8px; border-radius:4px;">
-                <button class="settings-tag-add modal-btn" data-key="${item.key}" style="padding:4px 10px;">${i18n.addBtn || "Add"}</button>
+                  placeholder="${i18n.hdiffIgnoreListPlaceholder || "e.g. *.tmp"}">
+                <button class="settings-tag-add" data-key="${item.key}">${i18n.addBtn || "Add"}</button>
               </div>
               ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
             </div>`;
@@ -93,11 +91,13 @@ export async function showSettingsModal() {
       .join("");
 
     modalContent.innerHTML = `
-      <h3>${i18n.advancedSettingsTitle || "Advanced Settings"}</h3>
-      <div class="settings-tabs">${tabsHtml}</div>
-      <div class="settings-pages">${pagesHtml}</div>
-      <div class="modal-buttons">
-        <button id="settings-close-btn" class="modal-btn cancel">${i18n.closeBtn || "Close"}</button>
+      <div class="d-head">${i18n.advancedSettingsTitle || "Advanced Settings"}</div>
+      <div class="d-body">
+        <div class="settings-tabs">${tabsHtml}</div>
+        <div class="settings-pages">${pagesHtml}</div>
+      </div>
+      <div class="d-foot">
+        <button id="settings-close-btn">${i18n.closeBtn || "Close"}</button>
       </div>
     `;
 

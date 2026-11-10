@@ -46,6 +46,7 @@
    新UI(mock2.html 準拠)のテーマ。OS のライト/ダーク設定に追従する
    ============================================= */
 :root {
+  color-scheme: light dark; /* select や入力欄をOSのテーマに合わせる */
   --font-size: 13px;
 
   --bg: #f1efe8;

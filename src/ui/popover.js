@@ -18,6 +18,8 @@ function openPopover(trigger) {
   if (wasOpen) return;
 
   pop.classList.remove("hidden");
+  // コンパクト画面のパネルはウィンドウ内に展開するだけ(位置指定しない)
+  if (pop.classList.contains("inline")) return;
   const r = trigger.getBoundingClientRect();
   const w = pop.offsetWidth;
   const h = pop.offsetHeight;

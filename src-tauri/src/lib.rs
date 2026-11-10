@@ -35,6 +35,7 @@ pub fn run() {
             select_any_folder,
             open_directory,
             toggle_compact_mode,
+            set_window_height,
             write_text_file,
             read_text_file,
             get_backup_list,

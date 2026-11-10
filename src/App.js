@@ -137,60 +137,62 @@ function setupInitialUI() {
     targetMenuItems[1].textContent = i18n.targetMenuFolder;
   }
 
-  // バックアップモード設定パネル
-  const modeTitles = document.querySelectorAll(
-    "#mode-panel .mode-option-title",
+  // バックアップモード設定パネル(通常画面 "" / コンパクト画面 "compact-")
+  ["", "compact-"].forEach((pfx) => {
+    const titles = document.querySelectorAll(
+      `#${pfx}mode-panel .mode-option-title`,
+    );
+    const descs = document.querySelectorAll(
+      `#${pfx}mode-panel .mode-option-desc`,
+    );
+    if (titles.length >= 3 && descs.length >= 3) {
+      titles[0].textContent = i18n.fullCopyTitle;
+      descs[0].textContent = i18n.fullCopyDesc;
+      titles[1].textContent = i18n.archiveTitle;
+      descs[1].textContent = i18n.archiveDesc;
+      titles[2].textContent = i18n.diffTitle;
+      descs[2].textContent = i18n.diffDesc;
+    }
+    setText(`${pfx}mode-panel-title`, i18n.backupMode);
+    setText(`${pfx}mode-panel-close`, i18n.closeBtn);
+    setText(`${pfx}label-archive-format`, i18n.settingFormat);
+    setText(`${pfx}label-archive-password`, i18n.settingPassword);
+    setText(`${pfx}label-diff-algo`, i18n.settingAlgorithm);
+    setText(`${pfx}label-diff-compress`, i18n.settingCompression);
+    setText(`${pfx}lock-mode-label`, i18n.lockModeLabel);
+    setPlaceholder(`${pfx}archive-password`, i18n.passwordPlaceholder);
+  });
+  ["mode-btn", "compact-mode-btn"].forEach((id) =>
+    setTitle(id, i18n.modeButtonTip),
   );
-  const modeDescs = document.querySelectorAll("#mode-panel .mode-option-desc");
-  if (modeTitles.length >= 3 && modeDescs.length >= 3) {
-    modeTitles[0].textContent = i18n.fullCopyTitle;
-    modeDescs[0].textContent = i18n.fullCopyDesc;
-    modeTitles[1].textContent = i18n.archiveTitle;
-    modeDescs[1].textContent = i18n.archiveDesc;
-    modeTitles[2].textContent = i18n.diffTitle;
-    modeDescs[2].textContent = i18n.diffDesc;
-  }
-  setText("mode-panel-title", i18n.backupMode);
-  setText("mode-panel-close", i18n.closeBtn);
-  setText("label-archive-format", i18n.settingFormat);
-  setText("label-archive-password", i18n.settingPassword);
-  setText("label-diff-algo", i18n.settingAlgorithm);
-  setText("label-diff-compress", i18n.settingCompression);
-  setText("lock-mode-label", i18n.lockModeLabel);
-  setPlaceholder("archive-password", i18n.passwordPlaceholder);
-  const modeBtnEl = document.getElementById("mode-btn");
-  if (modeBtnEl) modeBtnEl.title = i18n.modeButtonTip || "";
 
-  setText("drop-modal-title", i18n.dropModalTitle);
+  setText("drop-modal-title", i18n.dropDialogTitle);
+  setText("drop-modal-label", i18n.dropPathLabel);
+  setText("drop-modal-instruction", i18n.dropSelectTarget);
   setText("drop-set-workfile", i18n.dropSetWorkFile);
   setText("drop-set-backupdir", i18n.dropSetBackupDir);
   setText("drop-cancel", i18n.dropCancel);
 
-  // Compact用テキスト
-  const typeCompactSelect = document.getElementById("compact-work-type-select");
-  if (typeCompactSelect) {
-    if (typeCompactSelect.options[0])
-      typeCompactSelect.options[0].textContent =
-        i18n.workTargetTypeFile || "File";
-    if (typeCompactSelect.options[1])
-      typeCompactSelect.options[1].textContent =
-        i18n.workTargetTypeFolder || "Folder";
-  }
-
-  setQueryText(".compact-title-text", i18n.compactMode || "Compact");
-
-  setText("compact-workfile-btn", i18n.workFileBtn);
-
+  // コンパクト画面
   setText("compact-execute-btn", i18n.executeBtn);
-
-  const cSel = document.getElementById("compact-mode-select");
-
-  if (cSel && cSel.options.length >= 3) {
-    cSel.options[0].text = i18n.fullCopyTitle;
-
-    cSel.options[1].text = i18n.archiveTitle;
-
-    cSel.options[2].text = i18n.diffTitle;
+  setText("compact-history-btn", i18n.historyBtn);
+  setText("compact-history-title", i18n.compactHistoryTitle);
+  setText("compact-note-btn", i18n.backupMemo);
+  setText("compact-restore-btn", i18n.restoreBtn);
+  setText("compact-back-btn", i18n.compactBack);
+  setText("compact-selection-status", i18n.statusNoSelection);
+  setText("c-col-date", i18n.colDate);
+  setText("c-col-size", i18n.colSize);
+  setText("c-col-priority", i18n.colPriority);
+  setText("c-col-note", i18n.backupMemo);
+  setText("label-compact-tabs", i18n.compactTabsLabel);
+  setText("label-compact-recent", i18n.recentFilesTitle);
+  const compactMenuItems = document.querySelectorAll(
+    "#compact-target-panel .menu-item",
+  );
+  if (compactMenuItems.length >= 2) {
+    compactMenuItems[0].textContent = i18n.targetMenuFile;
+    compactMenuItems[1].textContent = i18n.targetMenuFolder;
   }
 }
 

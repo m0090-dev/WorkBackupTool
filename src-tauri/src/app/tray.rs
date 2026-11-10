@@ -45,6 +45,7 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
                         let _ = utils::apply_tray_popup_mode(&window, true);
                         // 2. JS側に通知してコンパクト用レイアウトに切り替え
                         let _ = app_handle.emit("compact-mode-event", true);
+                        let _ = app_handle.emit("compact-frameless", true);
 
                         // 3. トレイアイコンの真上（TrayCenter）にワープ
                         // ※ .as_ref().window() は Tauri v2 の型合わせ用
