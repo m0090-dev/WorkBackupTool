@@ -209,28 +209,30 @@ pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result
 
 
 
+
+
+
+
 #[cfg(target_os = "windows")]
 pub fn disable_dwm_transitions(window: &tauri::WebviewWindow) {
-    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
-    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Foundation::{BOOL, HWND};
     use windows::Win32::Graphics::Dwm::{
-        DwmSetWindowAttribute, DWMWINDOWATTRIBUTE,
+        DwmSetWindowAttribute, DWMWA_TRANSITIONS_FORCEDISABLED,
     };
 
-    // Tauri 2: HWND を raw-window-handle から取る
-    let Ok(handle) = window.window_handle() else { return };
-    let hwnd = match handle.as_raw() {
-        RawWindowHandle::Win32(h) => HWND(h.hwnd.get() as *mut _),
-        _ => return,
+    // Tauri 2 の Windows 専用 API（raw_window_handle 不要）
+    let Ok(hwnd_raw) = window.hwnd() else {
+        return;
     };
 
-    // DWMWA_TRANSITIONS_FORCEDISABLED = 3
-    let attr = DWMWINDOWATTRIBUTE(3);
-    let disable: i32 = 1; // TRUE
+    // tauri の HWND から windows クレートの HWND へ
+    let hwnd = HWND(hwnd_raw.0 as *mut _);
+
+    let disable = BOOL(1); // TRUE = トランジション無効
     unsafe {
         let _ = DwmSetWindowAttribute(
             hwnd,
-            attr,
+            DWMWA_TRANSITIONS_FORCEDISABLED,
             &disable as *const _ as *const _,
             std::mem::size_of_val(&disable) as u32,
         );
