@@ -3,7 +3,7 @@ use crate::app::state::AppState;
 use crate::core::types::AppConfig;
 use tauri::WebviewWindow;
 use tauri::{AppHandle, Manager};
-use tauri::{LogicalSize, Size};
+use tauri::{LogicalPosition, LogicalSize, PhysicalPosition, Position as TauriPosition, Size};
 
 pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Result<()> {
     // 1. まず「何でもあり」の状態にする (制約の完全解除)
@@ -38,34 +38,51 @@ pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Re
     Ok(())
 }
 
+/// トレイポップアップを「作業領域（タスクバー除外）の下端」に貼る。
+/// 高さ変更後も同じ関数を呼べば、下辺固定のまま上方向に伸びる。
+pub fn position_tray_popup(window: &WebviewWindow) -> tauri::Result<()> {
+    let monitor = match window.current_monitor()? {
+        Some(m) => m,
+        None => return Ok(()),
+    };
+    let work = monitor.work_area(); // タスクバーを除いた領域（Physical）
+    let scale = window.scale_factor()?;
+    let outer = window.outer_size()?; // Physical
+
+    let margin = (8.0 * scale).round() as i32;
+    let w = outer.width as i32;
+    let h = outer.height as i32;
+
+    // 横: 作業領域の右寄せ（トレイはだいたい右下）
+    let x = work.position.x + work.size.width as i32 - w - margin;
+    // 縦: ウィンドウ下辺 = 作業領域下辺 - margin → タスクバーに被らない
+    let y = work.position.y + work.size.height as i32 - h - margin;
+
+    window.set_position(TauriPosition::Physical(PhysicalPosition::new(x, y)))?;
+    Ok(())
+}
+
 pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> tauri::Result<()> {
-    // 制約をいったん外す
     window.set_resizable(true)?;
     window.set_min_size(None::<Size>)?;
     window.set_max_size(None::<Size>)?;
 
     if is_tray_mode {
-        // --- トレイポップアップ用 ---
-        // 順序: 枠なし → 属性 → サイズ（Windows で client 領域がずれにくい順）
         window.set_decorations(false)?;
         window.set_always_on_top(true)?;
         window.set_skip_taskbar(true)?;
 
-        // 通常コンパクト 70 + ドラッグバー約 12〜14 → 実測に近い 82
-        // ここで max まで固定しない（JS が一回だけ合わせられる余地を残す）
-        let size = Size::Logical(LogicalSize::new(320.0, 82.0));
+        // ドラッグバー込みの実サイズに近い値。大きめにしない。
+        let size = Size::Logical(LogicalSize::new(320.0, 78.0));
         window.set_size(size)?;
-        // 下限だけ軽く固定。上限は JS の set_window_height に任せる
+        // 下限のみ。上限は apply_window_height で初めて固定する
         window.set_min_size(Some(Size::Logical(LogicalSize::new(320.0, 60.0))))?;
-        // set_max_size はしない（ガチ固定が余白・ちらつきの元）
 
-        // Windows: decorations 変更直後の client 再計算対策でサイズを一度だけ再適用
         #[cfg(target_os = "windows")]
         {
             let _ = window.set_size(size);
         }
     } else {
-        // --- 通常モード復帰 ---
         window.set_decorations(true)?;
         window.set_always_on_top(false)?;
         window.set_skip_taskbar(false)?;
@@ -78,7 +95,6 @@ pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> taur
     }
     Ok(())
 }
-
 pub fn apply_window_visibility(app: AppHandle, show: bool) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
         if show {
@@ -152,8 +168,6 @@ pub fn create_tray_menu<R: tauri::Runtime>(
         .build()
 }
 
-/// コンパクト/トレイ表示の高さを中身に合わせる（幅はそのまま）。
-/// JS が測った値を渡す。ここでのみ min/max を同じ値で固定する。
 pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result<()> {
     let scale = window.scale_factor()?;
     let width = window.inner_size()?.width as f64 / scale;
@@ -162,12 +176,31 @@ pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result
 
     #[cfg(desktop)]
     {
-        // 制約解除 → サイズ → 固定（1回のセットで完結させる）
+        // 現在の下辺を維持するため、変更前の outer 位置・高さを取る
+        let was_tray = !window.is_decorated().unwrap_or(true);
+        let old_outer = window.outer_size().ok();
+        let old_pos = window.outer_position().ok();
+
         window.set_min_size(None::<Size>)?;
         window.set_max_size(None::<Size>)?;
         window.set_size(new_size)?;
         window.set_min_size(Some(new_size))?;
         window.set_max_size(Some(new_size))?;
+
+        // トレイ枠なし時: 下辺固定で上に伸ばす（タスクバーに食い込まない）
+        if was_tray {
+            if let (Some(old_o), Some(old_p)) = (old_outer, old_pos) {
+                let new_outer = window.outer_size()?;
+                let dy = new_outer.height as i32 - old_o.height as i32;
+                // 高くなった分だけ上へずらす
+                let _ = window.set_position(TauriPosition::Physical(PhysicalPosition::new(
+                    old_p.x,
+                    old_p.y - dy,
+                )));
+            } else {
+                let _ = position_tray_popup(window);
+            }
+        }
     }
     Ok(())
 }
