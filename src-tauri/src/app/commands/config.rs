@@ -20,33 +20,17 @@ pub fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
     Ok(cfg.clone())
 }
 
+/// 設定項目を1つ更新して保存する(値の検証は core::config::update に集約)
 #[tauri::command]
 pub async fn update_config_value(
     state: tauri::State<'_, AppState>,
     key: String,
     value: serde_json::Value,
 ) -> Result<(), String> {
-    let mut cfg = state.config.lock().unwrap();
-
-    match key.as_str() {
-        // usize用
-        "startupCacheLimit" => {
-            cfg.startup_cache_limit = value.as_u64().unwrap_or(0) as usize;
-        }
-        // f64用 (閾値 0.0 ~ 1.0)
-        "autoBaseGenerationThreshold" => {
-            cfg.auto_base_generation_threshold = value.as_f64().unwrap_or(0.6);
-        }
-        "hdiffStrictHashCheck" => {
-            cfg.hdiff_strict_hash_check = value.as_bool().unwrap_or(false);
-        }
-        "strictFileNameMatch" => {
-            cfg.strict_file_name_match = value.as_bool().unwrap_or(true);
-        }
-        _ => return Err(format!("Unknown numeric config key: {}", key)),
+    {
+        let mut cfg = state.config.lock().map_err(|e| e.to_string())?;
+        crate::core::config::update::apply_config_value(&mut cfg, &key, &value)?;
     }
-
-    drop(cfg);
     state.save()
 }
 

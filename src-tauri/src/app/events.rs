@@ -131,13 +131,8 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
             }
         }
 
-        // --- 4. 最前面表示 / コンパクトモード / 状態復元 ---
-        "always_on_top"
-        | "compact_mode"
-        | "restore_state"
-        | "use_same_dir_for_temp"
-        | "rebuild_cache_on_startup"
-        | "show_memo_after_backup" => {
+        // --- 4. 最前面表示 / コンパクトモード ---
+        "always_on_top" | "compact_mode" => {
             // スコープ（波括弧）を使って、ロックの寿命を短くします
             let (next_val, id_clone) = {
                 let mut cfg = state.config.lock().unwrap();
@@ -149,22 +144,6 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                     "compact_mode" => {
                         cfg.compact_mode = !cfg.compact_mode;
                         cfg.compact_mode
-                    }
-                    "restore_state" => {
-                        cfg.restore_previous_state = !cfg.restore_previous_state;
-                        cfg.restore_previous_state
-                    }
-                    "use_same_dir_for_temp" => {
-                        cfg.use_same_dir_for_temp = !cfg.use_same_dir_for_temp;
-                        cfg.use_same_dir_for_temp
-                    }
-                    "rebuild_cache_on_startup" => {
-                        cfg.rebuild_cache_on_startup = !cfg.rebuild_cache_on_startup;
-                        cfg.rebuild_cache_on_startup
-                    }
-                    "show_memo_after_backup" => {
-                        cfg.show_memo_after_backup = !cfg.show_memo_after_backup;
-                        cfg.show_memo_after_backup
                     }
                     _ => false,
                 };

@@ -474,6 +474,7 @@ export async function setupGlobalEvents() {
   // トレイから開いた枠なしウィンドウでは、移動用のバーを出す
   EventsOn("compact-frameless", (isFrameless) => {
     document.body.classList.toggle("frameless", !!isFrameless);
+    resetCompactHeight();
   });
 
   EventsOn("open-advanced-settings", async () => {

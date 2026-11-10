@@ -11,5 +11,18 @@
   "startupCacheLimit": 5,
   "showMemoAfterBackup": true,
   "strictFileNameMatch": true,
-  "hdiffStrictHashCheck": true
+  "hdiffStrictHashCheck": true,
+  "globalShortcutEnabled": false,
+  "shortcutRun": "Ctrl+Alt+B",
+  "shortcutRunWithMemo": "Ctrl+Alt+Shift+B",
+  "shortcutBackupMode": "diff",
+  "notifyEnabled": false,
+  "notifyStyle": "popup",
+  "notifyDurationSec": 3,
+  "notifyOnlyOnFailure": false,
+  "reminderEnabled": false,
+  "reminderIntervalMin": 30,
+  "reminderMethod": "popup",
+  "reminderSkipUnchanged": true,
+  "openAfterRestore": false
 }

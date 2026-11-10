@@ -267,6 +267,19 @@
   flex: 1;
 }
 
+.settings-item.disabled {
+  opacity: 0.5;
+}
+
+.dialog input.settings-shortcut {
+  cursor: pointer;
+}
+
+.dialog input.settings-shortcut:focus {
+  border-color: var(--sel-line);
+  background: var(--sel);
+}
+
 /* --- コンパクト画面(幅 320px)での調整 --- */
 body.compact-mode .dialog-overlay {
   padding: 10px;

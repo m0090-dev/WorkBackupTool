@@ -29,7 +29,7 @@
     "japanese": "Japanese",
     "restartRequired": "Language changes take effect after restart.",
     "about": "About",
-    "aboutText": "WorkBackupTool 1.3.6 (2026)\n© 2025 m0090-dev.",
+    "aboutText": "WorkBackupTool 1.3.7 (2026)\n© 2025 m0090-dev.",
     "selectFileFirst": "Select a work target first.",
     "restoreConfirm": "Restore the selected version? A new file will be created; the original is not overwritten.",
     "restoreError": "Restore failed",
@@ -158,7 +158,8 @@
     "tagAddBtn": "+ Add",
     "dropDialogTitle": "Set target",
     "dropPathLabel": "Dropped path",
-    "compactTabsLabel": "Tabs"
+    "compactTabsLabel": "Tabs",
+    "shortcutPlaceholder": "Press keys"
   },
   "ja": {
     "settings": "設定",
@@ -190,7 +191,7 @@
     "japanese": "日本語",
     "restartRequired": "言語の変更は再起動後に反映されます。",
     "about": "ソフト情報",
-    "aboutText": "WorkBackupTool 1.3.6 (2026)\n© 2025 m0090-dev.",
+    "aboutText": "WorkBackupTool 1.3.7 (2026)\n© 2025 m0090-dev.",
     "selectFileFirst": "先に作業対象を選択してください。",
     "restoreConfirm": "選択したバージョンを復元しますか？新しいファイルが作成され、元のファイルは上書きされません。",
     "restoreError": "復元に失敗しました",
@@ -319,6 +320,7 @@
     "tagAddBtn": "+ 追加",
     "dropDialogTitle": "対象の設定",
     "dropPathLabel": "ドロップされたパス",
-    "compactTabsLabel": "タブ"
+    "compactTabsLabel": "タブ",
+    "shortcutPlaceholder": "キーを押して割り当て"
   }
 }

@@ -10,7 +10,7 @@ use tauri::menu::{CheckMenuItemBuilder, Menu, MenuBuilder, MenuItem, SubmenuBuil
 /// ネイティブメニュー(mock2.html のメニュー構成「ファイル / 設定 / ヘルプ」に合わせる)
 ///
 /// ファイル: 古い世代を圧縮 / 終了
-/// 設定    : 最前面 / コンパクト / トレイ | 起動時・保存先まわりの設定 | 言語 / 詳細設定
+/// 設定    : 最前面 / コンパクト / トレイ | 言語 / 詳細設定(起動時の動作などはここに集約)
 /// ヘルプ  : ソフト情報
 ///
 /// ※ メニュー項目のIDは events.rs の handle_menu_event と対応している。
@@ -31,10 +31,6 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .checked(config.always_on_top)
         .build(app)?;
 
-    let restore_state = CheckMenuItemBuilder::with_id("restore_state", t("restoreState"))
-        .checked(config.restore_previous_state)
-        .build(app)?;
-
     let compact_mode = CheckMenuItemBuilder::with_id("compact_mode", t("compactMode"))
         .checked(config.compact_mode)
         .build(app)?;
@@ -49,18 +45,6 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
     let lang_ja = CheckMenuItemBuilder::with_id("lang_ja", t("japanese"))
         .checked(config.language == "ja")
         .build(app)?;
-    let use_same_dir_for_temp =
-        CheckMenuItemBuilder::with_id("use_same_dir_for_temp", t("useSameDirForTemp"))
-            .checked(config.use_same_dir_for_temp)
-            .build(app)?;
-    let rebuild_cache_on_startup =
-        CheckMenuItemBuilder::with_id("rebuild_cache_on_startup", t("rebuildCacheOnStartup"))
-            .checked(config.rebuild_cache_on_startup)
-            .build(app)?;
-    let show_memo_after_backup =
-        CheckMenuItemBuilder::with_id("show_memo_after_backup", t("showMemoAfterBackup"))
-            .checked(config.show_memo_after_backup)
-            .build(app)?;
     let advanced_settings_title = MenuItem::with_id(
         app,
         "advanced_settings",
@@ -99,11 +83,6 @@ pub fn setup_menu<R: Runtime>(app: &AppHandle<R>, config: &AppConfig) -> tauri::
         .item(&always_on_top)
         .item(&compact_mode)
         .item(&tray_mode)
-        .separator()
-        .item(&restore_state)
-        .item(&rebuild_cache_on_startup)
-        .item(&use_same_dir_for_temp)
-        .item(&show_memo_after_backup)
         .separator()
         .item(&language_menu)
         .item(&advanced_settings_title)

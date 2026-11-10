@@ -6,6 +6,8 @@ import {
 } from "../tauri_exports";
 import { i18n, getActiveTab } from "../state";
 import { settingsSchema, categoryLabels } from "../settings-schema.js";
+import { shortcutFromEvent } from "../shortcut.js";
+import { escapeHtml } from "./html.js";
 import { showFloatingMessage, showFloatingError } from "./messages.js";
 
 export async function showSettingsModal() {
@@ -45,7 +47,7 @@ export async function showSettingsModal() {
 
             if (item.type === "boolean") {
               return `
-            <div class="settings-item">
+            <div class="settings-item" data-key="${item.key}">
               <label class="check-row">
                 <input type="checkbox" class="settings-input" data-key="${item.key}" ${currentValue ? "checked" : ""}>
                 <span>${labelText}</span>
@@ -54,7 +56,7 @@ export async function showSettingsModal() {
             </div>`;
             } else if (item.type === "number") {
               return `
-            <div class="settings-item">
+            <div class="settings-item" data-key="${item.key}">
               <span class="settings-name">${labelText}</span>
               <input type="number" class="settings-input" data-key="${item.key}"
                 value="${currentValue}"
@@ -63,12 +65,33 @@ export async function showSettingsModal() {
                 step="${item.step || 1}">
               ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
             </div>`;
+            } else if (item.type === "select") {
+              const optionsHtml = (item.options || [])
+                .map(
+                  (o) =>
+                    `<option value="${escapeHtml(o.value)}" ${String(o.value) === String(currentValue) ? "selected" : ""}>${escapeHtml(i18n[o.label] || o.label)}</option>`,
+                )
+                .join("");
+              return `
+            <div class="settings-item" data-key="${item.key}">
+              <span class="settings-name">${labelText}</span>
+              <select class="settings-input" data-key="${item.key}">${optionsHtml}</select>
+              ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
+            </div>`;
+            } else if (item.type === "shortcut") {
+              return `
+            <div class="settings-item" data-key="${item.key}">
+              <span class="settings-name">${labelText}</span>
+              <input type="text" class="settings-shortcut" data-key="${item.key}" readonly
+                value="${escapeHtml(currentValue || "")}" placeholder="${escapeHtml(i18n.shortcutPlaceholder || "Press keys")}">
+              ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
+            </div>`;
             } else if (item.type === "taglist") {
               // タグ（除外パターン）リストの表示。追加・削除をインタラクティブに行う。
               const tagsHtml = (Array.isArray(currentValue) ? currentValue : [])
                 .map(
                   (tag) =>
-                    `<span class="settings-tag" data-tag="${tag}">${tag}<button class="settings-tag-remove" data-key="${item.key}" data-tag="${tag}" title="Remove">×</button></span>`,
+                    `<span class="settings-tag" data-tag="${escapeHtml(tag)}">${escapeHtml(tag)}<button class="settings-tag-remove" data-key="${item.key}" data-tag="${escapeHtml(tag)}" title="Remove">×</button></span>`,
                 )
                 .join("");
               return `
@@ -131,6 +154,9 @@ export async function showSettingsModal() {
         if (schema.type === "boolean") {
           // boolean はチェック状態をそのまま使う（数値バリデーションは不要）
           value = input.checked;
+        } else if (schema.type === "select") {
+          value =
+            schema.valueType === "number" ? Number(input.value) : input.value;
         } else {
           value = parseFloat(input.value);
           if (isNaN(value)) return;
@@ -142,6 +168,62 @@ export async function showSettingsModal() {
       };
       input.addEventListener("change", handler);
     });
+
+    // ---- キー割り当て欄(shortcut) ----
+    // 欄を選んでキーを押すと割り当てる。Backspace/Delete で未割り当て、Escape で中止。
+    modalContent.querySelectorAll(".settings-shortcut").forEach((input) => {
+      input.addEventListener("keydown", async (e) => {
+        if (e.key === "Tab") return;
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.key === "Escape") {
+          input.blur();
+          return;
+        }
+        let value;
+        if (e.key === "Backspace" || e.key === "Delete") {
+          value = "";
+        } else {
+          value = shortcutFromEvent(e);
+          if (value === null) return; // 修飾キーだけ等は、次のキーを待つ
+        }
+        const key = input.dataset.key;
+        const previous = input.value;
+        input.value = value;
+        try {
+          await UpdateConfigValue(key, value);
+          showFloatingMessage(i18n.settingsSaved || "Settings saved");
+        } catch (err) {
+          input.value = previous;
+          console.error(`Failed to update ${key}:`, err);
+          showFloatingError(i18n.settingsError || "Save failed");
+        }
+      });
+    });
+
+    // ---- 依存関係(dependsOn): 親のチェックがオフの間は無効にする ----
+    const applyDependencies = () => {
+      settingsSchema
+        .filter((item) => item.dependsOn)
+        .forEach((item) => {
+          const parent = modalContent.querySelector(
+            `.settings-input[data-key="${item.dependsOn}"]`,
+          );
+          const enabled = parent ? parent.checked : true;
+          const row = modalContent.querySelector(
+            `.settings-item[data-key="${item.key}"]`,
+          );
+          if (!row) return;
+          row.classList.toggle("disabled", !enabled);
+          row
+            .querySelectorAll("input, select, button")
+            .forEach((el) => (el.disabled = !enabled));
+        });
+    };
+    modalContent
+      .querySelectorAll('.settings-input[type="checkbox"]')
+      .forEach((cb) => cb.addEventListener("change", applyDependencies));
+    applyDependencies();
 
     // ---- taglist (tab スコープ) のイベントハンドラ ----
     // タグ追加: Add ボタン または Enter キー
