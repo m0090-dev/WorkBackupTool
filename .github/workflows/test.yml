@@ -1,19 +1,25 @@
 name: "Rust Tests"
 
 on:
+  # main への push は自動テスト
   push:
     branches:
       - main
+  # main 向け Pull Request は自動テスト
   pull_request:
     branches:
       - main
+  # Actions 画面から任意のブランチを選んで手動実行
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
     strategy:
       fail-fast: false
       matrix:
-        # matrix.target を追加して Tauri が期待する名前にリネームできるようにする
         include:
           - platform: "windows-latest"
             target: "x86_64-pc-windows-msvc"
@@ -23,18 +29,26 @@ jobs:
             target: "x86_64-unknown-linux-gnu"
 
     runs-on: ${{ matrix.platform }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: setup node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
-      - name: install dependencies (ubuntu only)
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install dependencies (Ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt update
@@ -53,20 +67,16 @@ jobs:
       - name: Setup HDiffPatch binaries
         run: python scripts/setup_hdiff.py
         env:
-          # release.yml と同じ HDIFF_VERSION を使う
-          HDIFF_VERSION: "v4.12.0" 
+          HDIFF_VERSION: "v4.12.0"
           PLATFORM: ${{ matrix.platform }}
           TARGET: ${{ matrix.target }}
-      - name: install frontend dependencies
-        # フロントエンドのビルドが必要なテスト（tauriコマンド等）がある場合に備えて
+
+      - name: Install frontend dependencies
         run: npm install
 
-      - name: build frontend
-        # Tauriのビルドプロセスを通さないため、手動でフロントエンドをビルドしておく
+      - name: Build frontend
         run: npm run build
 
-      - name: run cargo test
-        # --nocapture を付けて標準出力を確認できるように設定
-        # src-tauri ディレクトリに移動して実行
+      - name: Run cargo test
         working-directory: ./src-tauri
         run: cargo test -- --nocapture
