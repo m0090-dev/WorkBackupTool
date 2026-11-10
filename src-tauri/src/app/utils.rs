@@ -67,8 +67,10 @@ pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> taur
     window.set_min_size(None::<Size>)?;
     window.set_max_size(None::<Size>)?;
 
-    if is_tray_mode {
+    if window.is_decorated().unwrap_or(true) {
         window.set_decorations(false)?;
+    }
+    if is_tray_mode {
         window.set_always_on_top(true)?;
         window.set_skip_taskbar(true)?;
 
