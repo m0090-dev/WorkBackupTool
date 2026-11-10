@@ -143,6 +143,16 @@ pub async fn set_window_height(window: WebviewWindow, height: f64) -> Result<(),
     utils::apply_window_height(&window, height).map_err(|e| e.to_string())
 }
 
+/// トレイ(枠なし)ポップアップを、測った高さで「1回だけ」配置して表示する
+#[tauri::command]
+pub fn show_tray_popup(window: WebviewWindow, height: f64) -> Result<(), String> {
+    let h = height.clamp(60.0, 700.0);
+    utils::place_tray_popup(&window, 320.0, h).map_err(|e| e.to_string())?;
+    window.show().map_err(|e| e.to_string())?;
+    let _ = window.set_focus();
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn toggle_window_visibility(app: AppHandle, show: bool) -> Result<(), String> {
     utils::apply_window_visibility(app, show)

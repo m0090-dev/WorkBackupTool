@@ -3,7 +3,55 @@ use crate::app::state::AppState;
 use crate::core::types::AppConfig;
 use tauri::WebviewWindow;
 use tauri::{AppHandle, Manager};
-use tauri::{LogicalPosition, LogicalSize, PhysicalPosition, Position as TauriPosition, Size};
+use tauri::{LogicalPosition, LogicalSize,PhysicalSize, PhysicalPosition, Position as TauriPosition, Size};
+
+
+
+/// 位置とサイズを1回で変更する。
+/// Windows は SetWindowPos 1発なので、途中状態が画面に出ない。
+pub fn set_bounds_atomic(
+    window: &WebviewWindow,
+    x: i32,
+    y: i32,
+    w: i32,
+    h: i32,
+) -> tauri::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
+        };
+        let hwnd = HWND(window.hwnd()?.0 as *mut _);
+        unsafe {
+            let _ = SetWindowPos(hwnd, None, x, y, w, h, SWP_NOACTIVATE | SWP_NOZORDER);
+        }
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        window.set_size(PhysicalSize::new(w as u32, h as u32))?;
+        window.set_position(PhysicalPosition::new(x, y))?;
+        Ok(())
+    }
+}
+
+/// トレイポップアップを作業領域の右下に、指定の論理サイズで配置する(1回で)
+pub fn place_tray_popup(window: &WebviewWindow, width: f64, height: f64) -> tauri::Result<()> {
+    let monitor = match window.current_monitor()? {
+        Some(m) => m,
+        None => return Ok(()),
+    };
+    let work = monitor.work_area();
+    let scale = window.scale_factor()?;
+    let margin = (8.0 * scale).round() as i32;
+    let w = (width * scale).round() as i32;
+    let h = (height * scale).round() as i32;
+    let x = work.position.x + work.size.width as i32 - w - margin;
+    let y = work.position.y + work.size.height as i32 - h - margin;
+    set_bounds_atomic(window, x, y, w, h)
+}
+
 
 pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Result<()> {
     // 1. まず「何でもあり」の状態にする (制約の完全解除)
@@ -191,41 +239,30 @@ pub fn create_tray_menu<R: tauri::Runtime>(
 
 pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result<()> {
     let scale = window.scale_factor()?;
-    let width = window.inner_size()?.width as f64 / scale;
     let h = height.clamp(60.0, 700.0);
-    let new_size = Size::Logical(LogicalSize::new(width, h));
+    let new_h = (h * scale).round() as i32;
+    let old_o = window.outer_size()?;
+    let old_p = window.outer_position()?;
+    if new_h == old_o.height as i32 {
+        return Ok(()); // 同じ高さなら何もしない
+    }
 
-    #[cfg(desktop)]
-    {
-        // 現在の下辺を維持するため、変更前の outer 位置・高さを取る
-        let was_tray = !window.is_decorated().unwrap_or(true);
-        let old_outer = window.outer_size().ok();
-        let old_pos = window.outer_position().ok();
-
+    let was_tray = !window.is_decorated().unwrap_or(true);
+    if was_tray {
+        // 下辺固定で上に伸ばす。min/max には触らず、1回で変更。
+        let bottom = old_p.y + old_o.height as i32;
+        set_bounds_atomic(window, old_p.x, bottom - new_h, old_o.width as i32, new_h)?;
+    } else {
+        let width = old_o.width as f64 / scale;
+        let new_size = Size::Logical(LogicalSize::new(width, h));
         window.set_min_size(None::<Size>)?;
         window.set_max_size(None::<Size>)?;
         window.set_size(new_size)?;
         window.set_min_size(Some(new_size))?;
         window.set_max_size(Some(new_size))?;
-
-        // トレイ枠なし時: 下辺固定で上に伸ばす（タスクバーに食い込まない）
-        if was_tray {
-            if let (Some(old_o), Some(old_p)) = (old_outer, old_pos) {
-                let new_outer = window.outer_size()?;
-                let dy = new_outer.height as i32 - old_o.height as i32;
-                // 高くなった分だけ上へずらす
-                let _ = window.set_position(TauriPosition::Physical(PhysicalPosition::new(
-                    old_p.x,
-                    old_p.y - dy,
-                )));
-            } else {
-                let _ = position_tray_popup(window);
-            }
-        }
     }
     Ok(())
 }
-
 #[cfg(target_os = "windows")]
 pub fn disable_dwm_transitions(window: &tauri::WebviewWindow) {
     use windows::Win32::Foundation::HWND;

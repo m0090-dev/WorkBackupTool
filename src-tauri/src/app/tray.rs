@@ -39,26 +39,17 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
                     button_state: MouseButtonState::Up,
                     ..
                 } => {
-                    let app_handle = tray.app_handle();
-                    if let Some(window) = app_handle.get_webview_window("main") {
-                        // 1. 先に JS に通知（compact-mode / frameless のクラスを先に付ける）
-                        let _ = window.hide();
-                        let _ = app_handle.emit("compact-mode-event", true);
-                        let _ = app_handle.emit("compact-frameless", true);
-
-                        // 2. 枠なし + 初期サイズ（max 固定なし）
-                        let _ = utils::apply_tray_popup_mode(&window, true);
-                        // ★ 表示アニメを切ってから show
-                        utils::disable_dwm_transitions(&window);
-                        let _ = utils::position_tray_popup(&window);
-
-                        // 3. トレイ真上へ
-                        //let _ = window.as_ref().window().move_window(Position::TrayCenter);
-
-                        // 4. 表示
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
+                   let app_handle = tray.app_handle();
+if let Some(window) = app_handle.get_webview_window("main") {
+    let _ = window.hide();
+    // 先に枠なし・サイズ(320幅)にしておく(隠れているので見えない)
+    let _ = utils::apply_tray_popup_mode(&window, true);
+    utils::disable_dwm_transitions(&window);
+    // 順序が大事: frameless → compact-mode-event
+    let _ = app_handle.emit("compact-frameless", true);
+    let _ = app_handle.emit("compact-mode-event", true);
+    // 表示は JS が測り終えてから show_tray_popup で行う
+}                    }
                 }
                 _ => {}
             }
