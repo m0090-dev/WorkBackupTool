@@ -126,6 +126,7 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                 let _ = window.as_ref().window().move_window(Position::TrayCenter);
                 #[cfg(not(target_os = "windows"))]
                 let _ = window.as_ref().window().move_window(Position::TopRight);
+                utils::disable_dwm_transitions(&window);
                 let _ = window.show();
                 let _ = window.set_focus();
             }

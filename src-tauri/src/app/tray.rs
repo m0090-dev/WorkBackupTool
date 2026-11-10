@@ -47,6 +47,9 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
 
                         // 2. 枠なし + 初期サイズ（max 固定なし）
                         let _ = utils::apply_tray_popup_mode(&window, true);
+                        let _ = utils::position_tray_popup(&window);
+                        // ★ 表示アニメを切ってから show
+                        utils::disable_dwm_transitions(&window);
 
                         // 3. トレイ真上へ
                         let _ = window.as_ref().window().move_window(Position::TrayCenter);
