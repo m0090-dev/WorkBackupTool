@@ -19,7 +19,7 @@ pub async fn backup_or_diff(
     custom_dir: String,
     algo: String,
     compress: String,
-    ignore_list: Vec<String>
+    ignore_list: Vec<String>,
 ) -> Result<String, String> {
     let ts = chrono::Local::now().format("%Y%m%d_%H%M%S").to_string();
     // 1. ディレクトリ解決

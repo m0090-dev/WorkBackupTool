@@ -39,24 +39,37 @@ pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Re
 }
 
 pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> tauri::Result<()> {
-    // 制約解除
+    // 制約を完全解除
     window.set_resizable(true)?;
     window.set_min_size(None::<Size>)?;
     window.set_max_size(None::<Size>)?;
 
     if is_tray_mode {
         // --- トレイポップアップ用 ---
-        window.set_decorations(false)?; // 枠なし
-        window.set_always_on_top(true)?; // 最前面
-        window.set_skip_taskbar(true)?; // タスクバーに出さない
+        window.set_decorations(false)?;
+        window.set_always_on_top(true)?;
+        window.set_skip_taskbar(true)?;
 
-        let size = Size::Logical(LogicalSize::new(320.0, 94.0));
+        // 初期高さは「小さめ」にする。
+        // 実際の高さは JS の set_window_height（実測）に任せる。
+        // 94 固定だと内容より大きくなり下余白の主因になる。
+        // dragbar 分を見込んでも 80 前後で十分。JSがすぐ伸ばす。
+        let size = Size::Logical(LogicalSize::new(320.0, 80.0));
         window.set_size(size)?;
+
+        // Windows: decorations 変更直後にクライアント領域がずれる対策
+        #[cfg(target_os = "windows")]
+        {
+            let _ = window.set_size(size);
+        }
+
+        // min/max は「仮」として低く抑える。JS側 apply_window_height が
+        // 毎回 min/max を外してから正しい値を入れるので問題ない。
         window.set_min_size(Some(size))?;
         window.set_max_size(Some(size))?;
     } else {
-        // --- 通常モード（復帰）用 ---
-        window.set_decorations(true)?; // 枠あり
+        // --- 通常モード復帰 ---
+        window.set_decorations(true)?;
         window.set_always_on_top(false)?;
         window.set_skip_taskbar(false)?;
 
@@ -64,7 +77,7 @@ pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> taur
         window.set_size(size)?;
         window.set_min_size(Some(size))?;
         window.set_max_size(Some(size))?;
-        window.center()?; // 中央に戻す
+        window.center()?;
     }
     Ok(())
 }

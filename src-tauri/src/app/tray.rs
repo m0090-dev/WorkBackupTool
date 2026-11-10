@@ -41,17 +41,15 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
                 } => {
                     let app_handle = tray.app_handle();
                     if let Some(window) = app_handle.get_webview_window("main") {
-                        // 1. 追加した関数で「枠なし・コンパクトサイズ」に変更
+                        // 1. 枠なし + 仮サイズ
                         let _ = utils::apply_tray_popup_mode(&window, true);
-                        // 2. JS側に通知してコンパクト用レイアウトに切り替え
+
+                        // 2. 先に JS へ通知（クラス付与・レイアウト・高さ計測を早めに開始）
                         let _ = app_handle.emit("compact-mode-event", true);
                         let _ = app_handle.emit("compact-frameless", true);
 
-                        // 3. トレイアイコンの真上（TrayCenter）にワープ
-                        // ※ .as_ref().window() は Tauri v2 の型合わせ用
+                        // 3. 位置 → 表示
                         let _ = window.as_ref().window().move_window(Position::TrayCenter);
-
-                        // 4. 表示してフォーカスを当てる
                         let _ = window.show();
                         let _ = window.set_focus();
                     }

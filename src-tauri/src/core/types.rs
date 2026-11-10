@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-
 // ---- AppConfig の既定値 ----
 // 設定ファイル(AppConfig.json)に項目が無い場合(旧バージョンの設定ファイルなど)でも、
 // 設定全体が初期化されないように、すべての項目に既定値を用意している。

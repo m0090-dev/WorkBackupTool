@@ -11,8 +11,8 @@ use tauri::{AppHandle, Manager, State, WebviewWindow, Window};
 use crate::app::state::AppState;
 use crate::app::utils;
 use crate::core::types::*;
-use std::collections::HashMap;
 use serde_json;
+use std::collections::HashMap;
 
 #[tauri::command]
 pub fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
@@ -165,8 +165,7 @@ pub async fn update_session_tab_value(
     // --- session.json を読み込む ---
     let raw = fs::read_to_string(&session_path)
         .unwrap_or_else(|_| r#"{"tabs":[],"recentFiles":[]}"#.to_string());
-    let mut session: SessionData =
-        serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    let mut session: SessionData = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
 
     // --- 対象タブを検索 ---
     let tab = session
