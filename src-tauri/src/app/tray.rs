@@ -39,17 +39,17 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
                     button_state: MouseButtonState::Up,
                     ..
                 } => {
-                   let app_handle = tray.app_handle();
-if let Some(window) = app_handle.get_webview_window("main") {
-    let _ = window.hide();
-    // 先に枠なし・サイズ(320幅)にしておく(隠れているので見えない)
-    let _ = utils::apply_tray_popup_mode(&window, true);
-    utils::disable_dwm_transitions(&window);
-    // 順序が大事: frameless → compact-mode-event
-    let _ = app_handle.emit("compact-frameless", true);
-    let _ = app_handle.emit("compact-mode-event", true);
-    // 表示は JS が測り終えてから show_tray_popup で行う
-}                    }
+                    let app_handle = tray.app_handle();
+                    if let Some(window) = app_handle.get_webview_window("main") {
+                        let _ = window.hide();
+                        // 先に枠なし・サイズ(320幅)にしておく(隠れているので見えない)
+                        let _ = utils::apply_tray_popup_mode(&window, true);
+                        utils::disable_dwm_transitions(&window);
+                        // 順序が大事: frameless → compact-mode-event
+                        let _ = app_handle.emit("compact-frameless", true);
+                        let _ = app_handle.emit("compact-mode-event", true);
+                        // 表示は JS が測り終えてから show_tray_popup で行う
+                    }
                 }
                 _ => {}
             }

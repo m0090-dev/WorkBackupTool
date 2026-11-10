@@ -119,13 +119,14 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
         }
         "show_compact" => {
             if let Some(window) = app.get_webview_window("main") {
-        let _ = window.hide();
-        let _ = utils::apply_tray_popup_mode(&window, true);
-        utils::disable_dwm_transitions(&window);
-        let _ = app.emit("compact-frameless", true);
-        let _ = app.emit("compact-mode-event", true);
-        // move_window / show / set_focus は削除(show_tray_popup が行う)
-    }        }
+                let _ = window.hide();
+                let _ = utils::apply_tray_popup_mode(&window, true);
+                utils::disable_dwm_transitions(&window);
+                let _ = app.emit("compact-frameless", true);
+                let _ = app.emit("compact-mode-event", true);
+                // move_window / show / set_focus は削除(show_tray_popup が行う)
+            }
+        }
 
         // --- 4. 最前面表示 / コンパクトモード ---
         "always_on_top" | "compact_mode" => {

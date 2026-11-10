@@ -3,9 +3,9 @@ use crate::app::state::AppState;
 use crate::core::types::AppConfig;
 use tauri::WebviewWindow;
 use tauri::{AppHandle, Manager};
-use tauri::{LogicalPosition, LogicalSize,PhysicalSize, PhysicalPosition, Position as TauriPosition, Size};
-
-
+use tauri::{
+    LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position as TauriPosition, Size,
+};
 
 /// 位置とサイズを1回で変更する。
 /// Windows は SetWindowPos 1発なので、途中状態が画面に出ない。
@@ -19,9 +19,7 @@ pub fn set_bounds_atomic(
     #[cfg(target_os = "windows")]
     {
         use windows::Win32::Foundation::HWND;
-        use windows::Win32::UI::WindowsAndMessaging::{
-            SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER,
-        };
+        use windows::Win32::UI::WindowsAndMessaging::{SetWindowPos, SWP_NOACTIVATE, SWP_NOZORDER};
         let hwnd = HWND(window.hwnd()?.0 as *mut _);
         unsafe {
             let _ = SetWindowPos(hwnd, None, x, y, w, h, SWP_NOACTIVATE | SWP_NOZORDER);
@@ -51,7 +49,6 @@ pub fn place_tray_popup(window: &WebviewWindow, width: f64, height: f64) -> taur
     let y = work.position.y + work.size.height as i32 - h - margin;
     set_bounds_atomic(window, x, y, w, h)
 }
-
 
 pub fn apply_compact_mode(window: &WebviewWindow, is_compact: bool) -> tauri::Result<()> {
     // 1. まず「何でもあり」の状態にする (制約の完全解除)
@@ -160,9 +157,6 @@ pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> taur
     window.set_min_size(Some(Size::Logical(LogicalSize::new(320.0, 60.0))))?;
     Ok(())
 }
-
-
-
 
 pub fn apply_window_visibility(app: AppHandle, show: bool) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
