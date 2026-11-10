@@ -1,3 +1,6 @@
+// デバッグ用
+use std::sync::atomic::Ordering;
+
 // 標準ライブラリ
 use std::fs;
 use std::path::PathBuf;
@@ -140,12 +143,23 @@ pub async fn toggle_compact_mode(window: WebviewWindow, is_compact: bool) -> Res
 /// コンパクト/トレイ表示の高さを中身に合わせて変更する(幅は変えない)
 #[tauri::command]
 pub async fn set_window_height(window: WebviewWindow, height: f64) -> Result<(), String> {
+    eprintln!("[win] set_window_height {}", height);
     utils::apply_window_height(&window, height).map_err(|e| e.to_string())
 }
 
 /// トレイ(枠なし)ポップアップを、測った高さで「1回だけ」配置して表示する
+// #[tauri::command]
+// pub fn show_tray_popup(window: WebviewWindow, height: f64) -> Result<(), String> {
+//     let h = height.clamp(60.0, 700.0);
+//     utils::place_tray_popup(&window, 320.0, h).map_err(|e| e.to_string())?;
+//     window.show().map_err(|e| e.to_string())?;
+//     let _ = window.set_focus();
+//     Ok(())
+// }
+/// トレイ(枠なし)ポップアップを、測った高さで「1回だけ」配置して表示する
 #[tauri::command]
-pub fn show_tray_popup(window: WebviewWindow, height: f64) -> Result<(), String> {
+pub async fn show_tray_popup(window: WebviewWindow, height: f64) -> Result<(), String> {
+    eprintln!("[tray] show_tray_popup height={}", height);
     let h = height.clamp(60.0, 700.0);
     utils::place_tray_popup(&window, 320.0, h).map_err(|e| e.to_string())?;
     window.show().map_err(|e| e.to_string())?;

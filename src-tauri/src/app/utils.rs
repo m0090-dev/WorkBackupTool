@@ -1,3 +1,28 @@
+// デバッグ用
+use std::sync::atomic::{AtomicU32, Ordering};
+use tauri::Emitter;
+/// トレイポップアップの高さ(論理px)。JS が測った値で更新され、次回の表示に使う
+pub static TRAY_POPUP_HEIGHT: AtomicU32 = AtomicU32::new(110);
+
+/// トレイ(枠なし)ポップアップを、前回の高さで即表示する。
+/// 高さのズレは、表示後に JS が set_window_height で補正する(補正値は記憶される)。
+pub fn request_tray_popup(app: &AppHandle, window: &WebviewWindow) {
+    eprintln!("[tray] request_tray_popup");
+    let _ = window.hide();
+    let _ = apply_tray_popup_mode(window, true);
+    disable_dwm_transitions(window);
+
+    let h = TRAY_POPUP_HEIGHT.load(Ordering::SeqCst) as f64;
+    let _ = place_tray_popup(window, 320.0, h);
+
+    // 順序が大事: frameless → compact-mode-event
+    let _ = app.emit("compact-frameless", true);
+    let _ = app.emit("compact-mode-event", true);
+
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
 use crate::app::commands::get_language_text;
 use crate::app::state::AppState;
 use crate::core::types::AppConfig;
@@ -6,6 +31,18 @@ use tauri::{AppHandle, Manager};
 use tauri::{
     LogicalPosition, LogicalSize, PhysicalPosition, PhysicalSize, Position as TauriPosition, Size,
 };
+
+/// 外側サイズと内側(クライアント)サイズの差(物理px)。
+/// 枠なしでも、影や見えない枠の分だけ差が出ることがある。
+fn frame_delta(window: &WebviewWindow) -> (i32, i32) {
+    match (window.outer_size(), window.inner_size()) {
+        (Ok(o), Ok(i)) => (
+            o.width as i32 - i.width as i32,
+            o.height as i32 - i.height as i32,
+        ),
+        _ => (0, 0),
+    }
+}
 
 /// 位置とサイズを1回で変更する。
 /// Windows は SetWindowPos 1発なので、途中状態が画面に出ない。
@@ -34,7 +71,7 @@ pub fn set_bounds_atomic(
     }
 }
 
-/// トレイポップアップを作業領域の右下に、指定の論理サイズで配置する(1回で)
+/// トレイポップアップを作業領域の右下に、「中身」が指定の論理サイズになるよう配置する(1回で)
 pub fn place_tray_popup(window: &WebviewWindow, width: f64, height: f64) -> tauri::Result<()> {
     let monitor = match window.current_monitor()? {
         Some(m) => m,
@@ -43,8 +80,12 @@ pub fn place_tray_popup(window: &WebviewWindow, width: f64, height: f64) -> taur
     let work = monitor.work_area();
     let scale = window.scale_factor()?;
     let margin = (8.0 * scale).round() as i32;
-    let w = (width * scale).round() as i32;
-    let h = (height * scale).round() as i32;
+
+    // 中身の大きさ + 外枠との差 = 外側の大きさ
+    let (dw, dh) = frame_delta(window);
+    let w = (width * scale).round() as i32 + dw;
+    let h = (height * scale).round() as i32 + dh;
+
     let x = work.position.x + work.size.width as i32 - w - margin;
     let y = work.position.y + work.size.height as i32 - h - margin;
     set_bounds_atomic(window, x, y, w, h)
@@ -234,20 +275,39 @@ pub fn create_tray_menu<R: tauri::Runtime>(
 pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result<()> {
     let scale = window.scale_factor()?;
     let h = height.clamp(60.0, 700.0);
-    let new_h = (h * scale).round() as i32;
-    let old_o = window.outer_size()?;
-    let old_p = window.outer_position()?;
-    if new_h == old_o.height as i32 {
-        return Ok(()); // 同じ高さなら何もしない
-    }
-
     let was_tray = !window.is_decorated().unwrap_or(true);
+
     if was_tray {
+        // 次回の表示用に高さを覚える
+        TRAY_POPUP_HEIGHT.store(h.round() as u32, Ordering::SeqCst);
+
+        // 「中身」が h になるように、外枠との差を足して指定する
+        let (dw, dh) = frame_delta(window);
+        eprintln!("[win] frame_delta dw={} dh={}", dw, dh);
+        let new_outer_h = (h * scale).round() as i32 + dh;
+        let old_o = window.outer_size()?;
+        let old_p = window.outer_position()?;
+        if new_outer_h == old_o.height as i32 {
+            return Ok(());
+        }
         // 下辺固定で上に伸ばす。min/max には触らず、1回で変更。
         let bottom = old_p.y + old_o.height as i32;
-        set_bounds_atomic(window, old_p.x, bottom - new_h, old_o.width as i32, new_h)?;
+        set_bounds_atomic(
+            window,
+            old_p.x,
+            bottom - new_outer_h,
+            old_o.width as i32,
+            new_outer_h,
+        )?;
     } else {
-        let width = old_o.width as f64 / scale;
+        // 枠あり(通常コンパクト): set_size は inner 指定なので、幅は inner から取る。
+        // (outer から取ると、呼ぶたびに枠の分だけ太っていく)
+        let inner = window.inner_size()?;
+        let cur_h = inner.height as f64 / scale;
+        if (cur_h - h).abs() < 1.0 {
+            return Ok(()); // 同じ高さなら何もしない
+        }
+        let width = inner.width as f64 / scale;
         let new_size = Size::Logical(LogicalSize::new(width, h));
         window.set_min_size(None::<Size>)?;
         window.set_max_size(None::<Size>)?;
@@ -257,6 +317,7 @@ pub fn apply_window_height(window: &WebviewWindow, height: f64) -> tauri::Result
     }
     Ok(())
 }
+
 #[cfg(target_os = "windows")]
 pub fn disable_dwm_transitions(window: &tauri::WebviewWindow) {
     use windows::Win32::Foundation::HWND;
