@@ -105,7 +105,24 @@ export async function showSettingsModal() {
               </div>
               ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
             </div>`;
-            }
+            }else if (item.type === "percent") {
+  // 保存値 0.1〜3.0 → 表示 10〜300
+  const pct = Math.round(Number(currentValue) * 100);
+  const min = item.min ?? 10;
+  const max = item.max ?? 300;
+  const step = item.step ?? 10;
+  return `
+    <div class="settings-item" data-key="${item.key}">
+      <span class="settings-name">${labelText}</span>
+      <div class="settings-slider-row">
+        <input type="range" class="settings-input settings-percent"
+          data-key="${item.key}"
+          min="${min}" max="${max}" step="${step}" value="${pct}">
+        <span class="settings-percent-value" data-for="${item.key}">${pct}%</span>
+      </div>
+      ${hintText ? `<div class="settings-hint">${hintText}</div>` : ""}
+    </div>`;
+}
           })
           .join("");
 
@@ -145,6 +162,7 @@ export async function showSettingsModal() {
     // ---- [FIX #28] 設定変更ハンドラ ----
     // boolean / number を型に応じて正しく処理する
     modalContent.querySelectorAll(".settings-input").forEach((input) => {
+      if (input.classList.contains("settings-percent")) return;
       const handler = async () => {
         const key = input.dataset.key;
         const schema = settingsSchema.find((s) => s.key === key);
@@ -168,6 +186,23 @@ export async function showSettingsModal() {
       };
       input.addEventListener("change", handler);
     });
+    // --- スライダー用 ---
+    // settings-input の change ハンドラ付近、または percent 専用
+modalContent.querySelectorAll(".settings-percent").forEach((input) => {
+  const label = modalContent.querySelector(
+    `.settings-percent-value[data-for="${input.dataset.key}"]`,
+  );
+  const syncLabel = () => {
+    if (label) label.textContent = `${input.value}%`;
+  };
+  input.addEventListener("input", syncLabel); // ドラッグ中も % 更新
+  input.addEventListener("change", async () => {
+    const key = input.dataset.key;
+    // UI% → 保存用の倍率
+    const value = Number(input.value) / 100;
+    await handleSettingChange(key, value);
+  });
+});
 
     // ---- キー割り当て欄(shortcut) ----
     // 欄を選んでキーを押すと割り当てる。Backspace/Delete で未割り当て、Escape で中止。
