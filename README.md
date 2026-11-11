@@ -20,6 +20,10 @@ This tool was created by the author for personal use to ensure quick and reliabl
 
 *Drag & drop a file or folder directly onto the window to set it as the backup target.*
 
+![Main Window – Mode Select](docs/screenshots/main-window-mode-select.png)
+
+*Backup mode selection in the main window.*
+
 ### Compact Window
 
 ![Compact Window](docs/screenshots/compact-window.png)
@@ -33,6 +37,28 @@ This tool was created by the author for personal use to ensure quick and reliabl
 ![Compact Window – Drag & Drop](docs/screenshots/compact-window-dnd.png)
 
 *Drag & drop support in compact mode.*
+
+![Compact Window – History](docs/screenshots/compact-window-history.png)
+
+*Backup history displayed in compact mode.*
+
+![Compact Window – Mode Select](docs/screenshots/compact-window-mode-select.png)
+
+*Backup mode selection in compact mode.*
+
+### Compact Window – System Tray
+
+![Compact Window – Tray](docs/screenshots/compact-window-tray.png)
+
+*Compact window operating from the system tray.*
+
+![Compact Window – Tray History](docs/screenshots/compact-window-tray-history.png)
+
+*Backup history accessible from the compact window in tray mode.*
+
+![Compact Window – Tray Mode Select](docs/screenshots/compact-window-tray-mode-select.png)
+
+*Backup mode selection in the compact window in tray mode.*
 
 ---
 
@@ -253,3 +279,4 @@ This project is licensed under the MIT License. See [LICENSE.md](LICENSE.md) for
 Copyright (c) 2024-2026 m0090-dev
 
 For a complete list of third-party licenses and credits, please refer to `CREDITS.md`.
+
