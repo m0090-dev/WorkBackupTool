@@ -27,7 +27,7 @@ export const settingsSchema = [
     key: "autoBaseGenerationThreshold",
     type: "number",
     min: 0.1,
-    max: 1.0,
+    max: 3.0,
     step: 0.1,
     category: "backup",
     label: "thresholdLabel",

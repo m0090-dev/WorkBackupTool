@@ -28,3 +28,6 @@ src-tauri/binaries/*
 src-tauri/target/*
 !src-tauri/binaries/android/
 !src-tauri/binaries/.gitkeep
+
+# Test Temp
+scripts/_gen_test_work/

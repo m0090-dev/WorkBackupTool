@@ -54,8 +54,11 @@ pub fn resolve_backup_target(
     })
 }
 
-pub fn should_transition_to_next_gen(work_size: u64, diff_size: u64, threshold: f64) -> bool {
-    work_size > 100 * 1024 && (diff_size as f64) > (work_size as f64) * threshold
+/// 世代交代すべきか判定する。
+/// base_size: この世代のベースのサイズ / diff_total: この世代の差分の累計サイズ
+/// 累計がベースの threshold 倍を超えたら true。ベースが 100KB 以下なら常に false。
+pub fn should_transition_to_next_gen(base_size: u64, diff_total: u64, threshold: f64) -> bool {
+    base_size > 100 * 1024 && (diff_total as f64) > (base_size as f64) * threshold
 }
 
 /// フェーズ1-2まで差分作成用の独自ワークフロー
@@ -87,11 +90,16 @@ pub fn finalize_or_next_plan(
     ts: &str,
 ) -> Result<(String, Option<(PathBuf, PathBuf, PathBuf)>), String> {
     // フォルダの場合はサイズを再帰的に合算する
-    let work_size = path_size(Path::new(work_path))?;
+      let work_size = path_size(Path::new(work_path))?;
     let diff_size = fs::metadata(&temp_diff).map_err(|e| e.to_string())?.len();
     let entry_name = Path::new(work_path).file_name().unwrap().to_string_lossy();
 
-    if should_transition_to_next_gen(work_size, diff_size, threshold) {
+    // 分母: この世代のベースのサイズ(取れなければ作業対象の現在サイズで代用)
+    let base_size = path_size(&target.target_dir.join(format!("{}.base", entry_name)))
+        .unwrap_or(work_size);
+    // 分子: この世代の既存の差分の合計 + 今作った差分
+    // (temp_diff は一時フォルダにあるので、二重には数えない)
+    let diff_total = generation_diff_total(&target.target_dir, &entry_name) + diff_size;    if should_transition_to_next_gen(work_size, diff_size, threshold) {
         // --- 世代交代プランの作成 ---
         let _ = fs::remove_file(&temp_diff);
 
@@ -206,4 +214,22 @@ fn path_size(p: &Path) -> Result<u64, String> {
     } else {
         Err(format!("パスが存在しません: {}", p.display()))
     }
+}
+
+/// 世代フォルダ内にある、この作業対象の差分ファイルのサイズ合計
+/// (.note や他の作業対象の差分は数えない)
+pub fn generation_diff_total(gen_dir: &Path, entry_name: &str) -> u64 {
+    let prefix = format!("{}.", entry_name);
+    let mut total = 0u64;
+    if let Ok(rd) = fs::read_dir(gen_dir) {
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().into_owned();
+            if name.starts_with(&prefix) && name.ends_with(".diff") {
+                if let Ok(m) = e.metadata() {
+                    total += m.len();
+                }
+            }
+        }
+    }
+    total
 }

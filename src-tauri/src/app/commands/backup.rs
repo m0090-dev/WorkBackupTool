@@ -51,7 +51,7 @@ pub async fn backup_or_diff(
             let state = app.state::<AppState>();
             let cfg = state.config.lock().unwrap();
             if cfg.auto_base_generation_threshold <= 0.0 {
-                0.8
+                1.0
             } else {
                 cfg.auto_base_generation_threshold
             }
