@@ -69,8 +69,8 @@ pub fn apply_config_value(cfg: &mut AppConfig, key: &str, value: &Value) -> Resu
             let v = value
                 .as_f64()
                 .ok_or_else(|| format!("`{}` must be a number", key))?;
-            if !(0.1..=1.0).contains(&v) {
-                return Err(format!("`{}` must be between 0.1 and 1.0", key));
+            if !(0.1..=3.0).contains(&v) {
+                return Err(format!("`{}` must be between 0.1 and 3.0", key));
             }
             cfg.auto_base_generation_threshold = v;
         }

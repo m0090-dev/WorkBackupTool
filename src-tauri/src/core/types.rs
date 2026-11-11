@@ -12,7 +12,7 @@ fn default_true() -> bool {
     true
 }
 fn default_threshold() -> f64 {
-    0.6
+    1.0
 }
 fn default_tray_backup_mode() -> String {
     "diff".to_string()

@@ -2,7 +2,7 @@
   "language": "ja",
   "alwaysOnTop": false,
   "restorePreviousState": true,
-  "autoBaseGenerationThreshold": 0.6,
+  "autoBaseGenerationThreshold": 1.0,
   "trayMode": false,
   "compactMode": false,
   "useSameDirForTemp": false,

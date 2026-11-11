@@ -208,3 +208,10 @@ export async function RebuildArchiveCaches(workFile, backupDir) {
 export async function SetWindowHeight(height) {
   return await invoke("set_window_height", { height });
 }
+
+export async function QuitApp() {
+  return await invoke("quit_app");
+}
+export async function ShowAbout() {
+  return await invoke("show_about");
+}

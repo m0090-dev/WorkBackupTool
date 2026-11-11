@@ -24,3 +24,33 @@ pub fn dir_exists(path: String) -> Result<bool, String> {
 pub fn file_exists(path: String) -> Result<bool, String> {
     Ok(utils::file_exists(&path))
 }
+
+#[tauri::command]
+pub fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
+#[tauri::command]
+pub fn show_about(app: tauri::AppHandle, state: tauri::State<'_, crate::app::state::AppState>) {
+    use tauri::Manager;
+    use tauri_plugin_dialog::DialogExt;
+
+    let t = |key: &str| -> String { state.translate(key).unwrap_or_else(|_| key.to_string()) };
+    let is_always_on_top = state.config.lock().unwrap().always_on_top;
+
+    if let Some(window) = app.get_webview_window("main") {
+        if is_always_on_top {
+            let _ = window.set_always_on_top(false);
+        }
+        let window_clone = window.clone();
+        window
+            .dialog()
+            .message(t("aboutText"))
+            .title(t("about"))
+            .show(move |_| {
+                if is_always_on_top {
+                    let _ = window_clone.set_always_on_top(true);
+                }
+            });
+    }
+}

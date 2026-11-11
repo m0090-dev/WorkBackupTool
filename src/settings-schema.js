@@ -25,10 +25,10 @@ export const settingsSchema = [
   // --- バックアップ ---
   {
     key: "autoBaseGenerationThreshold",
-    type: "number",
-    min: 0.1,
-    max: 1.0,
-    step: 0.1,
+    type: "percent",
+    min: 10,
+    max: 300,
+    step: 5,
     category: "backup",
     label: "thresholdLabel",
     hint: "thresholdHint",

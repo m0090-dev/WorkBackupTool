@@ -50,7 +50,9 @@ pub fn run() {
             get_config,
             update_config_value,
             update_session_tab_value,
-            show_tray_popup
+            show_tray_popup,
+            quit_app,
+            show_about,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

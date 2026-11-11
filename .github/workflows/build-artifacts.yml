@@ -1,11 +1,7 @@
 name: "Build Artifacts"
 
 on:
-  # どのブランチへの push でもビルド
-  push:
-    branches:
-      - "**"
-  # Actions 画面からブランチを選んで手動実行
+  # GitHub Actions画面から手動実行
   workflow_dispatch:
 
 permissions:
@@ -76,11 +72,10 @@ jobs:
       - name: Build Tauri application
         run: npx tauri build --target ${{ matrix.target }}
 
-      # Release は作成せず、Actions の実行結果に成果物を保存する
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-${{ matrix.target }}-${{ github.run_number }}
           path: src-tauri/target/${{ matrix.target }}/release/bundle/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 7

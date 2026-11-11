@@ -8,6 +8,8 @@ import {
   EventsOn,
   OnFileDrop,
   ArchiveGeneration,
+  QuitApp,
+  ShowAbout,
 } from "./tauri_exports";
 
 import {
@@ -266,7 +268,7 @@ export async function setupGlobalEvents() {
       if (targets.length === 0) return;
 
       const isConfirmed = await ask(i18n.restoreConfirm, {
-        title: "CG File Backup",
+        title: "WorkBackupTool",
         type: "warning",
       });
 
@@ -492,6 +494,47 @@ export async function setupGlobalEvents() {
     }
     showArchiveModal();
   });
+
+  // メニューの Ctrl+Q / F1 相当（このウィンドウにフォーカスがあるときだけ。他アプリには効かない）
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      const el = e.target;
+      const typing =
+        el &&
+        (el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA" ||
+          el.tagName === "SELECT" ||
+          el.isContentEditable);
+      if (typing) return;
+
+      // Ctrl+Q → 終了
+      if (
+        e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey &&
+        !e.metaKey &&
+        e.code === "KeyQ"
+      ) {
+        e.preventDefault();
+        QuitApp();
+        return;
+      }
+
+      // F1 → About
+      if (
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey &&
+        !e.metaKey &&
+        e.key === "F1"
+      ) {
+        e.preventDefault();
+        ShowAbout();
+      }
+    },
+    true,
+  );
 
   // --- 検索窓の入力監視 ---
   const searchInput = document.getElementById("history-search");
