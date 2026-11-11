@@ -94,15 +94,19 @@ fn test_apply_bool_ok_and_wrong_type() {
     assert!(apply_config_value(&mut cfg, "restorePreviousState", &json!("true")).is_err());
     assert!(apply_config_value(&mut cfg, "notifyEnabled", &json!(1)).is_err());
 }
-
 #[test]
 fn test_apply_threshold_range() {
     let mut cfg = default_config();
     apply_config_value(&mut cfg, "autoBaseGenerationThreshold", &json!(0.8)).unwrap();
     assert_eq!(cfg.auto_base_generation_threshold, 0.8);
+
+    // 下限未満
     assert!(apply_config_value(&mut cfg, "autoBaseGenerationThreshold", &json!(0.05)).is_err());
-    assert!(apply_config_value(&mut cfg, "autoBaseGenerationThreshold", &json!(1.5)).is_err());
+    // 上限超過（1.5 は範囲内なので使わない）
+    assert!(apply_config_value(&mut cfg, "autoBaseGenerationThreshold", &json!(3.5)).is_err());
+    // 型違い
     assert!(apply_config_value(&mut cfg, "autoBaseGenerationThreshold", &json!("0.5")).is_err());
+
     // 失敗したときは値が変わらない
     assert_eq!(cfg.auto_base_generation_threshold, 0.8);
 }
