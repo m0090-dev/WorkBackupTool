@@ -117,17 +117,19 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
                 let _ = app.set_menu(new_menu);
             }
         }
+        // "show_compact" => {
+        //     if let Some(window) = app.get_webview_window("main") {
+        //         let _ = window.hide();
+        //         let _ = utils::apply_tray_popup_mode(&window, true);
+        //         utils::disable_dwm_transitions(&window);
+        //         let _ = app.emit("compact-frameless", true);
+        //         let _ = app.emit("compact-mode-event", true);
+        //         // move_window / show / set_focus は削除(show_tray_popup が行う)
+        //     }
+        // }
         "show_compact" => {
             if let Some(window) = app.get_webview_window("main") {
-                let _ = utils::apply_tray_popup_mode(&window, true);
-                let _ = app.emit("compact-mode-event", true);
-                let _ = app.emit("compact-frameless", true);
-                #[cfg(target_os = "windows")]
-                let _ = window.as_ref().window().move_window(Position::TrayCenter);
-                #[cfg(not(target_os = "windows"))]
-                let _ = window.as_ref().window().move_window(Position::TopRight);
-                let _ = window.show();
-                let _ = window.set_focus();
+                utils::request_tray_popup(app, &window);
             }
         }
 

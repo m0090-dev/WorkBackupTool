@@ -40,7 +40,7 @@ pub async fn apply_hdiff(
     out_path: &str,
     strict_hash_check: bool,
 ) -> Result<(), String> {
-    let mut args = build_hpatchz_args(base_full, diff_file, out_path,strict_hash_check);
+    let mut args = build_hpatchz_args(base_full, diff_file, out_path, strict_hash_check);
     eprintln!("hpatchz args: {:?}", args);
 
     let output = app

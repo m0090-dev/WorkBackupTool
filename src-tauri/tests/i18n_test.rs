@@ -36,7 +36,9 @@ fn test_i18n_no_empty_values() {
     let v = load();
     for lang in ["en", "ja"] {
         for (k, val) in v[lang].as_object().unwrap() {
-            let s = val.as_str().unwrap_or_else(|| panic!("{}.{} is not a string", lang, k));
+            let s = val
+                .as_str()
+                .unwrap_or_else(|| panic!("{}.{} is not a string", lang, k));
             assert!(!s.trim().is_empty(), "{}.{} is empty", lang, k);
         }
     }
@@ -53,7 +55,10 @@ fn test_i18n_placeholders_match_between_languages() {
             .find_iter(en_val.as_str().unwrap())
             .map(|m| m.as_str().to_string())
             .collect();
-        let mut ja_ph: Vec<_> = re.find_iter(ja_val).map(|m| m.as_str().to_string()).collect();
+        let mut ja_ph: Vec<_> = re
+            .find_iter(ja_val)
+            .map(|m| m.as_str().to_string())
+            .collect();
         en_ph.sort();
         ja_ph.sort();
         assert_eq!(en_ph, ja_ph, "placeholder mismatch in key `{}`", k);

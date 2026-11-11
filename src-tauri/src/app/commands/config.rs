@@ -1,3 +1,6 @@
+// デバッグ用
+use std::sync::atomic::Ordering;
+
 // 標準ライブラリ
 use std::fs;
 use std::path::PathBuf;
@@ -11,8 +14,8 @@ use tauri::{AppHandle, Manager, State, WebviewWindow, Window};
 use crate::app::state::AppState;
 use crate::app::utils;
 use crate::core::types::*;
-use std::collections::HashMap;
 use serde_json;
+use std::collections::HashMap;
 
 #[tauri::command]
 pub fn get_config(state: State<'_, AppState>) -> Result<AppConfig, String> {
@@ -140,7 +143,28 @@ pub async fn toggle_compact_mode(window: WebviewWindow, is_compact: bool) -> Res
 /// コンパクト/トレイ表示の高さを中身に合わせて変更する(幅は変えない)
 #[tauri::command]
 pub async fn set_window_height(window: WebviewWindow, height: f64) -> Result<(), String> {
+    eprintln!("[win] set_window_height {}", height);
     utils::apply_window_height(&window, height).map_err(|e| e.to_string())
+}
+
+/// トレイ(枠なし)ポップアップを、測った高さで「1回だけ」配置して表示する
+// #[tauri::command]
+// pub fn show_tray_popup(window: WebviewWindow, height: f64) -> Result<(), String> {
+//     let h = height.clamp(60.0, 700.0);
+//     utils::place_tray_popup(&window, 320.0, h).map_err(|e| e.to_string())?;
+//     window.show().map_err(|e| e.to_string())?;
+//     let _ = window.set_focus();
+//     Ok(())
+// }
+/// トレイ(枠なし)ポップアップを、測った高さで「1回だけ」配置して表示する
+#[tauri::command]
+pub async fn show_tray_popup(window: WebviewWindow, height: f64) -> Result<(), String> {
+    eprintln!("[tray] show_tray_popup height={}", height);
+    let h = height.clamp(60.0, 700.0);
+    utils::place_tray_popup(&window, 320.0, h).map_err(|e| e.to_string())?;
+    window.show().map_err(|e| e.to_string())?;
+    let _ = window.set_focus();
+    Ok(())
 }
 
 #[tauri::command]
@@ -165,8 +189,7 @@ pub async fn update_session_tab_value(
     // --- session.json を読み込む ---
     let raw = fs::read_to_string(&session_path)
         .unwrap_or_else(|_| r#"{"tabs":[],"recentFiles":[]}"#.to_string());
-    let mut session: SessionData =
-        serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    let mut session: SessionData = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
 
     // --- 対象タブを検索 ---
     let tab = session

@@ -1,9 +1,9 @@
 use crate::core::types::DiffFileInfo;
 use crate::core::utils;
 use chrono::Local;
+use fs_extra::dir;
 use std::fs;
 use std::path::{Path, PathBuf};
-use fs_extra::dir;
 /// hdiffz 用の引数リストを生成するロジック
 /// ignore_list: hdiffz の -g オプションに渡す除外パターン群（タブの hdiffIgnoreList）
 pub fn build_hdiffz_args<'a>(
@@ -15,15 +15,15 @@ pub fn build_hdiffz_args<'a>(
 ) -> Vec<String> {
     let mut args: Vec<String> = vec!["-f".into(), "-s".into()];
     match compress_algo {
-        "zstd"   => args.push("-c-zstd".into()),
-        "lzma2"  => args.push("-c-lzma2".into()),
-        "lzma"   => args.push("-c-lzma".into()),
-        "zlib"   => args.push("-c-zlib".into()),
-        "ldef"   => args.push("-c-ldef".into()),
+        "zstd" => args.push("-c-zstd".into()),
+        "lzma2" => args.push("-c-lzma2".into()),
+        "lzma" => args.push("-c-lzma".into()),
+        "zlib" => args.push("-c-zlib".into()),
+        "ldef" => args.push("-c-ldef".into()),
         "pbzip2" => args.push("-c-pbzip2".into()),
-        "bzip2"  => args.push("-c-bzip2".into()),
-        "none"   => {}               // uncompress
-        _        => args.push("-c-zstd".into()), // default
+        "bzip2" => args.push("-c-bzip2".into()),
+        "none" => {}                      // uncompress
+        _ => args.push("-c-zstd".into()), // default
     };
 
     // -g オプション: パターンを # で連結して1引数にまとめる
@@ -97,14 +97,13 @@ pub fn prepare_hdiff_paths(
     target_dir: PathBuf,
 ) -> Result<Option<(String, String, String)>, String> {
     fs::create_dir_all(&target_dir).map_err(|e| e.to_string())?;
-        let path = Path::new(work_file);
+    let path = Path::new(work_file);
     let base_name = Path::new(work_file)
         .file_name()
         .ok_or("Invalid work file name")?
         .to_string_lossy();
     let base_full = target_dir.join(format!("{}.base", base_name));
 
-    
     if !base_full.exists() {
         let metadata = fs::metadata(path).map_err(|e| e.to_string())?;
 
@@ -113,8 +112,7 @@ pub fn prepare_hdiff_paths(
             options.copy_inside = true;
             options.content_only = false;
 
-            dir::copy(path, &base_full, &options)
-                .map_err(|e| e.to_string())?;
+            dir::copy(path, &base_full, &options).map_err(|e| e.to_string())?;
         } else {
             fs::copy(path, &base_full).map_err(|e| e.to_string())?;
         }
@@ -147,7 +145,7 @@ pub fn resolve_apply_paths(
         .to_string_lossy();
 
     let original_full_name = diff_name.split(".20").next().unwrap_or(&diff_name);
-  
+
     let base_name = format!("{}.base", diff_name.split(".20").next().unwrap());
     let mut base_full = backup_dir.join(&base_name);
 
@@ -162,19 +160,19 @@ pub fn resolve_apply_paths(
         base_full = backup_dir.join(work_base_name);
     }
 
-let work_path = Path::new(work_file);
+    let work_path = Path::new(work_file);
     let out_path = if let Some(ext) = work_path.extension() {
-    // 【ファイルの場合】
-    // 元の拡張子（.clipなど）を維持して出力
-    Path::new(&temp_out_path)
-        .with_extension(ext)
-        .to_string_lossy()
-        .into_owned()
-} else {
-    // 【フォルダの場合】
-    // 拡張子がないので、テンポラリパスをそのまま（拡張子なしで）使う
-    temp_out_path
-};
+        // 【ファイルの場合】
+        // 元の拡張子（.clipなど）を維持して出力
+        Path::new(&temp_out_path)
+            .with_extension(ext)
+            .to_string_lossy()
+            .into_owned()
+    } else {
+        // 【フォルダの場合】
+        // 拡張子がないので、テンポラリパスをそのまま（拡張子なしで）使う
+        temp_out_path
+    };
 
     Ok((base_full.to_string_lossy().into_owned(), out_path))
 }

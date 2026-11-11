@@ -39,21 +39,20 @@ pub fn setup_tray(app: &AppHandle, config: &AppConfig) -> tauri::Result<TrayIcon
                     button_state: MouseButtonState::Up,
                     ..
                 } => {
+                    // let app_handle = tray.app_handle();
+                    // if let Some(window) = app_handle.get_webview_window("main") {
+                    //     let _ = window.hide();
+                    //     // 先に枠なし・サイズ(320幅)にしておく(隠れているので見えない)
+                    //     let _ = utils::apply_tray_popup_mode(&window, true);
+                    //     utils::disable_dwm_transitions(&window);
+                    //     // 順序が大事: frameless → compact-mode-event
+                    //     let _ = app_handle.emit("compact-frameless", true);
+                    //     let _ = app_handle.emit("compact-mode-event", true);
+                    //     // 表示は JS が測り終えてから show_tray_popup で行う
+                    // }
                     let app_handle = tray.app_handle();
                     if let Some(window) = app_handle.get_webview_window("main") {
-                        // 1. 追加した関数で「枠なし・コンパクトサイズ」に変更
-                        let _ = utils::apply_tray_popup_mode(&window, true);
-                        // 2. JS側に通知してコンパクト用レイアウトに切り替え
-                        let _ = app_handle.emit("compact-mode-event", true);
-                        let _ = app_handle.emit("compact-frameless", true);
-
-                        // 3. トレイアイコンの真上（TrayCenter）にワープ
-                        // ※ .as_ref().window() は Tauri v2 の型合わせ用
-                        let _ = window.as_ref().window().move_window(Position::TrayCenter);
-
-                        // 4. 表示してフォーカスを当てる
-                        let _ = window.show();
-                        let _ = window.set_focus();
+                        utils::request_tray_popup(app_handle, &window);
                     }
                 }
                 _ => {}

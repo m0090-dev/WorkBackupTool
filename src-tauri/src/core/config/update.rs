@@ -25,7 +25,10 @@ fn as_choice(key: &str, value: &Value, choices: &[&str]) -> Result<String, Strin
     if choices.contains(&s) {
         Ok(s.to_string())
     } else {
-        Err(format!("`{}` must be one of {:?} (got `{}`)", key, choices, s))
+        Err(format!(
+            "`{}` must be one of {:?} (got `{}`)",
+            key, choices, s
+        ))
     }
 }
 
@@ -81,10 +84,7 @@ pub fn apply_config_value(cfg: &mut AppConfig, key: &str, value: &Value) -> Resu
         "reminderIntervalMin" => {
             let v = as_u64(key, value)?;
             if !REMINDER_INTERVALS.contains(&v) {
-                return Err(format!(
-                    "`{}` must be one of {:?}",
-                    key, REMINDER_INTERVALS
-                ));
+                return Err(format!("`{}` must be one of {:?}", key, REMINDER_INTERVALS));
             }
             cfg.reminder_interval_min = v as u32;
         }

@@ -12,7 +12,9 @@ fn test_build_hdiffz_args_zstd() {
     assert_eq!(
         args,
         vec!["-f", "-s", "-c-zstd", "old.bin", "new.bin", "out.diff"]
-            .into_iter().map(String::from).collect::<Vec<_>>()
+            .into_iter()
+            .map(String::from)
+            .collect::<Vec<_>>()
     );
 }
 

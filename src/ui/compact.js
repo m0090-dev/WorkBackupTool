@@ -44,8 +44,16 @@ let scheduled = false;
 function measure() {
   const view = document.getElementById("compact-view");
   if (!view || !document.body.classList.contains("compact-mode")) return 0;
-  let height = Math.ceil(view.getBoundingClientRect().height);
-  // ダイアログが開いているときは、ダイアログが収まる高さを確保する
+
+  let height = 0;
+  for (const child of view.children) {
+    const style = window.getComputedStyle(child);
+    if (style.display === "none" || style.visibility === "hidden") continue;
+    height += child.getBoundingClientRect().height;
+  }
+  if (height < 1) height = view.scrollHeight;
+  height = Math.ceil(height);
+
   document
     .querySelectorAll(".dialog-overlay:not(.hidden) .dialog")
     .forEach((d) => {
@@ -58,34 +66,31 @@ export function syncCompactHeight() {
   if (scheduled) return;
   scheduled = true;
   const run = () => {
-    if (!scheduled) return; // rAF とタイマーのどちらか早い方だけ実行する
+    if (!scheduled) return;
     scheduled = false;
     const height = measure();
-    if (height > 0 && Math.abs(height - lastHeight) > 1) {
+    // 2px 未満の差は無視（無駄なリサイズを減らす）
+    if (height > 0 && Math.abs(height - lastHeight) > 2) {
       lastHeight = height;
       SetWindowHeight(height).catch(() => {});
     }
   };
   requestAnimationFrame(run);
-  // ウィンドウが非表示の間は rAF が止まるため、タイマーでも保険をかける
-  setTimeout(run, 120);
+  setTimeout(run, 80); // 保険は短めに1回
 }
 
 /**
- * コンパクト表示に切り替わったとき/ウィンドウが表示されたときに、高さを必ず送り直す。
- * (トレイから開く枠なしウィンドウは、Rust側が開くたびに初期サイズへ戻すため、
- *  前回と同じ高さでも再送しないと、下に余白が残ることがある)
+ * コンパクト切替・表示時に高さを送り直す。
+ * トレイは Rust 側で近い初期サイズにしているので、再送は最小限にする。
  */
 export function resetCompactHeight() {
   lastHeight = 0;
   syncCompactHeight();
-  // 表示が完了してからもう一度(表示直後はレイアウトが落ち着いていないことがある)
-  [150, 450].forEach((ms) =>
-    setTimeout(() => {
-      lastHeight = 0;
-      syncCompactHeight();
-    }, ms),
-  );
+  // 1回だけ（連打しない）
+  setTimeout(() => {
+    lastHeight = 0;
+    syncCompactHeight();
+  }, 120);
 }
 
 export function initCompactAutoSize() {
@@ -94,12 +99,20 @@ export function initCompactAutoSize() {
   if (typeof ResizeObserver !== "undefined") {
     new ResizeObserver(syncCompactHeight).observe(view);
   }
-  // ウィンドウが再び表示/フォーカスされたとき(トレイから開き直したとき)も送り直す
-  window.addEventListener("focus", resetCompactHeight);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") resetCompactHeight();
+  // focus のたびにフルリセットするとトレイ再表示でちらつくので、軽く同期だけ
+  window.addEventListener("focus", () => {
+    if (document.body.classList.contains("compact-mode")) {
+      syncCompactHeight();
+    }
   });
-  // ダイアログの開閉(クラス/要素の変化)でも再計算する
+  document.addEventListener("visibilitychange", () => {
+    if (
+      document.visibilityState === "visible" &&
+      document.body.classList.contains("compact-mode")
+    ) {
+      resetCompactHeight();
+    }
+  });
   new MutationObserver(syncCompactHeight).observe(document.body, {
     childList: true,
     subtree: true,
