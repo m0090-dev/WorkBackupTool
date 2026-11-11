@@ -164,11 +164,26 @@ function setupTabTooltip(el, tab) {
       tab.backupDir || i18n?.selectedBackupDir || "Default location";
     const mode = tab.backupMode || "diff";
 
+    function formatFileSize(bytes) {
+      if (bytes < 1024) return bytes + " B";
+
+      const units = ["KB", "MB", "GB", "TB"];
+      let size = bytes;
+      let index = -1;
+
+      do {
+        size /= 1024;
+        index++;
+      } while (size >= 1024 && index < units.length - 1);
+
+      return size.toFixed(2) + " " + units[index];
+    }
+    const workSizeMB = formatFileSize(tab.workFileSize);
     tooltip = document.createElement("div");
     tooltip.className = "tab-tooltip";
     tooltip.innerHTML = `
       <span class="tooltip-title">${escapeHtml(fileName)}</span>
-      <b>${escapeHtml(i18n.labelWorkFile)}</b> <code>${escapeHtml(workPath)}</code>
+      <b>${escapeHtml(i18n.labelWorkFile)}</b> <code>${escapeHtml(workPath)}(${escapeHtml(workSizeMB)})</code>
       <b>${escapeHtml(i18n.labelLocation)}</b> <code>${escapeHtml(backupPath)}</code>
       <b>${escapeHtml(i18n.backupMode)}:</b> <span class="tooltip-mode">${escapeHtml(mode.toUpperCase())}</span>
     `;

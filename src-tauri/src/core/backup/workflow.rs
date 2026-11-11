@@ -90,16 +90,17 @@ pub fn finalize_or_next_plan(
     ts: &str,
 ) -> Result<(String, Option<(PathBuf, PathBuf, PathBuf)>), String> {
     // フォルダの場合はサイズを再帰的に合算する
-      let work_size = path_size(Path::new(work_path))?;
+    let work_size = path_size(Path::new(work_path))?;
     let diff_size = fs::metadata(&temp_diff).map_err(|e| e.to_string())?.len();
     let entry_name = Path::new(work_path).file_name().unwrap().to_string_lossy();
 
     // 分母: この世代のベースのサイズ(取れなければ作業対象の現在サイズで代用)
-    let base_size = path_size(&target.target_dir.join(format!("{}.base", entry_name)))
-        .unwrap_or(work_size);
+    let base_size =
+        path_size(&target.target_dir.join(format!("{}.base", entry_name))).unwrap_or(work_size);
     // 分子: この世代の既存の差分の合計 + 今作った差分
     // (temp_diff は一時フォルダにあるので、二重には数えない)
-    let diff_total = generation_diff_total(&target.target_dir, &entry_name) + diff_size;    if should_transition_to_next_gen(work_size, diff_size, threshold) {
+    let diff_total = generation_diff_total(&target.target_dir, &entry_name) + diff_size;
+    if should_transition_to_next_gen(work_size, diff_size, threshold) {
         // --- 世代交代プランの作成 ---
         let _ = fs::remove_file(&temp_diff);
 
