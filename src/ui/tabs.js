@@ -2,7 +2,13 @@ import { i18n, tabs } from "../state";
 import { escapeHtml } from "./html.js";
 import { switchTab, removeTab, reorderTabs } from "../actions";
 
-//TODO: Drag and drop関係はtauri v2が修整されたら正常動作するはず
+// タブの並び替えは HTML5 DnD ではなく Pointer Events で実装している。
+// 理由: Tauri v2 (Windows/WebView2) では dragDropEnabled: true の間、
+// WebView2 の IDropTarget を Tauri が差し替えるため HTML5 の
+// dragstart/dragover/drop が一切発火しない。一方、アプリ内で始まる
+// マウス操作は OLE ドラッグではないので Pointer Events は干渉されない。
+// これにより、ウィンドウへのファイル/フォルダドロップ(ネイティブ、
+// パス取得)は dragDropEnabled: true のまま両立できる。
 export function renderTabs() {
   const list = document.getElementById("tabs-list");
   if (!list) return;
@@ -28,32 +34,16 @@ export function renderTabs() {
 
     setupTabTooltip(el, tab);
 
-    el.draggable = true;
     el.dataset.id = tab.id;
-    el.ondragstart = (e) => {
-      if (el._removeTooltip) el._removeTooltip();
-      el.classList.add("dragging");
-      e.dataTransfer.setData("text/plain", tab.id);
-    };
-    el.ondragover = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      el.classList.add("drag-over");
-    };
-    el.ondragleave = () => el.classList.remove("drag-over");
-    el.ondragend = () => {
-      el.classList.remove("dragging");
-      list
-        .querySelectorAll(".tab-item")
-        .forEach((i) => i.classList.remove("drag-over"));
-    };
-    el.ondrop = async (e) => {
-      e.preventDefault();
-      const dId = e.dataTransfer.getData("text/plain");
-      if (dId && dId !== el.dataset.id) await reorderTabs(dId, el.dataset.id);
-    };
+    el.style.touchAction = "none";
+    setupTabPointerDrag(el, list);
 
     el.onclick = async () => {
+      // ドラッグ直後の click でタブ切り替えが走らないようにする
+      if (el._suppressNextClick) {
+        el._suppressNextClick = false;
+        return;
+      }
       if (el._removeTooltip) el._removeTooltip();
       await switchTab(tab.id);
     };
@@ -135,6 +125,117 @@ export function renderTabs() {
     };
 
     list.appendChild(el);
+  });
+}
+
+
+// ドラッグ開始とみなす移動量(px)。これ未満の動きは通常のクリック(タブ切り替え)
+const TAB_DRAG_THRESHOLD = 6;
+
+function setupTabPointerDrag(el, list) {
+  el.addEventListener("pointerdown", (e) => {
+    // 左ボタンのみ対象。右ボタンはコンテキストメニューに譲る
+    if (e.button !== 0) return;
+    // タブが1つだけなら並び替える意味がない
+    if (tabs.length < 2) return;
+
+    const pointerId = e.pointerId;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let dragging = false;
+    let overEl = null;
+    // ドラッグ開始時点での他タブの矩形。ドラッグ中はレイアウトが変わらないので使い回せる。
+    // ドラッグ中の要素は transform で動くため、elementFromPoint では判定できないことへの対策でもある
+    let otherRects = null;
+
+    const clearOver = () => {
+      if (overEl) overEl.classList.remove("drag-over");
+      overEl = null;
+    };
+
+    const onMove = (ev) => {
+      if (ev.pointerId !== pointerId) return;
+      if (!dragging) {
+        if (
+          Math.hypot(ev.clientX - startX, ev.clientY - startY) <
+          TAB_DRAG_THRESHOLD
+        )
+          return;
+        dragging = true;
+        if (el._removeTooltip) el._removeTooltip();
+        el.classList.add("dragging");
+        el.style.zIndex = "10";
+        el.style.cursor = "grabbing";
+        document.body.style.userSelect = "none";
+        otherRects = [...list.querySelectorAll(".tab-item")]
+          .filter((i) => i !== el)
+          .map((i) => ({ el: i, rect: i.getBoundingClientRect() }));
+      }
+      el.style.transform = `translateX(${ev.clientX - startX}px)`;
+      const hit = otherRects.find(
+        ({ rect }) =>
+          ev.clientX >= rect.left &&
+          ev.clientX <= rect.right &&
+          ev.clientY >= rect.top - 10 &&
+          ev.clientY <= rect.bottom + 10,
+      );
+      const next = hit ? hit.el : null;
+      if (next !== overEl) {
+        clearOver();
+        if (next) {
+          next.classList.add("drag-over");
+          overEl = next;
+        }
+      }
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("blur", onCancel);
+      el.classList.remove("dragging");
+      el.style.transform = "";
+      el.style.zIndex = "";
+      el.style.cursor = "";
+      document.body.style.userSelect = "";
+      clearOver();
+    };
+
+    const suppressClick = () => {
+      el._suppressNextClick = true;
+      setTimeout(() => (el._suppressNextClick = false), 200);
+    };
+
+    const onUp = async (ev) => {
+      if (ev.pointerId !== pointerId) return;
+      const target = dragging ? overEl : null;
+      const wasDragging = dragging;
+      cleanup();
+      if (!wasDragging) return;
+      suppressClick();
+      if (target && target.dataset.id !== el.dataset.id) {
+        // 並び替えの意味は従来の HTML5 版 ondrop と同じ
+        // (reorderTabs: ドロップ先タブの位置へ挿入)
+        await reorderTabs(el.dataset.id, target.dataset.id);
+      }
+    };
+
+    const onCancel = () => {
+      if (dragging) suppressClick();
+      cleanup();
+    };
+
+    const onKeyDown = (ev) => {
+      if (ev.key === "Escape") onCancel();
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("blur", onCancel);
   });
 }
 
