@@ -81,6 +81,45 @@ export const settingsSchema = [
     hint: "filterHistoryByFilenameHint",
   },
 
+  // --- 完了の通知 ---
+  {
+    key: "notifyEnabled",
+    type: "boolean",
+    category: "notify",
+    label: "notifyEnabledLabel",
+    hint: "notifyEnabledHint",
+  },
+  {
+    key: "notifyStyle",
+    type: "select",
+    category: "notify",
+    label: "notifyStyleLabel",
+    options: [
+      { value: "popup", label: "notifyStylePopup" },
+      { value: "sound", label: "notifyStyleSound" },
+      { value: "both", label: "notifyStyleBoth" },
+    ],
+    dependsOn: "notifyEnabled",
+  },
+  {
+    key: "notifyDurationSec",
+    type: "number",
+    min: 1,
+    max: 5,
+    step: 1,
+    category: "notify",
+    label: "notifyDurationLabel",
+    hint: "notifyDurationHint",
+    dependsOn: "notifyEnabled",
+  },
+  {
+    key: "notifyOnlyOnFailure",
+    type: "boolean",
+    category: "notify",
+    label: "notifyOnlyOnFailureLabel",
+    dependsOn: "notifyEnabled",
+  },
+
   // --- タブごとの設定 (session.json に保存される) ---
   {
     key: "hdiffIgnoreList",

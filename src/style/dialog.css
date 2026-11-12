@@ -178,6 +178,7 @@
 /* --- 詳細設定 --- */
 .settings-tabs {
   display: flex;
+  flex-wrap: wrap;
   margin-bottom: 12px;
   border: 0.5px solid var(--line-strong);
   border-radius: 4px;
@@ -185,7 +186,8 @@
 }
 
 .dialog button.settings-tab-btn {
-  flex: 1;
+  flex: 1 1 auto;
+  white-space: nowrap;
   border: none;
   border-radius: 0;
   color: var(--sub);

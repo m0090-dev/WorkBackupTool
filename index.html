@@ -5,6 +5,12 @@
     <link rel="icon" href="data:," />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Work Backup Tool</title>
+    <script>
+      // 完了の通知ポップアップ用ウィンドウでは、アプリ本体の画面を描画前に隠す
+      if (window.__WBT_NOTIFY__) {
+        document.documentElement.classList.add("notify-popup");
+      }
+    </script>
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>

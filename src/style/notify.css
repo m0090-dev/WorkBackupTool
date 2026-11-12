@@ -1,0 +1,47 @@
+/**
+ * notify.css
+ * 完了の通知ポップアップ(別ウィンドウ)。src/notify-popup.js が描画する。
+ */
+
+/* 通知ウィンドウでは、アプリ本体の画面は描画前から隠す */
+html.notify-popup body > *:not(#notify-root) {
+  display: none !important;
+}
+
+#notify-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 8px 12px 8px 14px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: var(--card);
+  color: var(--text);
+  border: 0.5px solid var(--line-strong);
+  border-left: 4px solid var(--sel-line);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+#notify-root.failure {
+  border-left-color: var(--red);
+}
+
+#notify-root .notify-title {
+  color: var(--sel-text);
+}
+
+#notify-root.failure .notify-title {
+  color: var(--red);
+}
+
+#notify-root .notify-message {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-all;
+}

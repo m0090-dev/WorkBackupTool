@@ -34,3 +34,4 @@ export {
   hideStartupOverlay,
 } from "./ui/progress.js";
 export { UpdateAllUI } from "./ui/update-all.js";
+export { notifyResult } from "./ui/notify.js";
