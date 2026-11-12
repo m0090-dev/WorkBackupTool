@@ -161,17 +161,24 @@ pub fn resolve_apply_paths(
     }
 
     let work_path = Path::new(work_file);
-    let out_path = if let Some(ext) = work_path.extension() {
-        // 【ファイルの場合】
-        // 元の拡張子（.clipなど）を維持して出力
-        Path::new(&temp_out_path)
-            .with_extension(ext)
-            .to_string_lossy()
-            .into_owned()
-    } else {
-        // 【フォルダの場合】
-        // 拡張子がないので、テンポラリパスをそのまま（拡張子なしで）使う
-        temp_out_path
+    // フォルダかどうかは、拡張子ではなく実体で判断する。
+    // ("my.project" のように「.」を含むフォルダ名を拡張子付きと誤認すると、
+    //  復元先が元のフォルダ名に戻り、元のフォルダを上書きしてしまう)
+    let is_folder = base_full.is_dir() || work_path.is_dir();
+    let out_path = match work_path.extension() {
+        Some(ext) if !is_folder => {
+            // 【ファイルの場合】
+            // 元の拡張子（.clipなど）を維持して出力
+            Path::new(&temp_out_path)
+                .with_extension(ext)
+                .to_string_lossy()
+                .into_owned()
+        }
+        _ => {
+            // 【フォルダの場合】
+            // 拡張子を付け替えず、テンポラリパスをそのまま使う
+            temp_out_path
+        }
     };
 
     Ok((base_full.to_string_lossy().into_owned(), out_path))

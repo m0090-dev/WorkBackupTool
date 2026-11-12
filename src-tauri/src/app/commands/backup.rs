@@ -82,12 +82,15 @@ pub async fn apply_multi_diff(
     app: AppHandle,
     work_file: String,
     diff_paths: Vec<String>,
-) -> Result<(), String> {
+) -> Result<Vec<String>, String> {
     let hdiff_strict_hash_check = {
         let state = app.state::<AppState>();
         let cfg = state.config.lock().unwrap();
         cfg.hdiff_strict_hash_check
     };
+
+    // 復元した先のパス(diff_paths と同じ順)
+    let mut outputs: Vec<String> = Vec::new();
 
     for dp in diff_paths {
         let algo = workflow::detect_diff_algo(&dp);
@@ -102,11 +105,12 @@ pub async fn apply_multi_diff(
             _ => Err("Unknown format".into()),
         };
 
-        if let Err(e) = result {
-            return Err(format!("復元失敗 ({}): {}", dp, e));
+        match result {
+            Ok(out_path) => outputs.push(out_path),
+            Err(e) => return Err(format!("復元失敗 ({}): {}", dp, e)),
         }
     }
-    Ok(())
+    Ok(outputs)
 }
 
 /// ファイルをそのままコピーしてバックアップする (Go版の CopyBackupFile 相当)
@@ -146,25 +150,30 @@ pub async fn restore_backup(
     app: tauri::AppHandle,
     path: String,
     work_file: String,
-) -> Result<(), String> {
+) -> Result<String, String> {
     let lower_path = path.to_lowercase();
 
     // 1. 差分パッチの場合のみSidecar（async/app層）が必要
     if lower_path.ends_with(".diff") {
-        return apply_multi_diff(app, work_file, vec![path]).await;
+        let outputs = apply_multi_diff(app, work_file, vec![path]).await?;
+        return outputs
+            .into_iter()
+            .next()
+            .ok_or_else(|| "復元先のパスを取得できませんでした".to_string());
     }
 
-    // 出力パスの自動生成
+    // 出力パスの自動生成(同名が既にあれば _2, _3 ... を付けて上書きしない)
     let restored_path = utils::auto_output_path(&work_file);
 
     if lower_path.ends_with(".zip") || lower_path.ends_with(".tar.gz") {
         // 2 & 3. アーカイブ展開 (core::backup::archive に丸投げ)
-        archive::restore_archive(&path, &restored_path)
+        archive::restore_archive(&path, &restored_path)?;
     } else {
         // 4. フルコピー (core::utils)
         utils::copy_file(&path, &restored_path)?;
-        Ok(())
     }
+    // 復元先のパスを返す
+    Ok(restored_path)
 }
 
 #[tauri::command]

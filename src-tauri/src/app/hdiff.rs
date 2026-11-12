@@ -65,7 +65,7 @@ pub async fn apply_hdiff_wrapper(
     work_file: &str,
     diff_file: &str,
     strict_hash_check: bool,
-) -> Result<(), String> {
+) -> Result<String, String> {
     // 1. 仮の出力先パスを生成
     let temp_out = utils::auto_output_path(work_file);
 
@@ -73,5 +73,9 @@ pub async fn apply_hdiff_wrapper(
     let (base_full, out_path) = resolve_apply_paths(work_file, diff_file, temp_out)?;
 
     // 3. Sidecar (hpatchz) の実行
-    crate::app::hdiff::apply_hdiff(app, &base_full, diff_file, &out_path, strict_hash_check).await
+    crate::app::hdiff::apply_hdiff(app, &base_full, diff_file, &out_path, strict_hash_check)
+        .await?;
+
+    // 4. 書き出した先のパスを返す(復元後に開く、などに使う)
+    Ok(out_path)
 }
