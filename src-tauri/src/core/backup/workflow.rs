@@ -100,7 +100,8 @@ pub fn finalize_or_next_plan(
     // 分子: この世代の既存の差分の合計 + 今作った差分
     // (temp_diff は一時フォルダにあるので、二重には数えない)
     let diff_total = generation_diff_total(&target.target_dir, &entry_name) + diff_size;
-    if should_transition_to_next_gen(work_size, diff_size, threshold) {
+    // 判定は「差分の累計 ÷ ベース」(作業対象の現在サイズや、今回の差分だけでは判定しない)
+    if should_transition_to_next_gen(base_size, diff_total, threshold) {
         // --- 世代交代プランの作成 ---
         let _ = fs::remove_file(&temp_diff);
 
