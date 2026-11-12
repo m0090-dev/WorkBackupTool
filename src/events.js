@@ -41,6 +41,7 @@ import {
   resetCompactHeight,
   initCompactAutoSize,
   notifyResult,
+  askArchivePassword,
   UpdateAllUI,
 } from "./ui";
 
@@ -69,6 +70,35 @@ async function openRestored(outputs) {
     showFloatingError(
       i18n.openRestoredError || "Couldn't open the restored item.",
     );
+  }
+}
+
+const RESTORE_CANCELLED = Symbol("restore-cancelled");
+const PASSWORD_ERROR = /ARCHIVE_PASSWORD_(REQUIRED|INVALID)/;
+
+// 1件を復元する。パスワード付きのアーカイブでは、パスワードを尋ねて、通るまで再試行する。
+// 同じ操作の中で通ったパスワードは、次のアーカイブでも先に試す(state.password)。
+// 入力をキャンセルしたら RESTORE_CANCELLED を返す。
+async function restoreWithPassword(path, workFile, state) {
+  let password = state.password;
+  for (;;) {
+    try {
+      const out = await RestoreBackup(path, workFile, password);
+      if (password) state.password = password;
+      return out;
+    } catch (err) {
+      const message = String(err);
+      if (!PASSWORD_ERROR.test(message)) throw err;
+      const entered = await askArchivePassword({
+        prefill:
+          state.password ||
+          document.getElementById("archive-password")?.value ||
+          "",
+        wrong: message.includes("ARCHIVE_PASSWORD_INVALID"),
+      });
+      if (entered === null) return RESTORE_CANCELLED;
+      password = entered;
+    }
   }
 }
 
@@ -292,12 +322,23 @@ export async function setupGlobalEvents() {
         toggleProgress(true, "Restoring...");
         try {
           const outputs = [];
+          const passwordState = { password: null };
+          let cancelled = false;
           for (const p of targets) {
             // 復元コマンドは、書き出した先のパスを返す
-            const out = await RestoreBackup(p, tab.workFile);
+            const out = await restoreWithPassword(p, tab.workFile, passwordState);
+            if (out === RESTORE_CANCELLED) {
+              cancelled = true;
+              break;
+            }
             if (out) outputs.push(out);
           }
           toggleProgress(false);
+          if (cancelled) {
+            showFloatingMessage(i18n.restoreCancelled || "Restore cancelled.");
+            UpdateHistory();
+            return;
+          }
           const notified = await notifyResult(true, i18n.diffApplySuccess);
           if (!notified) showFloatingMessage(i18n.diffApplySuccess);
           await openRestored(outputs);

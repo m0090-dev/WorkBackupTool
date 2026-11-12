@@ -331,3 +331,19 @@ body.compact-mode #drop-modal #drop-cancel {
   border-color: transparent;
   color: var(--sub);
 }
+
+/* --- パスワードの入力(パスワード付きアーカイブの復元) --- */
+.password-prompt-text {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.dialog .password-prompt-wrong {
+  margin-top: 8px;
+}
+
+.dialog input.password-input {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}

@@ -108,8 +108,11 @@ pub fn scan_backups(
                 } else {
                     // --- ルート直下のファイルをスキャン ---
                     // フルコピーを含まない復元可能なものだけ
+                    // 世代を圧縮したアーカイブ(baseN_...)は、履歴の1件としては扱わない
+                    // (キャッシュに展開して、その中の差分を履歴に出す)
                     if (!strict_match || file_name.to_lowercase().contains(&base_lower))
                         && is_restorable(file_name)
+                        && !is_generation_archive(file_name)
                     {
                         if let Ok(metadata) = fs::metadata(&path) {
                             list.push(create_backup_item(
@@ -199,5 +202,20 @@ fn create_backup_item(
         generation: gen,
         is_archived,
         is_folder,
+    }
+}
+
+/// 世代フォルダを圧縮したアーカイブ(`base<数字>_...` の .zip / .tar.gz)かどうか
+fn is_generation_archive(name: &str) -> bool {
+    let n = name.to_lowercase();
+    if !(n.ends_with(".zip") || n.ends_with(".tar.gz")) {
+        return false;
+    }
+    match n.strip_prefix("base") {
+        Some(rest) => {
+            let digits = rest.chars().take_while(|c| c.is_ascii_digit()).count();
+            digits > 0 && rest[digits..].starts_with('_')
+        }
+        None => false,
     }
 }
