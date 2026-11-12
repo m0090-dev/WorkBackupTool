@@ -4,6 +4,7 @@ pub mod cache;
 pub mod common;
 pub mod config;
 pub mod dialog;
+pub mod notification;
 
 pub use backup::*;
 pub use backup_list::*;
@@ -11,3 +12,4 @@ pub use cache::*;
 pub use common::*;
 pub use config::*;
 pub use dialog::*;
+pub use notification::*;

@@ -215,3 +215,12 @@ export async function QuitApp() {
 export async function ShowAbout() {
   return await invoke("show_about");
 }
+
+/**
+ * 通知基盤: 実行結果(成功/失敗)を渡す。
+ * 通知のオン/オフ・方法・表示時間・失敗時のみ は Rust 側が設定に従って判断する。
+ * @returns {Promise<boolean>} 通知を出したら true(出さなかったら false)
+ */
+export async function NotifyResult(ok, message) {
+  return await invoke("notify_result", { ok, message });
+}

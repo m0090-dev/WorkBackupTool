@@ -19,3 +19,6 @@
 
 /* 5. コンパクト画面(layout.css の後に読み込んで必要に応じて上書きする) */
 @import "./style/compact-mode.css";
+
+/* 6. 完了の通知ポップアップ(別ウィンドウ) */
+@import "./style/notify.css";

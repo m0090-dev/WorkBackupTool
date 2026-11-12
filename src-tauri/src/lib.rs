@@ -53,6 +53,7 @@ pub fn run() {
             show_tray_popup,
             quit_app,
             show_about,
+            notify_result,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

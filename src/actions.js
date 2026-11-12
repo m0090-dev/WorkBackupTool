@@ -24,6 +24,8 @@ import {
   UpdateHistory,
   toggleProgress,
   showFloatingMessage,
+  showFloatingError,
+  notifyResult,
   UpdateAllUI,
 } from "./ui";
 import { showMemoDialog, parseNoteContent, serializeNote } from "./memo.js";
@@ -152,7 +154,9 @@ export async function OnExecute() {
     else if (mode === "archive") tab.viewGeneration = 0;
 
     toggleProgress(false);
-    showFloatingMessage(successText);
+    // 完了の通知(設定に従う)。通知を出さなかったときは、従来どおり画面内のメッセージで知らせる
+    const notified = await notifyResult(true, successText);
+    if (!notified) showFloatingMessage(successText);
 
     // メモダイアログをオプションで表示
     const showMemo = await GetShowMemoAfterBackup();
@@ -174,7 +178,10 @@ export async function OnExecute() {
     return successText;
   } catch (err) {
     toggleProgress(false);
-    alert(err);
+    // 失敗も通知基盤に渡す。通知を出したときは、ダイアログで止めず画面内のエラー表示にとどめる
+    const notified = await notifyResult(false, String(err));
+    if (notified) showFloatingError(String(err));
+    else alert(err);
     return null;
   }
 }

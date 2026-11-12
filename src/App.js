@@ -263,4 +263,7 @@ function setupDragAndDrop() {
 
 // アプリケーション開始
 
-document.addEventListener("DOMContentLoaded", Initialize);
+// 通知ポップアップ用ウィンドウ(main.js が描画する)では、アプリ本体を初期化しない
+if (!window.__WBT_NOTIFY__) {
+  document.addEventListener("DOMContentLoaded", Initialize);
+}

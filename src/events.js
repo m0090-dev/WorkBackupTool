@@ -38,16 +38,12 @@ import {
   setCompactHistoryMode,
   resetCompactHeight,
   initCompactAutoSize,
+  notifyResult,
   UpdateAllUI,
 } from "./ui";
 
 import { addTab, OnExecute, switchTab } from "./actions";
 import { ask } from "@tauri-apps/plugin-dialog";
-import {
-  isPermissionGranted,
-  requestPermission,
-  sendNotification,
-} from "@tauri-apps/plugin-notification";
 
 import { showMemoDialog, parseNoteContent, serializeNote } from "./memo.js";
 
@@ -279,11 +275,15 @@ export async function setupGlobalEvents() {
             await RestoreBackup(p, tab.workFile);
           }
           toggleProgress(false);
-          showFloatingMessage(i18n.diffApplySuccess);
+          const notified = await notifyResult(true, i18n.diffApplySuccess);
+          if (!notified) showFloatingMessage(i18n.diffApplySuccess);
           UpdateHistory();
         } catch (err) {
           toggleProgress(false);
-          alert(err);
+          const message = `${i18n.restoreError}: ${err}`;
+          const notified = await notifyResult(false, message);
+          if (notified) showFloatingError(message);
+          else alert(err);
         }
       }
       return;
@@ -422,17 +422,10 @@ export async function setupGlobalEvents() {
   });
 
   // --- Rust / Tray イベント ---
+  // トレイからの実行も、通常の実行と同じ OnExecute を通す。
+  // 完了の通知(設定に従う)は OnExecute の中で通知基盤に渡すので、ここでは何もしない。
   EventsOn("tray-execute-clicked", async () => {
-    const resultMsg = await OnExecute();
-    if (!resultMsg) return;
-    let permissionGranted = await isPermissionGranted();
-    if (!permissionGranted) {
-      const permission = await requestPermission();
-      permissionGranted = permission === "granted";
-    }
-    if (permissionGranted) {
-      sendNotification({ title: "cg-file-backup", body: resultMsg });
-    }
+    await OnExecute();
   });
 
   EventsOn("tray-change-work-clicked", () => {
