@@ -5,6 +5,7 @@ use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// ファイルを安全に移動させる。
 pub fn move_file_safe<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> Result<(), String> {
@@ -62,8 +63,41 @@ pub fn timestamped_name(original: &str) -> String {
     }
 }
 
+/// 既に存在するパスを避けて、重複しない名前にする。
+/// 存在しなければそのまま返す。存在すれば `_2`, `_3` ... を付けて探す。
+/// ファイル: `name_restored_ts.ext` → `name_restored_ts_2.ext`
+/// フォルダ: `name_restored_ts` → `name_restored_ts_2`(名前に「.」があっても拡張子扱いしない)
+pub fn unique_path(path: PathBuf, is_dir: bool) -> PathBuf {
+    if !path.exists() {
+        return path;
+    }
+    let dir = path.parent().map(|p| p.to_path_buf()).unwrap_or_default();
+    let file_name = path
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let ext = path.extension().map(|s| s.to_string_lossy().into_owned());
+
+    for n in 2..10000 {
+        let name = match (&ext, is_dir) {
+            (Some(e), false) => format!("{}_{}.{}", stem, n, e),
+            _ => format!("{}_{}", file_name, n),
+        };
+        let candidate = dir.join(name);
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+    path
+}
+
 /// 復元時の出力パスを自動生成する
 /// フォルダの場合は `<name>_restored_<ts>/`、ファイルは従来通り
+/// 同じ名前が既にある場合は `_2`, `_3` ... を付けて、既存のものを上書きしない
 pub fn auto_output_path(work_path: &str) -> String {
     let path = Path::new(work_path);
     let ts = Local::now().format("%Y%m%d_%H%M%S").to_string();
@@ -74,7 +108,7 @@ pub fn auto_output_path(work_path: &str) -> String {
             .file_name()
             .map(|s| s.to_string_lossy())
             .unwrap_or_default();
-        dir.join(format!("{}_restored_{}", name, ts))
+        unique_path(dir.join(format!("{}_restored_{}", name, ts)), true)
             .to_string_lossy()
             .into_owned()
     } else {
@@ -93,7 +127,9 @@ pub fn auto_output_path(work_path: &str) -> String {
         } else {
             format!("{}_restored_{}.{}", file_stem, ts, extension)
         };
-        dir.join(new_filename).to_string_lossy().into_owned()
+        unique_path(dir.join(new_filename), false)
+            .to_string_lossy()
+            .into_owned()
     }
 }
 
@@ -236,4 +272,62 @@ pub fn dir_exists(path: &str) -> bool {
 /// ファイルが存在するかチェック
 pub fn file_exists(path: &str) -> bool {
     Path::new(path).is_file()
+}
+
+/// 「開く」と実行されてしまう拡張子(復元しただけで実行されるのを防ぐための除外)
+const RISKY_EXTS: &[&str] = &[
+    "exe", "com", "bat", "cmd", "msi", "scr", "pif", "cpl", "hta", "ps1", "vbs", "vbe", "js",
+    "jse", "wsf", "wsh", "lnk", "reg", "jar", "sh", "command", "app",
+];
+
+/// ファイルまたはフォルダを、OS の既定の方法で開く。
+/// - ファイル: 関連付けられたアプリで開く / フォルダ: エクスプローラー(Finder)で開く
+/// - open_parent が true なら、指す場所(親フォルダ)を開く
+/// - 実行形式のファイルは起動せず、その置き場所のフォルダを開く
+pub fn open_in_os(path: &str, open_parent: bool) -> Result<(), String> {
+    let p = Path::new(path);
+    if !p.exists() {
+        return Err(format!("パスが存在しません: {}", path));
+    }
+
+    let mut target = if open_parent {
+        p.parent().unwrap_or(p).to_path_buf()
+    } else {
+        p.to_path_buf()
+    };
+
+    let risky = target
+        .extension()
+        .map(|e| {
+            let e = e.to_string_lossy().to_lowercase();
+            RISKY_EXTS.contains(&e.as_str())
+        })
+        .unwrap_or(false);
+    if risky {
+        if let Some(parent) = target.parent() {
+            target = parent.to_path_buf();
+        }
+    }
+
+    spawn_os_open(&target)
+}
+
+fn spawn_os_open(target: &Path) -> Result<(), String> {
+    // エクスプローラーは「/」区切りだと別の場所を開いてしまうので「\」にそろえる
+    #[cfg(target_os = "windows")]
+    let (program, arg) = ("explorer.exe", target.to_string_lossy().replace('/', "\\"));
+    #[cfg(target_os = "macos")]
+    let (program, arg) = ("open", target.to_string_lossy().into_owned());
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let (program, arg) = ("xdg-open", target.to_string_lossy().into_owned());
+
+    let mut child = Command::new(program)
+        .arg(&arg)
+        .spawn()
+        .map_err(|e| format!("開けませんでした ({}): {}", program, e))?;
+    // 終了を待たずに戻る(終了だけ別スレッドで回収する)
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(())
 }

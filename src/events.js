@@ -10,6 +10,8 @@ import {
   ArchiveGeneration,
   QuitApp,
   ShowAbout,
+  GetConfig,
+  OpenPath,
 } from "./tauri_exports";
 
 import {
@@ -51,6 +53,24 @@ const preventDefault = (e) => {
   e.preventDefault();
   e.stopPropagation();
 };
+
+// 復元したファイル/フォルダを、設定(復元後に開く)に従って OS の既定の方法で開く。
+// 1件ならそのもの(ファイル/フォルダ)を、複数まとめて復元したときは書き出し先のフォルダを開く。
+// ここでの失敗は、復元そのものの成否には影響させない。
+async function openRestored(outputs) {
+  if (!outputs || outputs.length === 0) return;
+  try {
+    const config = await GetConfig();
+    if (!config.openAfterRestore) return;
+    if (outputs.length === 1) await OpenPath(outputs[0]);
+    else await OpenPath(outputs[0], true);
+  } catch (err) {
+    console.error("Failed to open restored item:", err);
+    showFloatingError(
+      i18n.openRestoredError || "Couldn't open the restored item.",
+    );
+  }
+}
 
 export async function setupGlobalEvents() {
   window.addEventListener("dragenter", preventDefault, true);
@@ -271,12 +291,16 @@ export async function setupGlobalEvents() {
       if (isConfirmed) {
         toggleProgress(true, "Restoring...");
         try {
+          const outputs = [];
           for (const p of targets) {
-            await RestoreBackup(p, tab.workFile);
+            // 復元コマンドは、書き出した先のパスを返す
+            const out = await RestoreBackup(p, tab.workFile);
+            if (out) outputs.push(out);
           }
           toggleProgress(false);
           const notified = await notifyResult(true, i18n.diffApplySuccess);
           if (!notified) showFloatingMessage(i18n.diffApplySuccess);
+          await openRestored(outputs);
           UpdateHistory();
         } catch (err) {
           toggleProgress(false);

@@ -120,6 +120,15 @@ export const settingsSchema = [
     dependsOn: "notifyEnabled",
   },
 
+  // --- 復元 ---
+  {
+    key: "openAfterRestore",
+    type: "boolean",
+    category: "restore",
+    label: "openRestoredLabel",
+    hint: "openRestoredHint",
+  },
+
   // --- タブごとの設定 (session.json に保存される) ---
   {
     key: "hdiffIgnoreList",

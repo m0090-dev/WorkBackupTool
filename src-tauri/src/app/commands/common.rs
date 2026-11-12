@@ -54,3 +54,11 @@ pub fn show_about(app: tauri::AppHandle, state: tauri::State<'_, crate::app::sta
             });
     }
 }
+
+/// 復元したファイル/フォルダを、OS の既定の方法で開く。
+/// open_parent が true のときは、その置き場所(親フォルダ)を開く。
+/// 実行形式のファイルは起動せず、置き場所のフォルダを開く。
+#[tauri::command]
+pub fn open_path(path: String, open_parent: Option<bool>) -> Result<(), String> {
+    utils::open_in_os(&path, open_parent.unwrap_or(false))
+}

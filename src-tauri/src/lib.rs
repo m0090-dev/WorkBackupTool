@@ -54,6 +54,7 @@ pub fn run() {
             quit_app,
             show_about,
             notify_result,
+            open_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

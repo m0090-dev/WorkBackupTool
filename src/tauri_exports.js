@@ -112,8 +112,21 @@ export async function CopyBackupFile(src, backupDir) {
   return await invoke("copy_backup_file", { src, backupDir });
 }
 
+/**
+ * 選んだ履歴を復元する。
+ * @returns {Promise<string>} 復元して書き出した先のパス(ファイル/フォルダ)
+ */
 export async function RestoreBackup(path, workFile) {
   return await invoke("restore_backup", { path, workFile });
+}
+
+/**
+ * ファイル/フォルダを OS の既定の方法で開く(復元後に開く、で使う)
+ * @param {string} path
+ * @param {boolean} openParent true のとき、その置き場所(親フォルダ)を開く
+ */
+export async function OpenPath(path, openParent = false) {
+  return await invoke("open_path", { path, openParent });
 }
 
 export async function ArchiveBackupFile(src, backupDir, format, password) {
