@@ -29,7 +29,7 @@
     "japanese": "Japanese",
     "restartRequired": "Language changes take effect after restart.",
     "about": "About",
-    "aboutText": "WorkBackupTool 1.3.11 (2026)\n© 2025 m0090-dev.",
+    "aboutText": "WorkBackupTool 1.3.12 (2026)\n© 2025 m0090-dev.",
     "selectFileFirst": "Select a work target first.",
     "restoreConfirm": "Restore the selected version? A new file will be created; the original is not overwritten.",
     "restoreError": "Restore failed",
@@ -173,7 +173,12 @@
     "notifyTitleFailure": "Failed",
     "openRestoredLabel": "Open the restored file or folder",
     "openRestoredHint": "Opens it with the default app after restoring. If you restore several at once, the folder is opened instead.",
-    "openRestoredError": "Couldn't open the restored item."
+    "openRestoredError": "Couldn't open the restored item.",
+    "passwordPromptTitle": "Password required",
+    "passwordPromptBody": "This archive is protected with a password. Enter it to restore.",
+    "passwordPromptWrong": "The password is incorrect.",
+    "okBtn": "OK",
+    "restoreCancelled": "Restore cancelled."
   },
   "ja": {
     "settings": "設定",
@@ -205,7 +210,7 @@
     "japanese": "日本語",
     "restartRequired": "言語の変更は再起動後に反映されます。",
     "about": "ソフト情報",
-    "aboutText": "WorkBackupTool 1.3.11 (2026)\n© 2025 m0090-dev.",
+    "aboutText": "WorkBackupTool 1.3.12 (2026)\n© 2025 m0090-dev.",
     "selectFileFirst": "先に作業対象を選択してください。",
     "restoreConfirm": "選択したバージョンを復元しますか？新しいファイルが作成され、元のファイルは上書きされません。",
     "restoreError": "復元に失敗しました",
@@ -349,6 +354,11 @@
     "notifyTitleFailure": "失敗",
     "openRestoredLabel": "復元したファイル/フォルダを開く",
     "openRestoredHint": "復元が終わったら、既定のアプリで開きます。複数まとめて復元したときは、保存先のフォルダを開きます。",
-    "openRestoredError": "復元したものを開けませんでした。"
+    "openRestoredError": "復元したものを開けませんでした。",
+    "passwordPromptTitle": "パスワードが必要です",
+    "passwordPromptBody": "このアーカイブはパスワードで保護されています。復元するにはパスワードを入力してください。",
+    "passwordPromptWrong": "パスワードが違います。",
+    "okBtn": "OK",
+    "restoreCancelled": "復元を中止しました。"
   }
 }

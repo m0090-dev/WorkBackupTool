@@ -150,6 +150,7 @@ pub async fn restore_backup(
     app: tauri::AppHandle,
     path: String,
     work_file: String,
+    password: Option<String>,
 ) -> Result<String, String> {
     let lower_path = path.to_lowercase();
 
@@ -167,7 +168,9 @@ pub async fn restore_backup(
 
     if lower_path.ends_with(".zip") || lower_path.ends_with(".tar.gz") {
         // 2 & 3. アーカイブ展開 (core::backup::archive に丸投げ)
-        archive::restore_archive(&path, &restored_path)?;
+        // パスワード付き ZIP でパスワードが無い/違うときは、ARCHIVE_PASSWORD_REQUIRED / _INVALID を返す
+        // (フロントがパスワードを尋ねて、もう一度呼ぶ)
+        archive::restore_archive_with_password(&path, &restored_path, password.as_deref())?;
     } else {
         // 4. フルコピー (core::utils)
         utils::copy_file(&path, &restored_path)?;
@@ -185,6 +188,19 @@ pub async fn archive_generation(
     password: Option<String>,
 ) -> Result<(), String> {
     let pwd = password.unwrap_or_default();
+
+    // いま差分の書き込み先になっている最新の世代は圧縮させない。
+    // (ベースが無くなり、次のバックアップでベースが作り直されて、世代の整合性が崩れるため)
+    let root = if backup_dir.is_empty() {
+        utils::default_backup_dir(&work_file)
+    } else {
+        PathBuf::from(&backup_dir)
+    };
+    if let Some(latest) = crate::core::backup::auto_generation::get_latest_generation(&root)? {
+        if latest.base_idx == target_n as i32 {
+            return Err("最新の世代は、いま書き込み先として使っているため圧縮できません".to_string());
+        }
+    }
 
     // core 側のワークフローに丸投げ
     crate::core::backup::archive::execute_generation_archive(
