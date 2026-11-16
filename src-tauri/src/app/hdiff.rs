@@ -66,8 +66,9 @@ pub async fn apply_hdiff_wrapper(
     diff_file: &str,
     strict_hash_check: bool,
 ) -> Result<String, String> {
-    // 1. 仮の出力先パスを生成
-    let temp_out = utils::auto_output_path(work_file);
+    // 1. 仮の出力先パスを生成(作業対象が無くても、フォルダかどうかを正しく判断する)
+    let is_folder = restore_target_is_folder(work_file, diff_file);
+    let temp_out = utils::auto_output_path_as(work_file, is_folder);
 
     // 2. 共通モジュール(hdiff_common.rs)を使用してパスを確定させる
     let (base_full, out_path) = resolve_apply_paths(work_file, diff_file, temp_out)?;

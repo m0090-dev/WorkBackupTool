@@ -130,21 +130,14 @@ pub fn prepare_hdiff_paths(
     )))
 }
 
-/// ApplyHdiffWrapper のロジック部分
-/// 戻り値: (base_path, out_path)
-pub fn resolve_apply_paths(
-    work_file: &str,
-    diff_file: &str,
-    temp_out_path: String, // app::utils::auto_output_path の結果をもらう
-) -> Result<(String, String), String> {
+/// 差分ファイルに対応する .base のパスを決める
+fn resolve_base_full(work_file: &str, diff_file: &str) -> Result<PathBuf, String> {
     let diff_path = Path::new(diff_file);
     let backup_dir = diff_path.parent().ok_or("Invalid diff path")?;
     let diff_name = diff_path
         .file_name()
         .ok_or("Invalid diff name")?
         .to_string_lossy();
-
-    let original_full_name = diff_name.split(".20").next().unwrap_or(&diff_name);
 
     let base_name = format!("{}.base", diff_name.split(".20").next().unwrap());
     let mut base_full = backup_dir.join(&base_name);
@@ -159,24 +152,46 @@ pub fn resolve_apply_paths(
         );
         base_full = backup_dir.join(work_base_name);
     }
+    Ok(base_full)
+}
 
+/// 復元の対象がフォルダかどうか。
+/// 作業対象が存在すればその実体で、存在しなければ .base がフォルダかどうかで判断する。
+pub fn restore_target_is_folder(work_file: &str, diff_file: &str) -> bool {
+    let work = Path::new(work_file);
+    if work.is_dir() {
+        return true;
+    }
+    if work.is_file() {
+        return false;
+    }
+    resolve_base_full(work_file, diff_file)
+        .map(|b| b.is_dir())
+        .unwrap_or(false)
+}
+
+/// ApplyHdiffWrapper のロジック部分
+/// 戻り値: (base_path, out_path)
+pub fn resolve_apply_paths(
+    work_file: &str,
+    diff_file: &str,
+    temp_out_path: String, // auto_output_path_as の結果をもらう
+) -> Result<(String, String), String> {
+    let base_full = resolve_base_full(work_file, diff_file)?;
     let work_path = Path::new(work_file);
+
     // フォルダかどうかは、拡張子ではなく実体で判断する。
-    // ("my.project" のように「.」を含むフォルダ名を拡張子付きと誤認すると、
-    //  復元先が元のフォルダ名に戻り、元のフォルダを上書きしてしまう)
     let is_folder = base_full.is_dir() || work_path.is_dir();
     let out_path = match work_path.extension() {
         Some(ext) if !is_folder => {
-            // 【ファイルの場合】
-            // 元の拡張子（.clipなど）を維持して出力
+            // 【ファイルの場合】元の拡張子(.clipなど)を維持して出力
             Path::new(&temp_out_path)
                 .with_extension(ext)
                 .to_string_lossy()
                 .into_owned()
         }
         _ => {
-            // 【フォルダの場合】
-            // 拡張子を付け替えず、テンポラリパスをそのまま使う
+            // 【フォルダの場合】拡張子を付け替えず、テンポラリパスをそのまま使う
             temp_out_path
         }
     };

@@ -7,6 +7,34 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// 保存先フォルダ名に使う「名前」を決める。
+/// 存在するなら実体で判断(フォルダ: 名前そのまま / ファイル: 拡張子なし)。
+/// 存在しないときは、「wbt_backup_<名前そのまま>」が実在するかで判断する。
+/// (削除済みの my.project フォルダを、ファイル my.project と取り違えないため)
+fn backup_entry_name(path: &Path) -> String {
+    let full = path
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+
+    if path.is_dir() {
+        return full;
+    }
+    if path.is_file() || full == stem {
+        return stem;
+    }
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    if dir.join(format!("wbt_backup_{}", full)).is_dir() {
+        full
+    } else {
+        stem
+    }
+}
+
 /// ファイルを安全に移動させる。
 pub fn move_file_safe<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> Result<(), String> {
     let src = src.as_ref();
@@ -95,15 +123,21 @@ pub fn unique_path(path: PathBuf, is_dir: bool) -> PathBuf {
     path
 }
 
-/// 復元時の出力パスを自動生成する
-/// フォルダの場合は `<name>_restored_<ts>/`、ファイルは従来通り
-/// 同じ名前が既にある場合は `_2`, `_3` ... を付けて、既存のものを上書きしない
+
+/// 復元時の出力パスを自動生成する(作業対象が存在すれば、その実体で判断)
 pub fn auto_output_path(work_path: &str) -> String {
+    auto_output_path_as(work_path, Path::new(work_path).is_dir())
+}
+
+/// 復元時の出力パスを自動生成する(フォルダかどうかを呼び出し側が決める)
+/// 作業対象が既に無いときは、is_dir() が当てにならないのでこちらを使う。
+/// 同じ名前が既にある場合は `_2`, `_3` ... を付けて、既存のものを上書きしない
+pub fn auto_output_path_as(work_path: &str, is_dir: bool) -> String {
     let path = Path::new(work_path);
     let ts = Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
 
-    if path.is_dir() {
-        let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    if is_dir {
         let name = path
             .file_name()
             .map(|s| s.to_string_lossy())
@@ -112,7 +146,6 @@ pub fn auto_output_path(work_path: &str) -> String {
             .to_string_lossy()
             .into_owned()
     } else {
-        let dir = path.parent().unwrap_or_else(|| Path::new("."));
         let file_stem = path
             .file_stem()
             .map(|s| s.to_string_lossy())
@@ -139,19 +172,7 @@ pub fn auto_output_path(work_path: &str) -> String {
 pub fn default_backup_dir(work_path: &str) -> PathBuf {
     let path = Path::new(work_path);
     let dir = path.parent().unwrap_or_else(|| Path::new("."));
-
-    let entry_name = if path.is_dir() {
-        // フォルダの場合はフォルダ名そのまま
-        path.file_name()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_default()
-    } else {
-        path.file_stem()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_default()
-    };
-
-    dir.join(format!("wbt_backup_{}", entry_name))
+    dir.join(format!("wbt_backup_{}", backup_entry_name(path)))
 }
 
 /// 単純なファイルコピーを行う

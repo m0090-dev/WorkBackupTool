@@ -507,6 +507,28 @@ fn restore_targz(archive_file: &Path, out: &Path) -> Result<(), String> {
     result
 }
 
+
+/// アーカイブの中身が「フォルダ」か「ファイル単体」かを返す。
+/// 作業対象が存在しないときの、復元先の名前決めに使う。
+pub fn archive_holds_folder(archive_path: &str) -> Result<bool, String> {
+    let entries: Vec<(PathBuf, bool)> = if archive_path.to_lowercase().ends_with(".zip") {
+        let file = File::open(archive_path).map_err(|e| e.to_string())?;
+        let mut zip = ZipArchive::new(file).map_err(|e| e.to_string())?;
+        let mut v = Vec::new();
+        for i in 0..zip.len() {
+            let entry = zip.by_index_raw(i).map_err(|e| e.to_string())?;
+            let is_dir = entry.is_dir();
+            if let Some(rel) = safe_relative_path(entry.name()) {
+                v.push((rel, is_dir));
+            }
+        }
+        v
+    } else {
+        list_targz(Path::new(archive_path))?
+    };
+    Ok(plan_extraction(&entries)?.kind == ArchiveKind::Folder)
+}
+
 /// アーカイブを復元する(パスワードなし)。
 /// ファイル単体のアーカイブは out_path のファイルへ、フォルダのアーカイブは out_path のフォルダへ書き出す。
 pub fn restore_archive(archive_path: &str, work_path: &str) -> Result<(), String> {

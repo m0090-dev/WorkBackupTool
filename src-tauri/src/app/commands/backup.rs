@@ -163,10 +163,19 @@ pub async fn restore_backup(
             .ok_or_else(|| "復元先のパスを取得できませんでした".to_string());
     }
 
-    // 出力パスの自動生成(同名が既にあれば _2, _3 ... を付けて上書きしない)
-    let restored_path = utils::auto_output_path(&work_file);
-
-    if lower_path.ends_with(".zip") || lower_path.ends_with(".tar.gz") {
+   // 出力パスの自動生成(同名が既にあれば _2, _3 ... を付けて上書きしない)
+    // 作業対象が無いときは、アーカイブの中身(フォルダ/ファイル)で名前の付け方を決める
+    let restored_path = if lower_path.ends_with(".zip") || lower_path.ends_with(".tar.gz") {
+        let work = std::path::Path::new(&work_file);
+        let is_dir = if work.exists() {
+            work.is_dir()
+        } else {
+            archive::archive_holds_folder(&path).unwrap_or(false)
+        };
+        utils::auto_output_path_as(&work_file, is_dir)
+    } else {
+        utils::auto_output_path(&work_file)
+    };    if lower_path.ends_with(".zip") || lower_path.ends_with(".tar.gz") {
         // 2 & 3. アーカイブ展開 (core::backup::archive に丸投げ)
         // パスワード付き ZIP でパスワードが無い/違うときは、ARCHIVE_PASSWORD_REQUIRED / _INVALID を返す
         // (フロントがパスワードを尋ねて、もう一度呼ぶ)
