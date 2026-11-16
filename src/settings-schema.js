@@ -128,7 +128,14 @@ export const settingsSchema = [
     label: "openRestoredLabel",
     hint: "openRestoredHint",
   },
-   {
+  {
+    key: "restoreAlwaysAskOutputDir",
+    type: "boolean",
+    category: "restore",
+    label: "restoreAlwaysAskOutputDirLabel",
+    hint: "restoreAlwaysAskOutputDirHint",
+  },
+  {
     key: "restoreRelinkEnabled",
     type: "boolean",
     category: "restore",
@@ -157,7 +164,6 @@ export const settingsSchema = [
     hint: "restoreRelinkResetBackupDirHint",
     dependsOn: "restoreRelinkEnabled",
   },
-
 
   // --- タブごとの設定 (session.json に保存される) ---
   {

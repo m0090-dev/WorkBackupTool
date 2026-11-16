@@ -70,7 +70,7 @@ async function performStartupCacheRebuild() {
   if (!shouldRebuild) return;
 
   const limit = await GetStartupCacheLimit();
-  const eligibleTabs = tabs.filter((t) => t.workFile);
+  const eligibleTabs = tabs.filter((t) => t.workFile || t.backupDir);
   let processedCount = 0;
 
   for (const tab of eligibleTabs) {

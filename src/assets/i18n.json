@@ -182,12 +182,15 @@
     "restoreRelinkEnabledLabel": "Offer to use the restored item as the work target",
     "restoreRelinkEnabledHint": "After restoring, you can switch the work target to the restored file or folder.",
     "restoreRelinkAutoLabel": "Switch automatically without asking",
-    "restoreRelinkOnlyWhenMissingLabel": "Only when the current work target no longer exists",
+    "restoreRelinkOnlyWhenMissingLabel": "Only when there is no work target or it no longer exists",
     "restoreRelinkResetBackupDirLabel": "Also reset the backup folder",
     "restoreRelinkResetBackupDirHint": "Returns the backup folder to the default location, as when choosing a new work target.",
     "relinkConfirm": "Use the restored \"{name}\" as the new work target?",
     "relinkConfirmReset": "The backup folder will return to the default location.",
-    "relinkDone": "Work target updated to the restored item"
+    "relinkDone": "Work target updated to the restored item",
+    "restoreAlwaysAskOutputDirLabel": "Always ask where to save when there is no work target",
+    "restoreAlwaysAskOutputDirHint": "When no work target is set, the restored item is saved next to the standard backup folder (wbt_backup_...). Turn this on to choose the folder every time. A backup folder in any other location always asks.",
+    "restoreOutputDirTitle": "Choose where to save the restored item"
   },
   "ja": {
     "settings": "設定",
@@ -372,11 +375,14 @@
     "restoreRelinkEnabledLabel": "復元したものを作業対象にするか確認する",
     "restoreRelinkEnabledHint": "復元が終わったら、復元したファイル/フォルダを新しい作業対象に切り替えられます。",
     "restoreRelinkAutoLabel": "確認せず、自動で切り替える",
-    "restoreRelinkOnlyWhenMissingLabel": "作業対象が存在しないときだけ行う",
+    "restoreRelinkOnlyWhenMissingLabel": "作業対象が未設定、または存在しないときだけ行う",
     "restoreRelinkResetBackupDirLabel": "保存先も初期状態に戻す",
     "restoreRelinkResetBackupDirHint": "新しい作業対象を選んだときと同じく、保存先をデフォルトに戻します。",
     "relinkConfirm": "復元した「{name}」を、新しい作業対象にしますか？",
     "relinkConfirmReset": "保存先はデフォルトに戻ります。",
-    "relinkDone": "作業対象を復元したものに切り替えました"
+    "relinkDone": "作業対象を復元したものに切り替えました",
+    "restoreAlwaysAskOutputDirLabel": "作業対象がないときは、保存先を毎回尋ねる",
+    "restoreAlwaysAskOutputDirHint": "作業対象が未設定のとき、復元したものは標準の保存先フォルダ(wbt_backup_…)の隣に作ります。オンにすると、毎回フォルダを選びます。標準以外の場所の保存先は、常に尋ねます。",
+    "restoreOutputDirTitle": "復元したものの保存先フォルダを選択"
   }
 }

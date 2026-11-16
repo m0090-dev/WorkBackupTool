@@ -122,7 +122,8 @@ export async function UpdateHistory() {
   }
   if (clearBtn) clearBtn.classList.toggle("visible", searchTerm.length > 0);
 
-  if (!tab?.workFile) {
+  // 作業対象が空でも、保存先が指定されていれば履歴を出す(復元だけできる)
+  if (!tab?.workFile && !tab?.backupDir) {
     setRows(messageRow(i18n.selectFileFirst));
     setCompactIdleStatus(i18n.readyStatus);
     selected.clear();
@@ -218,7 +219,7 @@ export async function UpdateHistory() {
     else if (view != null)
       genText = `${i18n.generationLabel} ${view}${view === latest ? " ★" : ""}`;
     setMeta({
-      name: tab.workFile.split(/[\\/]/).pop(),
+      name: (tab.workFile || tab.backupDir).split(/[\\/]/).filter(Boolean).pop(),
       count: visible.length,
       genText,
       size: visible.reduce((sum, i) => sum + (i.fileSize || 0), 0),

@@ -25,9 +25,9 @@
   "reminderMethod": "popup",
   "reminderSkipUnchanged": true,
   "openAfterRestore": false,
-  "openAfterRestore": false,
   "restoreRelinkEnabled": true,
   "restoreRelinkAuto": false,
   "restoreRelinkOnlyWhenMissing": true,
-  "restoreRelinkResetBackupDir": true
+  "restoreRelinkResetBackupDir": true,
+  "restoreAlwaysAskOutputDir": false
 }

@@ -507,10 +507,10 @@ fn restore_targz(archive_file: &Path, out: &Path) -> Result<(), String> {
     result
 }
 
-
-/// アーカイブの中身が「フォルダ」か「ファイル単体」かを返す。
-/// 作業対象が存在しないときの、復元先の名前決めに使う。
-pub fn archive_holds_folder(archive_path: &str) -> Result<bool, String> {
+/// アーカイブの中身の「元の名前」と「フォルダかどうか」を返す。
+/// 作業対象が存在しない(または空の)ときの、復元先の名前決めに使う。
+/// パスワード付きの ZIP でも、パスワードなしで調べられる。
+pub fn archive_target_info(archive_path: &str) -> Result<(String, bool), String> {
     let entries: Vec<(PathBuf, bool)> = if archive_path.to_lowercase().ends_with(".zip") {
         let file = File::open(archive_path).map_err(|e| e.to_string())?;
         let mut zip = ZipArchive::new(file).map_err(|e| e.to_string())?;
@@ -526,7 +526,22 @@ pub fn archive_holds_folder(archive_path: &str) -> Result<bool, String> {
     } else {
         list_targz(Path::new(archive_path))?
     };
-    Ok(plan_extraction(&entries)?.kind == ArchiveKind::Folder)
+    let plan = plan_extraction(&entries)?;
+    let is_folder = plan.kind == ArchiveKind::Folder;
+    let name = match (&plan.kind, &plan.root) {
+        (ArchiveKind::File, _) => entries[0].0.to_string_lossy().into_owned(),
+        (ArchiveKind::Folder, Some(root)) => root.to_string_lossy().into_owned(),
+        (ArchiveKind::Folder, None) => Path::new(archive_path)
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default(),
+    };
+    Ok((name, is_folder))
+}
+
+/// アーカイブの中身が「フォルダ」か「ファイル単体」かを返す。
+pub fn archive_holds_folder(archive_path: &str) -> Result<bool, String> {
+    archive_target_info(archive_path).map(|(_, is_folder)| is_folder)
 }
 
 /// アーカイブを復元する(パスワードなし)。

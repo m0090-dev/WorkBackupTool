@@ -2,6 +2,7 @@ use crate::core::types::DiffFileInfo;
 use crate::core::utils;
 use chrono::Local;
 use fs_extra::dir;
+use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
 /// hdiffz 用の引数リストを生成するロジック
@@ -128,6 +129,17 @@ pub fn prepare_hdiff_paths(
         work_file.to_string(),
         diff_path.to_string_lossy().into_owned(),
     )))
+}
+
+/// 差分ファイル名 `<元の名前>.<YYYYMMDD_HHMMSS>.<アルゴリズム>.diff` から、元の名前を取り出す
+/// (作業対象が空のときの、復元先の名前に使う)
+pub fn diff_entry_name(diff_file: &str) -> Option<String> {
+    let name = Path::new(diff_file)
+        .file_name()?
+        .to_string_lossy()
+        .into_owned();
+    let re = Regex::new(r"^(.+?)\.\d{8}_\d{6}\.").ok()?;
+    re.captures(&name).map(|c| c[1].to_string())
 }
 
 /// 差分ファイルに対応する .base のパスを決める
