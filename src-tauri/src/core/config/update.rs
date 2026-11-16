@@ -62,6 +62,14 @@ pub fn apply_config_value(cfg: &mut AppConfig, key: &str, value: &Value) -> Resu
         "reminderEnabled" => cfg.reminder_enabled = as_bool(key, value)?,
         "reminderSkipUnchanged" => cfg.reminder_skip_unchanged = as_bool(key, value)?,
         "openAfterRestore" => cfg.open_after_restore = as_bool(key, value)?,
+        "restoreRelinkEnabled" => cfg.restore_relink_enabled = as_bool(key, value)?,
+        "restoreRelinkAuto" => cfg.restore_relink_auto = as_bool(key, value)?,
+        "restoreRelinkOnlyWhenMissing" => {
+            cfg.restore_relink_only_when_missing = as_bool(key, value)?
+        }
+        "restoreRelinkResetBackupDir" => {
+            cfg.restore_relink_reset_backup_dir = as_bool(key, value)?
+        }
 
         // --- 数値 ---
         "startupCacheLimit" => cfg.startup_cache_limit = as_u64(key, value)? as usize,

@@ -24,5 +24,10 @@
   "reminderIntervalMin": 30,
   "reminderMethod": "popup",
   "reminderSkipUnchanged": true,
-  "openAfterRestore": false
+  "openAfterRestore": false,
+  "openAfterRestore": false,
+  "restoreRelinkEnabled": true,
+  "restoreRelinkAuto": false,
+  "restoreRelinkOnlyWhenMissing": true,
+  "restoreRelinkResetBackupDir": true
 }

@@ -2,6 +2,8 @@ import {
   SelectAnyFile,
   SelectAnyFolder,
   GetFileSize,
+  FileExists,
+  DirExists,
   WriteTextFile,
   ReadTextFile,
   RestoreBackup,
@@ -54,6 +56,43 @@ const preventDefault = (e) => {
   e.preventDefault();
   e.stopPropagation();
 };
+
+// 復元したものを新しい作業対象に設定し直す(設定: restoreRelink*)。
+// 1件だけ復元したときのみ。設定し直したら true を返す。
+// ここでの失敗は、復元そのものの成否には影響させない。
+async function offerRelink(tab, outputs, workMissing) {
+  if (!tab || !outputs || outputs.length !== 1) return false;
+  try {
+    const config = await GetConfig();
+    if (!config.restoreRelinkEnabled) return false;
+    if (config.restoreRelinkOnlyWhenMissing && !workMissing) return false;
+
+    const restored = outputs[0];
+    if (!config.restoreRelinkAuto) {
+      const name = restored.split(/[\\/]/).pop();
+      let message = (i18n.relinkConfirm || 'Use "{name}" as the work target?')
+        .replace("{name}", name);
+      if (config.restoreRelinkResetBackupDir && i18n.relinkConfirmReset) {
+        message += "\n" + i18n.relinkConfirmReset;
+      }
+      const ok = await ask(message, { title: "WorkBackupTool", type: "info" });
+      if (!ok) return false;
+    }
+
+    tab.workFile = restored;
+    tab.workFileSize = await GetFileSize(restored).catch(() => 0);
+    if (config.restoreRelinkResetBackupDir) tab.backupDir = "";
+    tab.viewGeneration = null;
+    addToRecentFiles(restored);
+    await UpdateAllUI();
+    saveCurrentSession();
+    showFloatingMessage(i18n.relinkDone || "Work target updated");
+    return true;
+  } catch (err) {
+    console.error("Failed to relink restored item:", err);
+    return false;
+  }
+}
 
 // 復元したファイル/フォルダを、設定(復元後に開く)に従って OS の既定の方法で開く。
 // 1件ならそのもの(ファイル/フォルダ)を、複数まとめて復元したときは書き出し先のフォルダを開く。
@@ -319,6 +358,11 @@ export async function setupGlobalEvents() {
       });
 
       if (isConfirmed) {
+	// 復元で作業対象は作られないので、前でも後でも同じ。念のため復元前に調べておく
+        const workMissing =
+          !!tab.workFile &&
+          !(await FileExists(tab.workFile).catch(() => false)) &&
+          !(await DirExists(tab.workFile).catch(() => false));
         toggleProgress(true, "Restoring...");
         try {
           const outputs = [];
@@ -341,6 +385,8 @@ export async function setupGlobalEvents() {
           }
           const notified = await notifyResult(true, i18n.diffApplySuccess);
           if (!notified) showFloatingMessage(i18n.diffApplySuccess);
+          // 先に作業対象の切り替えを確認し、そのあとで(設定により)開く
+          await offerRelink(tab, outputs, workMissing);
           await openRestored(outputs);
           UpdateHistory();
         } catch (err) {
