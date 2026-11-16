@@ -2,6 +2,8 @@ import {
   SelectAnyFile,
   SelectAnyFolder,
   GetFileSize,
+  FileExists,
+  DirExists,
   WriteTextFile,
   ReadTextFile,
   RestoreBackup,
@@ -55,6 +57,44 @@ const preventDefault = (e) => {
   e.stopPropagation();
 };
 
+// 復元したものを、新しい作業対象に設定し直す(設定: restoreRelink*)。
+// 1件だけ復元したときのみ。設定し直したら true を返す。
+// ここでの失敗は、復元そのものの成否には影響させない。
+async function offerRelink(tab, outputs, workMissing) {
+  if (!tab || !outputs || outputs.length !== 1) return false;
+  try {
+    const config = await GetConfig();
+    if (!config.restoreRelinkEnabled) return false;
+    if (config.restoreRelinkOnlyWhenMissing && !workMissing) return false;
+
+    const restored = outputs[0];
+    if (!config.restoreRelinkAuto) {
+      const name = restored.split(/[\\/]/).pop();
+      let message = (
+        i18n.relinkConfirm || 'Use "{name}" as the new work target?'
+      ).replace("{name}", name);
+      if (config.restoreRelinkResetBackupDir && i18n.relinkConfirmReset) {
+        message += "\n" + i18n.relinkConfirmReset;
+      }
+      const ok = await ask(message, { title: "WorkBackupTool", type: "info" });
+      if (!ok) return false;
+    }
+
+    tab.workFile = restored;
+    tab.workFileSize = await GetFileSize(restored).catch(() => 0);
+    if (config.restoreRelinkResetBackupDir) tab.backupDir = "";
+    tab.viewGeneration = null;
+    addToRecentFiles(restored);
+    await UpdateAllUI();
+    saveCurrentSession();
+    showFloatingMessage(i18n.relinkDone || "Work target updated");
+    return true;
+  } catch (err) {
+    console.error("Failed to relink restored item:", err);
+    return false;
+  }
+}
+
 // 復元したファイル/フォルダを、設定(復元後に開く)に従って OS の既定の方法で開く。
 // 1件ならそのもの(ファイル/フォルダ)を、複数まとめて復元したときは書き出し先のフォルダを開く。
 // ここでの失敗は、復元そのものの成否には影響させない。
@@ -75,19 +115,37 @@ async function openRestored(outputs) {
 
 const RESTORE_CANCELLED = Symbol("restore-cancelled");
 const PASSWORD_ERROR = /ARCHIVE_PASSWORD_(REQUIRED|INVALID)/;
+const OUTPUT_DIR_ERROR = /RESTORE_OUTPUT_DIR_REQUIRED/;
 
-// 1件を復元する。パスワード付きのアーカイブでは、パスワードを尋ねて、通るまで再試行する。
-// 同じ操作の中で通ったパスワードは、次のアーカイブでも先に試す(state.password)。
-// 入力をキャンセルしたら RESTORE_CANCELLED を返す。
-async function restoreWithPassword(path, workFile, state) {
+// 1件を復元する。
+// - パスワード付きのアーカイブでは、パスワードを尋ねて、通るまで再試行する。
+//   同じ操作の中で通ったパスワードは、次のアーカイブでも先に試す(state.password)。
+// - 作業対象が空で、復元先が決められないときは、書き出し先のフォルダを尋ねて再試行する。
+//   選んだフォルダは、同じ操作の中で使い回す(state.outputDir)。
+// どちらも、入力をキャンセルしたら RESTORE_CANCELLED を返す。
+async function restoreWithPassword(path, workFile, state, backupDir) {
   let password = state.password;
   for (;;) {
     try {
-      const out = await RestoreBackup(path, workFile, password);
+      const out = await RestoreBackup(
+        path,
+        workFile,
+        password,
+        backupDir || null,
+        state.outputDir || null,
+      );
       if (password) state.password = password;
       return out;
     } catch (err) {
       const message = String(err);
+      if (OUTPUT_DIR_ERROR.test(message)) {
+        const dir = await SelectAnyFolder(
+          i18n.restoreOutputDirTitle || "Choose where to save the restored item",
+        );
+        if (!dir) return RESTORE_CANCELLED;
+        state.outputDir = dir;
+        continue;
+      }
       if (!PASSWORD_ERROR.test(message)) throw err;
       const entered = await askArchivePassword({
         prefill:
@@ -319,14 +377,24 @@ export async function setupGlobalEvents() {
       });
 
       if (isConfirmed) {
+        // 作業対象が空、または実体が無いか(復元しても作業対象は作られないので、前でも後でも同じ)
+        const workMissing =
+          !tab.workFile ||
+          (!(await FileExists(tab.workFile).catch(() => false)) &&
+            !(await DirExists(tab.workFile).catch(() => false)));
         toggleProgress(true, "Restoring...");
         try {
           const outputs = [];
-          const passwordState = { password: null };
+          const passwordState = { password: null, outputDir: null };
           let cancelled = false;
           for (const p of targets) {
             // 復元コマンドは、書き出した先のパスを返す
-            const out = await restoreWithPassword(p, tab.workFile, passwordState);
+            const out = await restoreWithPassword(
+              p,
+              tab.workFile,
+              passwordState,
+              tab.backupDir,
+            );
             if (out === RESTORE_CANCELLED) {
               cancelled = true;
               break;
@@ -341,6 +409,8 @@ export async function setupGlobalEvents() {
           }
           const notified = await notifyResult(true, i18n.diffApplySuccess);
           if (!notified) showFloatingMessage(i18n.diffApplySuccess);
+          // 先に作業対象の切り替えを確認し、そのあとで(設定により)開く
+          await offerRelink(tab, outputs, workMissing);
           await openRestored(outputs);
           UpdateHistory();
         } catch (err) {
@@ -355,7 +425,7 @@ export async function setupGlobalEvents() {
     }
 
     if (id == "generation-archive-btn") {
-      if (!tab || !tab.workFile) {
+      if (!tab || (!tab.workFile && !tab.backupDir)) {
         showFloatingError(
           i18n?.selectFileFirst || "Please select a work file first.",
         );
@@ -544,7 +614,7 @@ export async function setupGlobalEvents() {
   // ファイルメニュー「世代の圧縮」
   EventsOn("open-generation-archive", () => {
     const tab = getActiveTab();
-    if (!tab || !tab.workFile) {
+    if (!tab || (!tab.workFile && !tab.backupDir)) {
       showFloatingError(
         i18n?.selectFileFirst || "Please select a work file first.",
       );

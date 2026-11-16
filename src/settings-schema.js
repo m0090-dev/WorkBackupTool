@@ -128,6 +128,42 @@ export const settingsSchema = [
     label: "openRestoredLabel",
     hint: "openRestoredHint",
   },
+  {
+    key: "restoreAlwaysAskOutputDir",
+    type: "boolean",
+    category: "restore",
+    label: "restoreAlwaysAskOutputDirLabel",
+    hint: "restoreAlwaysAskOutputDirHint",
+  },
+  {
+    key: "restoreRelinkEnabled",
+    type: "boolean",
+    category: "restore",
+    label: "restoreRelinkEnabledLabel",
+    hint: "restoreRelinkEnabledHint",
+  },
+  {
+    key: "restoreRelinkAuto",
+    type: "boolean",
+    category: "restore",
+    label: "restoreRelinkAutoLabel",
+    dependsOn: "restoreRelinkEnabled",
+  },
+  {
+    key: "restoreRelinkOnlyWhenMissing",
+    type: "boolean",
+    category: "restore",
+    label: "restoreRelinkOnlyWhenMissingLabel",
+    dependsOn: "restoreRelinkEnabled",
+  },
+  {
+    key: "restoreRelinkResetBackupDir",
+    type: "boolean",
+    category: "restore",
+    label: "restoreRelinkResetBackupDirLabel",
+    hint: "restoreRelinkResetBackupDirHint",
+    dependsOn: "restoreRelinkEnabled",
+  },
 
   // --- タブごとの設定 (session.json に保存される) ---
   {

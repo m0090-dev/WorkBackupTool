@@ -111,6 +111,22 @@ pub struct AppConfig {
     // --- 復元 ---
     #[serde(default)]
     pub open_after_restore: bool,
+
+    /// 復元したものを、新しい作業対象に設定し直すかどうかの確認(この機能全体のオン/オフ)
+    #[serde(default = "default_true")]
+    pub restore_relink_enabled: bool,
+    /// 確認せずに、自動で設定し直す
+    #[serde(default)]
+    pub restore_relink_auto: bool,
+    /// 作業対象が存在しない(または空の)ときだけ行う。オフなら、存在していても行う
+    #[serde(default = "default_true")]
+    pub restore_relink_only_when_missing: bool,
+    /// 設定し直すときに、保存先も初期状態に戻す
+    #[serde(default = "default_true")]
+    pub restore_relink_reset_backup_dir: bool,
+    /// 作業対象が空のとき、復元先のフォルダを毎回尋ねる(オフなら、標準の配置は自動で決める)
+    #[serde(default)]
+    pub restore_always_ask_output_dir: bool,
 }
 
 // 差分ファイル情報

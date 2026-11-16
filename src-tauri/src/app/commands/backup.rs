@@ -145,14 +145,53 @@ pub async fn archive_backup_file(
     crate::core::backup::archive::execute_archive_backup(&src, dir_opt, &format, &password)
 }
 
+/// バックアップ(差分 / アーカイブ)が元々何という名前だったか(例: art.clip, my.project)
+fn original_name_of_backup(path: &str) -> Result<String, String> {
+    let lower = path.to_lowercase();
+    if lower.ends_with(".diff") {
+        crate::core::ext::hdiff_common::diff_entry_name(path)
+            .ok_or_else(|| "差分ファイルの名前から、元の名前を判断できません".to_string())
+    } else if lower.ends_with(".zip") || lower.ends_with(".tar.gz") {
+        archive::archive_target_info(path).map(|(name, _)| name)
+    } else {
+        Err("元の名前を判断できない形式です".to_string())
+    }
+}
+
+/// 選んだ履歴を復元する。
+/// - work_file が空(作業対象が未設定)のときは、バックアップ側から元の名前を、
+///   backup_dir / output_dir / 設定から書き出し先のフォルダを決める。
+///   決められないときは、ERR_OUTPUT_DIR_REQUIRED(RESTORE_OUTPUT_DIR_REQUIRED)を返す
+///   (フロントがフォルダを尋ねて、output_dir を付けてもう一度呼ぶ)。
 #[tauri::command]
 pub async fn restore_backup(
     app: tauri::AppHandle,
     path: String,
     work_file: String,
     password: Option<String>,
+    backup_dir: Option<String>,
+    output_dir: Option<String>,
 ) -> Result<String, String> {
     let lower_path = path.to_lowercase();
+
+    // 作業対象が空のときは、「書き出し先フォルダ/元の名前」を作業対象の代わりに使う
+    // (実在しなくてよい。出力名と場所、フォルダかどうかの判断にだけ使う)
+    let work_file = if work_file.is_empty() {
+        let always_ask = {
+            let state = app.state::<AppState>();
+            let cfg = state.config.lock().unwrap();
+            cfg.restore_always_ask_output_dir
+        };
+        let dir = utils::resolve_output_dir(
+            backup_dir.as_deref().unwrap_or(""),
+            output_dir.as_deref(),
+            always_ask,
+        )?;
+        let name = original_name_of_backup(&path)?;
+        dir.join(name).to_string_lossy().into_owned()
+    } else {
+        work_file
+    };
 
     // 1. 差分パッチの場合のみSidecar（async/app層）が必要
     if lower_path.ends_with(".diff") {
@@ -164,7 +203,18 @@ pub async fn restore_backup(
     }
 
     // 出力パスの自動生成(同名が既にあれば _2, _3 ... を付けて上書きしない)
-    let restored_path = utils::auto_output_path(&work_file);
+    // 作業対象が無いときは、アーカイブの中身(フォルダ/ファイル)で名前の付け方を決める
+    let restored_path = if lower_path.ends_with(".zip") || lower_path.ends_with(".tar.gz") {
+        let work = std::path::Path::new(&work_file);
+        let is_dir = if work.exists() {
+            work.is_dir()
+        } else {
+            archive::archive_holds_folder(&path).unwrap_or(false)
+        };
+        utils::auto_output_path_as(&work_file, is_dir)
+    } else {
+        utils::auto_output_path(&work_file)
+    };
 
     if lower_path.ends_with(".zip") || lower_path.ends_with(".tar.gz") {
         // 2 & 3. アーカイブ展開 (core::backup::archive に丸投げ)

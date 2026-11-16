@@ -117,10 +117,25 @@ export async function CopyBackupFile(src, backupDir) {
  * パスワード付き ZIP でパスワードが無い/違うときは、エラー文字列に
  * ARCHIVE_PASSWORD_REQUIRED / ARCHIVE_PASSWORD_INVALID が入る。
  * @param {string|null} password パスワード付き ZIP のときだけ使う
+ * @param {string|null} backupDir 作業対象が空のとき、復元先を決めるのに使う保存先
+ * @param {string|null} outputDir 作業対象が空のとき、ユーザーが選んだ書き出し先フォルダ。
+ *   決められないときは、エラー文字列に RESTORE_OUTPUT_DIR_REQUIRED が入る。
  * @returns {Promise<string>} 復元して書き出した先のパス(ファイル/フォルダ)
  */
-export async function RestoreBackup(path, workFile, password = null) {
-  return await invoke("restore_backup", { path, workFile, password });
+export async function RestoreBackup(
+  path,
+  workFile,
+  password = null,
+  backupDir = null,
+  outputDir = null,
+) {
+  return await invoke("restore_backup", {
+    path,
+    workFile,
+    password,
+    backupDir,
+    outputDir,
+  });
 }
 
 /**

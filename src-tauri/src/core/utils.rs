@@ -95,15 +95,58 @@ pub fn unique_path(path: PathBuf, is_dir: bool) -> PathBuf {
     path
 }
 
-/// 復元時の出力パスを自動生成する
-/// フォルダの場合は `<name>_restored_<ts>/`、ファイルは従来通り
-/// 同じ名前が既にある場合は `_2`, `_3` ... を付けて、既存のものを上書きしない
-pub fn auto_output_path(work_path: &str) -> String {
-    let path = Path::new(work_path);
-    let ts = Local::now().format("%Y%m%d_%H%M%S").to_string();
+/// 保存先フォルダ名(`wbt_backup_<名前>`)に使う名前を決める。
+/// 存在するなら実体で判断(フォルダ: 名前そのまま / ファイル: 拡張子なし)。
+/// 存在しないときは、「wbt_backup_<名前そのまま>」が実在するかで判断する。
+/// (削除済みの my.project フォルダを、ファイル my.project と取り違えないため)
+fn backup_entry_name(path: &Path) -> String {
+    let full = path
+        .file_name()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
 
     if path.is_dir() {
-        let dir = path.parent().unwrap_or_else(|| Path::new("."));
+        return full;
+    }
+    if path.is_file() || full == stem {
+        return stem;
+    }
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    if dir.join(format!("wbt_backup_{}", full)).is_dir() {
+        full
+    } else {
+        stem
+    }
+}
+
+/// デフォルトのバックアップディレクトリを返す
+/// ファイル: `wbt_backup_<stem>/`
+/// フォルダ: `wbt_backup_<foldername>/`
+pub fn default_backup_dir(work_path: &str) -> PathBuf {
+    let path = Path::new(work_path);
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+    dir.join(format!("wbt_backup_{}", backup_entry_name(path)))
+}
+
+/// 復元時の出力パスを自動生成する(作業対象が存在すれば、その実体で判断)
+pub fn auto_output_path(work_path: &str) -> String {
+    auto_output_path_as(work_path, Path::new(work_path).is_dir())
+}
+
+/// 復元時の出力パスを自動生成する(フォルダかどうかを呼び出し側が決める)
+/// フォルダの場合は `<name>_restored_<ts>/`、ファイルは `<stem>_restored_<ts>.<ext>`
+/// 作業対象が既に無いときは is_dir() が当てにならないので、こちらを使う。
+/// 同じ名前が既にある場合は `_2`, `_3` ... を付けて、既存のものを上書きしない
+pub fn auto_output_path_as(work_path: &str, is_dir: bool) -> String {
+    let path = Path::new(work_path);
+    let ts = Local::now().format("%Y%m%d_%H%M%S").to_string();
+    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+
+    if is_dir {
         let name = path
             .file_name()
             .map(|s| s.to_string_lossy())
@@ -112,7 +155,6 @@ pub fn auto_output_path(work_path: &str) -> String {
             .to_string_lossy()
             .into_owned()
     } else {
-        let dir = path.parent().unwrap_or_else(|| Path::new("."));
         let file_stem = path
             .file_stem()
             .map(|s| s.to_string_lossy())
@@ -133,25 +175,61 @@ pub fn auto_output_path(work_path: &str) -> String {
     }
 }
 
-/// デフォルトのバックアップディレクトリを返す
-/// ファイル: `wbt_backup_<stem>/`
-/// フォルダ: `wbt_backup_<foldername>/`
-pub fn default_backup_dir(work_path: &str) -> PathBuf {
-    let path = Path::new(work_path);
-    let dir = path.parent().unwrap_or_else(|| Path::new("."));
+/// 作業対象が空のとき、復元先のフォルダが決められなかったことを示すエラー文字列
+/// (フロントはこの文字列を見て、書き出し先のフォルダを尋ねて、もう一度呼ぶ)
+pub const ERR_OUTPUT_DIR_REQUIRED: &str = "RESTORE_OUTPUT_DIR_REQUIRED";
 
-    let entry_name = if path.is_dir() {
-        // フォルダの場合はフォルダ名そのまま
-        path.file_name()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_default()
+/// `base<数字>_...`(世代フォルダ)の名前かどうか
+fn is_generation_dir_name(name: &str) -> bool {
+    match name.strip_prefix("base") {
+        Some(rest) => {
+            let digits = rest.chars().take_while(|c| c.is_ascii_digit()).count();
+            digits > 0 && rest[digits..].starts_with('_')
+        }
+        None => false,
+    }
+}
+
+/// 標準の配置(元の作業対象の隣に `wbt_backup_<名前>/` がある)なら、その1つ上のフォルダを返す。
+/// 保存先に世代フォルダ(baseN_...)が指定されていても、同じく扱う。
+/// 標準の配置でなければ None(復元先をユーザーに尋ねる)
+pub fn auto_output_dir(backup_dir: &str) -> Option<PathBuf> {
+    let trimmed = backup_dir.trim_end_matches(|c| c == '/' || c == '\\');
+    if trimmed.is_empty() {
+        return None;
+    }
+    let mut root = Path::new(trimmed);
+    if is_generation_dir_name(&root.file_name()?.to_string_lossy()) {
+        root = root.parent()?;
+    }
+    if !root.file_name()?.to_string_lossy().starts_with("wbt_backup_") {
+        return None;
+    }
+    let parent = root.parent()?;
+    if parent.as_os_str().is_empty() {
+        None
     } else {
-        path.file_stem()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_default()
-    };
+        Some(parent.to_path_buf())
+    }
+}
 
-    dir.join(format!("wbt_backup_{}", entry_name))
+/// 作業対象が空のときの、復元先フォルダを決める。
+/// 優先順: ユーザーが選んだフォルダ > 標準の配置から自動(「常に尋ねる」設定がオフのとき)。
+/// どれでも決められなければ ERR_OUTPUT_DIR_REQUIRED を返す。
+pub fn resolve_output_dir(
+    backup_dir: &str,
+    chosen: Option<&str>,
+    always_ask: bool,
+) -> Result<PathBuf, String> {
+    if let Some(dir) = chosen.filter(|d| !d.is_empty()) {
+        return Ok(PathBuf::from(dir));
+    }
+    if !always_ask {
+        if let Some(dir) = auto_output_dir(backup_dir) {
+            return Ok(dir);
+        }
+    }
+    Err(ERR_OUTPUT_DIR_REQUIRED.to_string())
 }
 
 /// 単純なファイルコピーを行う
@@ -199,11 +277,21 @@ pub fn get_cache_root(use_same_dir: bool, backup_dir: &str, work_path: &str) -> 
             Path::new(backup_dir).join(".wbt_cache")
         }
     } else {
+        // 作業対象が空のタブは、保存先のパス(末尾の区切りなどをそろえたもの)で見分ける
+        let key: String = if work_path.is_empty() {
+            PathBuf::from(backup_dir)
+                .components()
+                .collect::<PathBuf>()
+                .to_string_lossy()
+                .into_owned()
+        } else {
+            work_path.to_string()
+        };
         let mut s = DefaultHasher::new();
-        work_path.hash(&mut s);
+        key.hash(&mut s);
         let hash_val = format!("{:x}", s.finish());
 
-        let path = Path::new(work_path);
+        let path = Path::new(&key);
         let entry_name = if path.is_dir() {
             path.file_name()
                 .unwrap_or_default()
