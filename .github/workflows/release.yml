@@ -1,10 +1,13 @@
 name: "Release"
+
 env:
   HDIFF_VERSION: "v4.12.0"
+
 on:
   push:
     branches:
       - main # mainブランチにpushした時に動く
+
 jobs:
   publish:
     permissions:
@@ -15,19 +18,27 @@ jobs:
         include:
           - platform: "windows-latest"
             target: "x86_64-pc-windows-msvc"
+            portable_os: "windows-x64"
           - platform: "macos-latest"
             target: "aarch64-apple-darwin"
+            portable_os: "macos-arm64"
           - platform: "ubuntu-22.04"
             target: "x86_64-unknown-linux-gnu"
+            portable_os: "linux-x64"
+
     runs-on: ${{ matrix.platform }}
+
     steps:
       - uses: actions/checkout@v4
+
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
+
       - name: install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -43,22 +54,104 @@ jobs:
             libssl-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev
+
       - name: install frontend dependencies
         run: npm install
+
       - name: sync version to config
         run: python scripts/update_version.py
+
+      - name: read app version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Setup HDiffPatch binaries
         run: python scripts/setup_hdiff.py
         env:
           HDIFF_VERSION: ${{ env.HDIFF_VERSION }}
           PLATFORM: ${{ matrix.platform }}
           TARGET: ${{ matrix.target }}
+
+      # 既存のTauriインストーラ／パッケージのリリース作成は従来どおり
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: v__VERSION__ # 自動でバージョンをタグ付け
+          tagName: v__VERSION__
           releaseName: "WorkBackupTool v__VERSION__"
           releaseBody: "See the assets below to download the latest version."
           releaseDraft: true
           prerelease: false
+
+      # Windows portable: exe本体とサイドカーを同じフォルダに配置
+      - name: Create Windows portable archive
+        if: matrix.platform == 'windows-latest'
+        id: portable_windows
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          $portableDir = "portable/WorkBackupTool-v$version-${{ matrix.portable_os }}"
+          $archivePath = "$portableDir.zip"
+
+          New-Item -ItemType Directory -Force -Path $portableDir | Out-Null
+          Copy-Item "src-tauri/target/release/WorkBackupTool.exe" "$portableDir/WorkBackupTool.exe"
+          Copy-Item "src-tauri/binaries/hdiffz-${{ matrix.target }}.exe" "$portableDir/hdiffz.exe"
+          Copy-Item "src-tauri/binaries/hpatchz-${{ matrix.target }}.exe" "$portableDir/hpatchz.exe"
+
+          Compress-Archive -Path "$portableDir/*" -DestinationPath $archivePath -Force
+          "path=$archivePath" >> $env:GITHUB_OUTPUT
+
+      # macOS portable: Tauri実行ファイルとサイドカーを同じフォルダに配置
+      - name: Create macOS portable archive
+        if: matrix.platform == 'macos-latest'
+        id: portable_macos
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          PORTABLE_DIR="portable/WorkBackupTool-v${VERSION}-${{ matrix.portable_os }}"
+          ARCHIVE_PATH="${PORTABLE_DIR}.tar.gz"
+
+          mkdir -p "$PORTABLE_DIR"
+          cp "src-tauri/target/release/WorkBackupTool" "$PORTABLE_DIR/WorkBackupTool"
+          cp "src-tauri/binaries/hdiffz-${{ matrix.target }}" "$PORTABLE_DIR/hdiffz"
+          cp "src-tauri/binaries/hpatchz-${{ matrix.target }}" "$PORTABLE_DIR/hpatchz"
+          chmod +x "$PORTABLE_DIR/WorkBackupTool" "$PORTABLE_DIR/hdiffz" "$PORTABLE_DIR/hpatchz"
+
+          tar -czf "$ARCHIVE_PATH" -C "$PORTABLE_DIR" .
+          echo "path=$ARCHIVE_PATH" >> "$GITHUB_OUTPUT"
+
+      # Linux portable: Tauri実行ファイルとサイドカーを同じフォルダに配置
+      - name: Create Linux portable archive
+        if: matrix.platform == 'ubuntu-22.04'
+        id: portable_linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          PORTABLE_DIR="portable/WorkBackupTool-v${VERSION}-${{ matrix.portable_os }}"
+          ARCHIVE_PATH="${PORTABLE_DIR}.tar.gz"
+
+          mkdir -p "$PORTABLE_DIR"
+          cp "src-tauri/target/release/WorkBackupTool" "$PORTABLE_DIR/WorkBackupTool"
+          cp "src-tauri/binaries/hdiffz-${{ matrix.target }}" "$PORTABLE_DIR/hdiffz"
+          cp "src-tauri/binaries/hpatchz-${{ matrix.target }}" "$PORTABLE_DIR/hpatchz"
+          chmod +x "$PORTABLE_DIR/WorkBackupTool" "$PORTABLE_DIR/hdiffz" "$PORTABLE_DIR/hpatchz"
+
+          tar -czf "$ARCHIVE_PATH" -C "$PORTABLE_DIR" .
+          echo "path=$ARCHIVE_PATH" >> "$GITHUB_OUTPUT"
+
+      # tauri-actionが作成した同じDraft Releaseへポータブル版を追加
+      - name: Upload portable archive to GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          draft: true
+          prerelease: false
+          files: ${{ steps.portable_windows.outputs.path || steps.portable_macos.outputs.path || steps.portable_linux.outputs.path }}
+          fail_on_unmatched_files: true
