@@ -108,6 +108,14 @@ export async function FileExists(path) {
   return await invoke("file_exists", { path });
 }
 
+/**
+ * フォルダ直下のエントリ名(ファイル・フォルダ両方)をソートして返す。
+ * 存在しないフォルダなら空配列。保存先フォルダの中身検査(モード判定)に使う。
+ */
+export async function ListDirEntries(path) {
+  return await invoke("list_dir_entries", { path });
+}
+
 export async function CopyBackupFile(src, backupDir) {
   return await invoke("copy_backup_file", { src, backupDir });
 }

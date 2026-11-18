@@ -46,6 +46,20 @@ export const settingsSchema = [
     category: "backup",
     label: "showMemoAfterBackup",
   },
+  {
+    key: "customBackupDirUseSubfolder",
+    type: "boolean",
+    category: "backup",
+    label: "customBackupDirUseSubfolderLabel",
+    hint: "customBackupDirUseSubfolderHint",
+  },
+  {
+    key: "customBackupDirHideModePrompt",
+    type: "boolean",
+    category: "backup",
+    label: "customBackupDirHideModePromptLabel",
+    hint: "customBackupDirHideModePromptHint",
+  },
 
   // --- キャッシュ ---
   {

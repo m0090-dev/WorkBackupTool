@@ -71,6 +71,12 @@ pub fn apply_config_value(cfg: &mut AppConfig, key: &str, value: &Value) -> Resu
             cfg.restore_relink_reset_backup_dir = as_bool(key, value)?
         }
         "restoreAlwaysAskOutputDir" => cfg.restore_always_ask_output_dir = as_bool(key, value)?,
+        "customBackupDirUseSubfolder" => {
+            cfg.custom_backup_dir_use_subfolder = as_bool(key, value)?
+        }
+        "customBackupDirHideModePrompt" => {
+            cfg.custom_backup_dir_hide_mode_prompt = as_bool(key, value)?
+        }
 
         // --- 数値 ---
         "startupCacheLimit" => cfg.startup_cache_limit = as_u64(key, value)? as usize,

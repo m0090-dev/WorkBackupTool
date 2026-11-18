@@ -332,6 +332,49 @@ body.compact-mode #drop-modal #drop-cancel {
   color: var(--sub);
 }
 
+/* --- 保存先フォルダの使い方の確認(親フォルダ / 直接) --- */
+.backup-dir-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.backup-dir-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 0.5px solid var(--line-strong);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.backup-dir-option:hover {
+  background: var(--panel);
+}
+
+.backup-dir-option input {
+  margin-top: 2px;
+  accent-color: var(--primary);
+}
+
+.backup-dir-option-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.backup-dir-option-title {
+  font-size: 12px;
+}
+
+.backup-dir-option-desc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--sub);
+}
+
 /* --- パスワードの入力(パスワード付きアーカイブの復元) --- */
 .password-prompt-text {
   font-size: 12px;

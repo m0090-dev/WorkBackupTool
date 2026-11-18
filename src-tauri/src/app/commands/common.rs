@@ -1,4 +1,6 @@
 use crate::core::utils;
+use std::fs;
+use std::path::Path;
 
 #[tauri::command]
 pub fn get_file_size(path: String) -> Result<i64, String> {
@@ -23,6 +25,23 @@ pub fn dir_exists(path: String) -> Result<bool, String> {
 #[tauri::command]
 pub fn file_exists(path: String) -> Result<bool, String> {
     Ok(utils::file_exists(&path))
+}
+
+/// フォルダ直下のエントリ名(ファイル・フォルダ両方)をソートして返す。
+/// フォルダが存在しない場合は空配列(保存先の中身検査用なので、エラーにはしない)。
+#[tauri::command]
+pub fn list_dir_entries(path: String) -> Result<Vec<String>, String> {
+    let p = Path::new(&path);
+    if !p.is_dir() {
+        return Ok(Vec::new());
+    }
+    let mut names: Vec<String> = fs::read_dir(p)
+        .map_err(|e| e.to_string())?
+        .flatten()
+        .filter_map(|e| e.file_name().to_str().map(|s| s.to_string()))
+        .collect();
+    names.sort();
+    Ok(names)
 }
 
 #[tauri::command]

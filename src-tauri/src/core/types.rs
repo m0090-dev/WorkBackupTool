@@ -127,6 +127,15 @@ pub struct AppConfig {
     /// 作業対象が空のとき、復元先のフォルダを毎回尋ねる(オフなら、標準の配置は自動で決める)
     #[serde(default)]
     pub restore_always_ask_output_dir: bool,
+
+    // --- カスタム保存先の使い方 ---
+    /// カスタム保存先でも、中に `wbt_backup_<対象名>` フォルダを作って保存する
+    /// (保存先指定時の既定の動作で、確認ポップアップの初期選択にも使う)
+    #[serde(default = "default_true")]
+    pub custom_backup_dir_use_subfolder: bool,
+    /// 保存先を指定したときに、使い方(親フォルダ / 直接)の確認ポップアップを出さない
+    #[serde(default)]
+    pub custom_backup_dir_hide_mode_prompt: bool,
 }
 
 // 差分ファイル情報
@@ -161,6 +170,11 @@ pub struct TabSession {
     #[serde(default)]
     pub work_file_size: i64,
     pub backup_dir: String,
+    /// 保存先フォルダの使い方。"parent" は backup_dir の中に `wbt_backup_<対象名>` を作る、
+    /// "direct" は backup_dir 自体に保存する。欠落時(None)は従来通り "direct" 扱い。
+    /// (JS 側の session.json を Rust が読み書きしても、この項目が消えないようにするための定義)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backup_dir_mode: Option<String>,
     pub active: bool,
     pub backup_mode: String,
     pub compress_mode: String,

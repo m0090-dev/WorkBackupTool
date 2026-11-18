@@ -190,7 +190,16 @@
     "relinkDone": "Work target updated to the restored item",
     "restoreAlwaysAskOutputDirLabel": "Always ask where to save when there is no work target",
     "restoreAlwaysAskOutputDirHint": "When no work target is set, the restored item is saved next to the standard backup folder (wbt_backup_...). Turn this on to choose the folder every time. A backup folder in any other location always asks.",
-    "restoreOutputDirTitle": "Choose where to save the restored item"
+    "restoreOutputDirTitle": "Choose where to save the restored item",
+    "customBackupDirUseSubfolderLabel": "Create a wbt_backup_<name> folder in custom backup locations",
+    "customBackupDirUseSubfolderHint": "When a backup folder is chosen, store backups in a wbt_backup_<work target name> subfolder inside it, like the default location. Turn off to store them directly in the chosen folder (this is the default behavior when the confirmation popup is hidden).",
+    "customBackupDirHideModePromptLabel": "Don't ask how to use a chosen backup folder",
+    "customBackupDirHideModePromptHint": "When off, choosing a backup folder (by selection or drag & drop) asks whether to use it as a parent folder or to store backups directly in it.",
+    "backupDirModeTitle": "How should this folder be used?",
+    "backupDirModeParentLabel": "Use as a parent folder",
+    "backupDirModeParentDesc": "Create {name} inside it and store backups there.",
+    "backupDirModeDirectLabel": "Store directly in this folder",
+    "backupDirModeDirectDesc": "Store backups directly in this folder."
   },
   "ja": {
     "settings": "設定",
@@ -383,6 +392,15 @@
     "relinkDone": "作業対象を復元したものに切り替えました",
     "restoreAlwaysAskOutputDirLabel": "作業対象がないときは、保存先を毎回尋ねる",
     "restoreAlwaysAskOutputDirHint": "作業対象が未設定のとき、復元したものは標準の保存先フォルダ(wbt_backup_…)の隣に作ります。オンにすると、毎回フォルダを選びます。標準以外の場所の保存先は、常に尋ねます。",
-    "restoreOutputDirTitle": "復元したものの保存先フォルダを選択"
+    "restoreOutputDirTitle": "復元したものの保存先フォルダを選択",
+    "customBackupDirUseSubfolderLabel": "カスタム保存先にも wbt_backup_<名前> フォルダを作る",
+    "customBackupDirUseSubfolderHint": "保存先フォルダを指定したとき、デフォルトの保存先と同じく、その中に wbt_backup_<作業対象名> フォルダを作って保存します。オフにすると、指定したフォルダに直接保存します（確認ポップアップを表示しない場合の既定の動作です）。",
+    "customBackupDirHideModePromptLabel": "保存先フォルダの使い方を確認しない",
+    "customBackupDirHideModePromptHint": "オフにすると、保存先フォルダを選択（またはドラッグ＆ドロップ）したときに、親フォルダとして使うか、そのフォルダに直接保存するかを確認します。",
+    "backupDirModeTitle": "保存先フォルダの使い方",
+    "backupDirModeParentLabel": "親フォルダとして使う",
+    "backupDirModeParentDesc": "中に {name} を作って、そこに保存します。",
+    "backupDirModeDirectLabel": "このフォルダに直接保存する",
+    "backupDirModeDirectDesc": "このフォルダの直下にバックアップを保存します。"
   }
 }

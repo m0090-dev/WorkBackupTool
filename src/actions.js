@@ -29,6 +29,7 @@ import {
   UpdateAllUI,
 } from "./ui";
 import { showMemoDialog, parseNoteContent, serializeNote } from "./memo.js";
+import { resolveEffectiveBackupDir } from "./backup-dir.js";
 
 // --- タブ操作ロジック ---
 export async function switchTab(id) {
@@ -106,6 +107,8 @@ export async function OnExecute() {
   const pwdEl = document.getElementById("archive-password");
   const pwdValue = pwdEl ? pwdEl.value : "";
   const hdiffIgnoreList = tab.hdiffIgnoreList ?? [];
+  // 保存先は実効パス(モードで解決した先)をバックエンドに渡す
+  const effectiveBackupDir = await resolveEffectiveBackupDir(tab);
   await UpdateAllUI();
   toggleProgress(true, i18n.processingMsg);
   try {
@@ -113,7 +116,7 @@ export async function OnExecute() {
     let newFilePath = null;
     // --- A. 単純コピーモード ---
     if (mode === "copy") {
-      newFilePath = await CopyBackupFile(tab.workFile, tab.backupDir);
+      newFilePath = await CopyBackupFile(tab.workFile, effectiveBackupDir);
       successText = i18n.copyBackupSuccess;
     }
     // --- B. アーカイブモード ---
@@ -123,7 +126,7 @@ export async function OnExecute() {
       if (fmt === "zip-pass") fmt = "zip";
       newFilePath = await ArchiveBackupFile(
         tab.workFile,
-        tab.backupDir,
+        effectiveBackupDir,
         fmt,
         pwd,
       );
@@ -135,7 +138,7 @@ export async function OnExecute() {
     // --- C. 差分バックアップモード (既存ロジック完全維持 + 引数拡張) ---
     else if (mode === "diff") {
       // 書き込み先は常に最新の世代(世代の選択は履歴の表示切替のみ)
-      const targetPath = tab.backupDir || "";
+      const targetPath = effectiveBackupDir || "";
 
       // Rust側(またはGo側)の関数を呼び出し
       // 引数に新しく compress を追加。algoがbsdiffの場合は内部で無視される設計
