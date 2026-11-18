@@ -167,3 +167,28 @@ fn test_apply_unknown_key_is_error() {
     // メニューで切り替える項目は、この経路では変更しない
     assert!(apply_config_value(&mut cfg, "alwaysOnTop", &json!(true)).is_err());
 }
+
+#[test]
+fn test_apply_backup_dir_mode_settings() {
+    // 組み込み既定値: サブフォルダを作る=true / 確認ポップアップを出さない=false
+    let mut cfg = default_config();
+    assert!(cfg.custom_backup_dir_use_subfolder);
+    assert!(!cfg.custom_backup_dir_hide_mode_prompt);
+
+    apply_config_value(&mut cfg, "customBackupDirUseSubfolder", &json!(false)).unwrap();
+    assert!(!cfg.custom_backup_dir_use_subfolder);
+    apply_config_value(&mut cfg, "customBackupDirHideModePrompt", &json!(true)).unwrap();
+    assert!(cfg.custom_backup_dir_hide_mode_prompt);
+
+    // 型違いはエラー
+    assert!(apply_config_value(&mut cfg, "customBackupDirUseSubfolder", &json!("yes")).is_err());
+    assert!(apply_config_value(&mut cfg, "customBackupDirHideModePrompt", &json!(1)).is_err());
+}
+
+#[test]
+fn test_old_config_without_backup_dir_mode_fields_uses_defaults() {
+    // 新項目が無い旧設定ファイルでも、新項目は既定値になる
+    let cfg: AppConfig = serde_json::from_str("{}").unwrap();
+    assert!(cfg.custom_backup_dir_use_subfolder);
+    assert!(!cfg.custom_backup_dir_hide_mode_prompt);
+}

@@ -1,4 +1,5 @@
 import { GetBackupList, ReadTextFile } from "../tauri_exports";
+import { resolveEffectiveBackupDir } from "../backup-dir.js";
 import { i18n, getActiveTab, formatSize } from "../state";
 import { parseNoteContent } from "../memo.js";
 import { isBackupExecuting, setCompactIdleStatus } from "./progress.js";
@@ -133,7 +134,8 @@ export async function UpdateHistory() {
   }
 
   try {
-    const raw = (await GetBackupList(tab.workFile, tab.backupDir)) || [];
+    const effectiveBackupDir = await resolveEffectiveBackupDir(tab);
+    const raw = (await GetBackupList(tab.workFile, effectiveBackupDir)) || [];
 
     // メモ(.note)を読み込む
     const items = await Promise.all(

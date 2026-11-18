@@ -173,7 +173,7 @@ pub async fn toggle_window_visibility(app: AppHandle, show: bool) -> Result<(), 
 }
 
 /// タブごとの session.json フィールドを更新する。
-/// 現状は hdiffIgnoreList のみ対応。必要に応じてフィールドを追加してください。
+/// 現状は hdiffIgnoreList と backupDirMode に対応。必要に応じてフィールドを追加してください。
 ///
 /// - `session_path`: JS 側で GetConfigDir() + "/session.json" を渡す
 /// - `tab_id`:       更新対象タブの id (number)
@@ -200,6 +200,14 @@ pub async fn update_session_tab_value(
 
     // --- フィールド更新 ---
     match key.as_str() {
+        "backupDirMode" => {
+            // "parent" / "direct" 以外(未指定含む)は None(従来動作)として保存する
+            tab.backup_dir_mode = match value.as_str() {
+                Some("parent") => Some("parent".to_string()),
+                Some("direct") => Some("direct".to_string()),
+                _ => None,
+            };
+        }
         "hdiffIgnoreList" => {
             tab.hdiff_ignore_list = value
                 .as_array()

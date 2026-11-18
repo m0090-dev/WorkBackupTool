@@ -1,4 +1,5 @@
 import { GetGenerationFolders } from "../tauri_exports";
+import { resolveEffectiveBackupDir } from "../backup-dir.js";
 import { i18n, getActiveTab } from "../state";
 import { showFloatingError } from "./messages.js";
 import { escapeHtml } from "./html.js";
@@ -25,7 +26,7 @@ export async function showArchiveModal() {
   try {
     const archiveCandidates = await GetGenerationFolders(
       tab.workFile,
-      tab.backupDir,
+      await resolveEffectiveBackupDir(tab),
     );
 
     archiveCandidates.sort((a, b) => b.generation - a.generation);

@@ -32,6 +32,10 @@ import {
 } from "./ui";
 
 import { setupGlobalEvents } from "./events";
+import {
+  chooseBackupDirMode,
+  resolveEffectiveBackupDir,
+} from "./backup-dir.js";
 import { switchTab } from "./actions";
 
 // --- 初期化ロジック ---
@@ -81,7 +85,10 @@ async function performStartupCacheRebuild() {
       updateStartupProgress(processedCount + 1, eligibleTabs.length);
     }
     try {
-      await RebuildArchiveCaches(tab.workFile, tab.backupDir || "");
+      await RebuildArchiveCaches(
+        tab.workFile,
+        (await resolveEffectiveBackupDir(tab)) || "",
+      );
     } catch (e) {
       console.error(`Cache rebuild failed for ${tab.workFile}:`, e);
     }
@@ -223,6 +230,7 @@ function setupDragAndDrop() {
         tab.workFileSize = await GetFileSize(droppedPath);
 
         tab.backupDir = "";
+        delete tab.backupDirMode;
         tab.viewGeneration = null;
 
         addToRecentFiles(droppedPath);
@@ -230,7 +238,7 @@ function setupDragAndDrop() {
         finishDrop(i18n.updatedWorkFile);
       };
 
-      document.getElementById("drop-set-backupdir").onclick = () => {
+      document.getElementById("drop-set-backupdir").onclick = async () => {
         const tab = getActiveTab();
         if (!isDir) {
           showFloatingError(
@@ -239,7 +247,11 @@ function setupDragAndDrop() {
           );
           return;
         }
+        // 使い方(親フォルダ / 直接)を決める。キャンセル時はドロップ画面に戻る
+        const mode = await chooseBackupDirMode(droppedPath, tab.workFile);
+        if (!mode) return;
         tab.backupDir = droppedPath;
+        tab.backupDirMode = mode;
 
         finishDrop(i18n.updatedBackupDir);
       };

@@ -29,5 +29,7 @@
   "restoreRelinkAuto": false,
   "restoreRelinkOnlyWhenMissing": true,
   "restoreRelinkResetBackupDir": true,
-  "restoreAlwaysAskOutputDir": false
+  "restoreAlwaysAskOutputDir": false,
+  "customBackupDirUseSubfolder": true,
+  "customBackupDirHideModePrompt": false
 }

@@ -48,6 +48,10 @@ import {
 } from "./ui";
 
 import { addTab, OnExecute, switchTab } from "./actions";
+import {
+  chooseBackupDirMode,
+  resolveEffectiveBackupDir,
+} from "./backup-dir.js";
 import { ask } from "@tauri-apps/plugin-dialog";
 
 import { showMemoDialog, parseNoteContent, serializeNote } from "./memo.js";
@@ -82,7 +86,10 @@ async function offerRelink(tab, outputs, workMissing) {
 
     tab.workFile = restored;
     tab.workFileSize = await GetFileSize(restored).catch(() => 0);
-    if (config.restoreRelinkResetBackupDir) tab.backupDir = "";
+    if (config.restoreRelinkResetBackupDir) {
+      tab.backupDir = "";
+      delete tab.backupDirMode;
+    }
     tab.viewGeneration = null;
     addToRecentFiles(restored);
     await UpdateAllUI();
@@ -187,6 +194,7 @@ export async function setupGlobalEvents() {
       tab.workFile = res;
       tab.workFileSize = await GetFileSize(res).catch(() => 0);
       tab.backupDir = "";
+      delete tab.backupDirMode;
       tab.viewGeneration = null;
       addToRecentFiles(res);
       renderTabs();
@@ -198,11 +206,16 @@ export async function setupGlobalEvents() {
   };
 
   // バックアップ先フォルダ選択
+  // 指定されたら、使い方(親フォルダ / 直接)を決めてタブに保存する。
+  // ポップアップでキャンセルされたら、保存先は変更しない。
   const handleSelectBackupDir = async () => {
     const tab = getActiveTab();
     const res = await SelectAnyFolder(i18n.backupDirBtn);
     if (res) {
+      const mode = await chooseBackupDirMode(res, tab.workFile);
+      if (!mode) return;
       tab.backupDir = res;
+      tab.backupDirMode = mode;
       await UpdateDisplay();
       UpdateHistory();
       saveCurrentSession();
@@ -218,6 +231,7 @@ export async function setupGlobalEvents() {
       tab.workFile = path;
       tab.workFileSize = await GetFileSize(path).catch(() => 0);
       tab.backupDir = "";
+      delete tab.backupDirMode;
       tab.viewGeneration = null;
 
       addToRecentFiles(path);
@@ -385,6 +399,7 @@ export async function setupGlobalEvents() {
         toggleProgress(true, "Restoring...");
         try {
           const outputs = [];
+          const effectiveBackupDir = await resolveEffectiveBackupDir(tab);
           const passwordState = { password: null, outputDir: null };
           let cancelled = false;
           for (const p of targets) {
@@ -393,7 +408,7 @@ export async function setupGlobalEvents() {
               p,
               tab.workFile,
               passwordState,
-              tab.backupDir,
+              effectiveBackupDir,
             );
             if (out === RESTORE_CANCELLED) {
               cancelled = true;
@@ -453,9 +468,10 @@ export async function setupGlobalEvents() {
       toggleProgress(true, "Archiving...");
 
       try {
+        const effectiveBackupDir = await resolveEffectiveBackupDir(tab);
         for (const cb of selectedChecks) {
           const genNum = parseInt(cb.getAttribute("data-gen"));
-          await ArchiveGeneration(genNum, format, tab.workFile, tab.backupDir);
+          await ArchiveGeneration(genNum, format, tab.workFile, effectiveBackupDir);
         }
         toggleProgress(false);
         showFloatingMessage("Archiving completed.");

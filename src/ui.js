@@ -36,3 +36,4 @@ export {
 export { UpdateAllUI } from "./ui/update-all.js";
 export { notifyResult } from "./ui/notify.js";
 export { askArchivePassword } from "./ui/password-dialog.js";
+export { askBackupDirMode } from "./ui/backup-dir-dialog.js";

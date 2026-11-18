@@ -1,6 +1,7 @@
 import { FileExists, DirExists } from "../tauri_exports";
 import { i18n, getActiveTab, formatSize } from "../state";
 import { UpdateCompact } from "./compact.js";
+import { resolveEffectiveBackupDir } from "../backup-dir.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -84,8 +85,16 @@ export async function UpdateDisplay() {
   } else {
     workTargetExists = true;
   }
+  // 表示と存在チェックは実効保存先(モード解決後)で行う。
+  // ただし親フォルダモードでサブフォルダがまだ無いのは未作成なだけで、
+  // 指定フォルダ自体があれば「無い」とは表示しない。
+  const effectiveBackupDir = tab.backupDir
+    ? await resolveEffectiveBackupDir(tab)
+    : "";
   if (tab.backupDir) {
-    dirExists = await DirExists(tab.backupDir);
+    const checkTarget =
+      tab.backupDirMode === "parent" ? tab.backupDir : effectiveBackupDir;
+    dirExists = await DirExists(checkTarget);
   }
 
   const fileEl = $("selected-workfile");
@@ -101,10 +110,10 @@ export async function UpdateDisplay() {
     fileEl.classList.toggle("missing", !!missing);
   }
   if (dirEl) {
-    const dirText = tab.backupDir || i18n.selectedBackupDir;
+    const dirText = effectiveBackupDir || i18n.selectedBackupDir;
     const missing = !dirExists && tab.backupDir;
     dirEl.textContent = missing ? `${dirText} (Not Found)` : dirText;
-    dirEl.title = tab.backupDir || "";
+    dirEl.title = effectiveBackupDir || "";
     dirEl.classList.toggle("missing", !!missing);
   }
 

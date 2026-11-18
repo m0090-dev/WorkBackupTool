@@ -29,6 +29,7 @@ pub fn run() {
             archive_backup_file,
             dir_exists,
             file_exists,
+            list_dir_entries,
             restore_backup,
             get_file_size,
             select_any_file,
