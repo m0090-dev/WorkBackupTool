@@ -72,6 +72,14 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
         // トレイモードでない場合は確実に表示（tauri.confのvisible:falseを考慮）
         if !tray_enabled {
             let _ = window.show();
+
+            // 表示した後にもう一度、最前面設定を適用する。
+            // 非表示状態（visible:false）での適用だけでは、表示タイミングで
+            // 実状態が設定値とズレてしまうことがあるため、表示後の再適用で
+            // ウィンドウの実状態と設定値を確実に同期させる。
+            // （トレイモード時は表示しないので、ここでは再適用しない）
+            let _ =
+                utils::apply_window_always_on_top(app.handle().clone(), always_on_top_enabled);
         }
 
         app.on_menu_event(move |app_handle, event| {

@@ -106,10 +106,13 @@ pub fn handle_menu_event(app: &tauri::AppHandle, event: MenuEvent) {
             let _ = app.emit("compact-frameless", false);
 
             if let Some(window) = app.get_webview_window("main") {
-                let _ = utils::apply_tray_popup_mode(&window, false);
+                // 復帰時に「最前面に表示」の設定値も一緒に渡し、復元させる
+                let _ = utils::apply_tray_popup_mode(&window, false, config.always_on_top);
                 let _ = window.unminimize();
                 let _ = window.show();
                 let _ = window.set_focus();
+                // 表示した後にもう一度適用し、実状態と設定値を確実に同期させる
+                let _ = window.set_always_on_top(config.always_on_top);
             }
 
             // メインメニュー全体をリフレッシュ

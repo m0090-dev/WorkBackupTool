@@ -9,7 +9,8 @@ pub static TRAY_POPUP_HEIGHT: AtomicU32 = AtomicU32::new(110);
 pub fn request_tray_popup(app: &AppHandle, window: &WebviewWindow) {
     eprintln!("[tray] request_tray_popup");
     let _ = window.hide();
-    let _ = apply_tray_popup_mode(window, true);
+    // 第3引数は通常表示へ復帰する時専用なので、トレイ表示へ移るここでは未使用（true はダミー）
+    let _ = apply_tray_popup_mode(window, true, true);
     disable_dwm_transitions(window);
 
     let h = TRAY_POPUP_HEIGHT.load(Ordering::SeqCst) as f64;
@@ -148,11 +149,19 @@ pub fn position_tray_popup(window: &WebviewWindow) -> tauri::Result<()> {
     Ok(())
 }
 
-pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> tauri::Result<()> {
+/// トレイポップアップ表示と通常表示を切り替える。
+/// `restore_always_on_top` は、通常表示へ復帰する際（`is_tray_mode == false`）に
+/// 復元すべき「最前面に表示」の設定値。呼び出し側が設定値を必ず渡す形にし、
+/// 復帰時に最前面を無条件で解除してしまう事故を防ぐ。
+/// （トレイ表示へ移る際はポップアップ仕様として常に最前面にするため未使用）
+pub fn apply_tray_popup_mode(
+    window: &WebviewWindow,
+    is_tray_mode: bool,
+    restore_always_on_top: bool,
+) -> tauri::Result<()> {
     if !is_tray_mode {
         // 復帰処理は今まで通り
         window.set_decorations(true)?;
-        window.set_always_on_top(false)?;
         window.set_skip_taskbar(false)?;
         let size = Size::Logical(LogicalSize::new(420.0, 340.0));
         window.set_resizable(true)?;
@@ -162,6 +171,9 @@ pub fn apply_tray_popup_mode(window: &WebviewWindow, is_tray_mode: bool) -> taur
         window.set_min_size(Some(size))?;
         window.set_max_size(Some(size))?;
         window.center()?;
+        // 最前面の復元は最後に行う（装飾やサイズ変更の過程で
+        // 実状態が解除されても、設定値で確実に上書きするため）
+        window.set_always_on_top(restore_always_on_top)?;
         return Ok(());
     }
 
