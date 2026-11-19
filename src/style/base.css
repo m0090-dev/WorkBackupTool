@@ -76,8 +76,20 @@ html {
   font-size: 11px;
   line-height: 1.5;
   word-break: break-all;
-  pointer-events: none;
   animation: tooltipFadeIn 0.15s ease-out;
+}
+
+.tab-tooltip {
+  pointer-events: none;
+}
+
+/* 履歴ツールチップは、はみ出す分を自分の中でスクロールして見せる。
+   そのためポインターを受け取り、行からマウスを移しても消えないようにする */
+.history-tooltip {
+  pointer-events: auto;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .history-tooltip.hidden {
@@ -97,20 +109,16 @@ html {
 /* 履歴プレビューのサムネイル(ホバーポップアップの先頭に出る) */
 .history-tooltip .preview-thumb {
   display: block;
-  max-width: 272px;
-  max-height: 200px;
+  max-width: 100%;
+  max-height: 220px;
   margin: 0 auto 6px;
   border-radius: 3px;
 }
 
-/* コンパクトモード(幅320px・高さ可変)ではツールチップごと小さめにして収める */
+/* コンパクトモード(幅320px)ではツールチップの幅だけ少し絞る。
+   高さ方向はスクロールで吸収するので、画像サイズは通常と同じでよい */
 body.compact-mode .history-tooltip {
   max-width: 264px;
-}
-
-body.compact-mode .history-tooltip .preview-thumb {
-  max-width: 160px;
-  max-height: 110px;
 }
 
 .tooltip-title {

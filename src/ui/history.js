@@ -21,6 +21,24 @@ const previewUrlCache = new Map();
 const previewCtx = { workFile: "", backupDir: "", enabled: false };
 // いまツールチップを出している行のパス(非同期の差し込み先の取り違え防止)
 let tooltipPath = null;
+// ツールチップを消す予約(行からツールチップへマウスを移す猶予)
+let tooltipHideTimer = null;
+
+function cancelTooltipHide() {
+  if (tooltipHideTimer) {
+    clearTimeout(tooltipHideTimer);
+    tooltipHideTimer = null;
+  }
+}
+
+function scheduleTooltipHide(tooltip) {
+  cancelTooltipHide();
+  tooltipHideTimer = setTimeout(() => {
+    tooltipHideTimer = null;
+    tooltipPath = null;
+    tooltip.classList.add("hidden");
+  }, 200);
+}
 
 export function getSelectedPaths() {
   return Array.from(selected);
@@ -331,10 +349,12 @@ function setupHistoryPopups() {
 
   targets.forEach((target) => {
     target.onmouseenter = () => {
+      cancelTooltipHide();
       tooltipPath = target.dataset.path || null;
       tooltip.innerHTML = decodeURIComponent(
         target.getAttribute("data-hover-content"),
       );
+      tooltip.scrollTop = 0;
       tooltip.classList.remove("hidden");
       placeTooltip(target, tooltip);
 
@@ -342,8 +362,8 @@ function setupHistoryPopups() {
     };
 
     target.onmouseleave = () => {
-      tooltipPath = null;
-      tooltip.classList.add("hidden");
+      // すぐ消すと、スクロールするためにツールチップへマウスを移せない
+      scheduleTooltipHide(tooltip);
     };
   });
 }
@@ -407,6 +427,9 @@ function createTooltipElement() {
   const el = document.createElement("div");
   el.id = "history-tooltip";
   el.className = "history-tooltip hidden";
+  // ツールチップ自体にマウスが乗っている間は消さない(中身をスクロールできるように)
+  el.addEventListener("mouseenter", () => cancelTooltipHide());
+  el.addEventListener("mouseleave", () => scheduleTooltipHide(el));
   document.body.appendChild(el);
   return el;
 }

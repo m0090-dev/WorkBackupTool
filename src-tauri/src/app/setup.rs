@@ -80,6 +80,10 @@ pub fn init(app: &mut App) -> Result<(), Box<dyn std::error::Error>> {
             // （トレイモード時は表示しないので、ここでは再適用しない）
             let _ =
                 utils::apply_window_always_on_top(app.handle().clone(), always_on_top_enabled);
+
+            // テーマ(タイトルバーの色)も表示後に適用し直す。
+            // 未指定だと Windows 任せで、白に戻ってしまうことがあるため
+            utils::apply_window_theme(&window);
         }
 
         app.on_menu_event(move |app_handle, event| {
