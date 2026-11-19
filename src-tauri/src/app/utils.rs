@@ -171,6 +171,8 @@ pub fn apply_tray_popup_mode(
         window.set_min_size(Some(size))?;
         window.set_max_size(Some(size))?;
         window.center()?;
+        // 装飾を付け直すと DWM のテーマ指定が外れることがあるので、付け直す
+        apply_window_theme(window);
         // 最前面の復元は最後に行う（装飾やサイズ変更の過程で
         // 実状態が解除されても、設定値で確実に上書きするため）
         window.set_always_on_top(restore_always_on_top)?;
@@ -242,6 +244,17 @@ pub fn apply_window_always_on_top(app: AppHandle, flag: bool) -> Result<(), Stri
         return Err("Main window not found".into());
     }
     Ok(())
+}
+
+/// ウィンドウのテーマ(タイトルバーの色)をダークに固定する。
+/// テーマ未指定だと Windows 任せになり、装飾(枠)の切り替えや再表示の
+/// 過程で DWM のダーク指定が外れて、タイトルバーが白に戻ることがある。
+/// そのため、枠を作り直す・表示し直すタイミングで毎回適用し直す。
+pub fn apply_window_theme(window: &WebviewWindow) {
+    #[cfg(desktop)]
+    {
+        let _ = window.set_theme(Some(tauri::Theme::Dark));
+    }
 }
 
 // 共通化：トレイメニューだけを生成するヘルパー関数
