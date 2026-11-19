@@ -94,6 +94,13 @@ export const settingsSchema = [
     label: "filterHistoryByFilename",
     hint: "filterHistoryByFilenameHint",
   },
+  {
+    key: "previewEnabled",
+    type: "boolean",
+    category: "history",
+    label: "previewEnabledLabel",
+    hint: "previewEnabledHint",
+  },
 
   // --- 完了の通知 ---
   {

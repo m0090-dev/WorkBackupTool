@@ -1,4 +1,9 @@
-import { GetBackupList, ReadTextFile } from "../tauri_exports";
+import {
+  GetBackupList,
+  ReadTextFile,
+  GetConfig,
+  GetHistoryPreview,
+} from "../tauri_exports";
 import { resolveEffectiveBackupDir } from "../backup-dir.js";
 import { i18n, getActiveTab, formatSize } from "../state";
 import { parseNoteContent } from "../memo.js";
@@ -8,6 +13,14 @@ import { escapeHtml, escapeRegExp } from "./html.js";
 // --- 選択状態(履歴テーブルの行) ---
 const selected = new Set();
 let selectionKey = "";
+
+// --- プレビュー(サムネイル) ---
+// 取得済みの data URL(作れないエントリは null)をパスごとに覚えておく
+const previewUrlCache = new Map();
+// プレビュー取得に使う文脈(アクティブタブの作業対象・保存先・設定)
+const previewCtx = { workFile: "", backupDir: "", enabled: false };
+// いまツールチップを出している行のパス(非同期の差し込み先の取り違え防止)
+let tooltipPath = null;
 
 export function getSelectedPaths() {
   return Array.from(selected);
@@ -135,6 +148,11 @@ export async function UpdateHistory() {
 
   try {
     const effectiveBackupDir = await resolveEffectiveBackupDir(tab);
+    // プレビューの文脈とオン/オフを更新する
+    previewCtx.workFile = tab.workFile || "";
+    previewCtx.backupDir = effectiveBackupDir || "";
+    const cfg = await GetConfig().catch(() => null);
+    if (cfg) previewCtx.enabled = cfg.previewEnabled !== false;
     const raw = (await GetBackupList(tab.workFile, effectiveBackupDir)) || [];
 
     // メモ(.note)を読み込む
@@ -313,31 +331,76 @@ function setupHistoryPopups() {
 
   targets.forEach((target) => {
     target.onmouseenter = () => {
+      tooltipPath = target.dataset.path || null;
       tooltip.innerHTML = decodeURIComponent(
         target.getAttribute("data-hover-content"),
       );
       tooltip.classList.remove("hidden");
+      placeTooltip(target, tooltip);
 
-      const rect = target.getBoundingClientRect();
-      const tooltipHeight = tooltip.offsetHeight;
-      const tooltipWidth = tooltip.offsetWidth;
-
-      let top = rect.bottom + 2;
-      if (top + tooltipHeight > window.innerHeight) {
-        top = rect.top - tooltipHeight - 2;
-      }
-      const left = Math.max(
-        4,
-        Math.min(rect.left + 10, window.innerWidth - tooltipWidth - 4),
-      );
-      tooltip.style.left = `${left}px`;
-      tooltip.style.top = `${top}px`;
+      showPreviewInTooltip(target, tooltip);
     };
 
     target.onmouseleave = () => {
+      tooltipPath = null;
       tooltip.classList.add("hidden");
     };
   });
+}
+
+/** ツールチップを行の近くに置き、必ずウィンドウ内に収める */
+function placeTooltip(target, tooltip) {
+  const rect = target.getBoundingClientRect();
+  const th = tooltip.offsetHeight;
+  const tw = tooltip.offsetWidth;
+
+  let top = rect.bottom + 2;
+  if (top + th > window.innerHeight) {
+    top = rect.top - th - 2;
+  }
+  // 上下どちらにも収まらない小さいウィンドウ(コンパクト等)では、
+  // 行に重なってでも全体が見える位置に収める
+  top = Math.max(4, Math.min(top, Math.max(4, window.innerHeight - th - 4)));
+  const left = Math.max(
+    4,
+    Math.min(rect.left + 10, Math.max(4, window.innerWidth - tw - 4)),
+  );
+  tooltip.style.left = `${left}px`;
+  tooltip.style.top = `${top}px`;
+}
+
+/** ツールチップの先頭にプレビュー画像を差し込む(取得は非同期) */
+function showPreviewInTooltip(target, tooltip) {
+  if (!previewCtx.enabled) return;
+  const path = target.dataset.path;
+  if (!path) return;
+
+  const insert = (url) => {
+    // 取得中に別の行へ移っていたり、閉じていたりしたら差し込まない
+    if (!url || tooltipPath !== path || tooltip.classList.contains("hidden"))
+      return;
+    const img = document.createElement("img");
+    img.className = "preview-thumb";
+    img.src = url;
+    img.onload = () => {
+      // 画像が増えて高さが変わったので、収まる位置に置き直す
+      placeTooltip(target, tooltip);
+    };
+    tooltip.prepend(img);
+  };
+
+  if (previewUrlCache.has(path)) {
+    insert(previewUrlCache.get(path));
+    return;
+  }
+  GetHistoryPreview(previewCtx.workFile, previewCtx.backupDir, path)
+    .then((url) => {
+      previewUrlCache.set(path, url || null);
+      insert(url);
+    })
+    .catch(() => {
+      previewUrlCache.set(path, null);
+    });
 }
 
 function createTooltipElement() {

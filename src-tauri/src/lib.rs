@@ -45,6 +45,8 @@ pub fn run() {
             clear_all_caches,
             rebuild_archive_caches,
             prepare_archive_cache,
+            get_history_preview,
+            pregenerate_previews,
             get_rebuild_cache_on_startup,
             get_show_memo_after_backup,
             get_startup_cache_limit,

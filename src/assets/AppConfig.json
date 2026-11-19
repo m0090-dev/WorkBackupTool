@@ -31,5 +31,6 @@
   "restoreRelinkResetBackupDir": true,
   "restoreAlwaysAskOutputDir": false,
   "customBackupDirUseSubfolder": true,
-  "customBackupDirHideModePrompt": false
+  "customBackupDirHideModePrompt": false,
+  "previewEnabled": true
 }

@@ -5,6 +5,7 @@ import {
   RebuildArchiveCaches,
   GetRebuildCacheOnStartup,
   GetStartupCacheLimit,
+  PregeneratePreviews,
   DirExists,
 } from "./tauri_exports";
 
@@ -50,6 +51,9 @@ async function Initialize() {
   await restoreSession();
   showStartupOverlay();
   await performStartupCacheRebuild();
+  // プレビューの先行生成は起動を妨げないよう、投げっぱなしで裏で進める
+  // (オン/オフは Rust 側が設定を見て判断する)
+  performStartupPreviewGeneration();
 
   setupInitialUI();
 
@@ -93,6 +97,27 @@ async function performStartupCacheRebuild() {
       console.error(`Cache rebuild failed for ${tab.workFile}:`, e);
     }
     processedCount++;
+  }
+}
+
+/**
+ * 起動時のプレビュー先行生成。
+ * キャッシュ再構築の上限(startupCacheLimit)を流用し、タブごとに
+ * 新しい順に上限件数までサムネイルを作っておく。
+ */
+async function performStartupPreviewGeneration() {
+  try {
+    const limit = await GetStartupCacheLimit();
+    for (const tab of tabs) {
+      if (!tab.workFile && !tab.backupDir) continue;
+      await PregeneratePreviews(
+        tab.workFile || "",
+        (await resolveEffectiveBackupDir(tab)) || "",
+        limit,
+      );
+    }
+  } catch (e) {
+    console.error("Preview pregeneration failed:", e);
   }
 }
 

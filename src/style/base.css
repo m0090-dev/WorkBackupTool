@@ -94,6 +94,25 @@ html {
   margin: 6px 0;
 }
 
+/* 履歴プレビューのサムネイル(ホバーポップアップの先頭に出る) */
+.history-tooltip .preview-thumb {
+  display: block;
+  max-width: 272px;
+  max-height: 200px;
+  margin: 0 auto 6px;
+  border-radius: 3px;
+}
+
+/* コンパクトモード(幅320px・高さ可変)ではツールチップごと小さめにして収める */
+body.compact-mode .history-tooltip {
+  max-width: 264px;
+}
+
+body.compact-mode .history-tooltip .preview-thumb {
+  max-width: 160px;
+  max-height: 110px;
+}
+
 .tooltip-title {
   display: block;
   margin-bottom: 3px;

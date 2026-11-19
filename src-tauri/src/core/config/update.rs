@@ -77,6 +77,7 @@ pub fn apply_config_value(cfg: &mut AppConfig, key: &str, value: &Value) -> Resu
         "customBackupDirHideModePrompt" => {
             cfg.custom_backup_dir_hide_mode_prompt = as_bool(key, value)?
         }
+        "previewEnabled" => cfg.preview_enabled = as_bool(key, value)?,
 
         // --- 数値 ---
         "startupCacheLimit" => cfg.startup_cache_limit = as_u64(key, value)? as usize,
