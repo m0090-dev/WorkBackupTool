@@ -5,6 +5,7 @@ pub mod common;
 pub mod config;
 pub mod dialog;
 pub mod notification;
+pub mod preview;
 
 pub use backup::*;
 pub use backup_list::*;
@@ -13,3 +14,4 @@ pub use common::*;
 pub use config::*;
 pub use dialog::*;
 pub use notification::*;
+pub use preview::*;

@@ -136,6 +136,12 @@ pub struct AppConfig {
     /// 保存先を指定したときに、使い方(親フォルダ / 直接)の確認ポップアップを出さない
     #[serde(default)]
     pub custom_backup_dir_hide_mode_prompt: bool,
+
+    // --- 履歴プレビュー ---
+    /// 履歴のホバーポップアップに、その時点の作業ファイルのプレビュー画像を出す。
+    /// オフのときは、プレビュー用の一時ファイル・キャッシュも一切作らない。
+    #[serde(default = "default_true")]
+    pub preview_enabled: bool,
 }
 
 // 差分ファイル情報

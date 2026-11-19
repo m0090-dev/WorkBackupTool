@@ -241,6 +241,17 @@ export async function RebuildArchiveCaches(workFile, backupDir) {
   return await invoke("rebuild_archive_caches", { workFile, backupDir });
 }
 
+// 履歴エントリのプレビュー(サムネイル)を data URL で取得する。
+// 設定がオフ、またはプレビューが作れないエントリでは null。
+export async function GetHistoryPreview(workFile, backupDir, filePath) {
+  return await invoke("get_history_preview", { workFile, backupDir, filePath });
+}
+
+// 起動時などに、新しい順に上限件数までプレビューを先行生成する
+export async function PregeneratePreviews(workFile, backupDir, limit) {
+  return await invoke("pregenerate_previews", { workFile, backupDir, limit });
+}
+
 /**
  * コンパクト/トレイ表示の高さを中身に合わせて変更する(幅は変えない)
  */
